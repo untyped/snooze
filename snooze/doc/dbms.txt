@@ -1,0 +1,177 @@
+=============================
+DBMS-DEPENDENT BITS OF SNOOZE
+=============================
+
+Bits of the Snooze code that change from DBMS to DBMS:
+
+--------------
+SQL GENERATION
+--------------
+
+Actually, most of this stays the same. 
+
+Most of the data manipulation (SELECT / INSERT / UPDATE / DELETE) syntax is cross-DBMS.
+
+The data creation syntax has many bespoke elements.
+
+Some ubiquitous "little things" are different: most notably quoting of identifiers. For example:
+
+  [my-table] in SQLite
+  `my-table` in MySQL
+  "my-table" in PostgreSQL
+  
+-----------------------
+PASSING SQL TO THE DBMS
+-----------------------
+
+Once the SQL has been generated, we'll need a DBMS dependent way of actually running queries with it.
+
+I believe the distinction between SQL generation and passing SQL to the DBMS to be an important one... we ought to recognise it now and structure the code accordingly. I have some kerayzee ideas for things like stored queries that would benefit from the distinction.
+
+-----------------------------
+INTERPRETATION OF RESULT SETS
+-----------------------------
+
+Of course, different database libraries serve different result sets.
+
+We will need custom code for the creation of persistent structs for each library.
+
+==========
+SIGNATURES
+==========
+
+I propose two signatures: one for generating SQL (sql^) and one for interacting with the DB library (db^).
+
+The SQL unit will benefit greatly from the work Noel and I did on de-syntaxifying sql-*.ss:
+
+  signature sql^ :
+  
+    ; Main functions:
+  
+    create-sql : entity -> string
+    drop-sql   : entity -> string
+
+    insert-sql : persistent-struct -> string
+    update-sql : persistent-struct -> string
+    delete-sql : persistent-struct -> string
+    
+    v200:count-sql  : select -> string
+    v200:select-sql : select -> string
+    join-sql   : join   -> string
+
+    ; Internal functions:
+
+    alias-what-sql : alias -> string
+    alias-from-sql : alias -> string
+    expr-sql   : expr -> string
+    ref-sql    : ref -> string
+    order-sql  : order -> string
+    limit-sql  : limit -> string
+    
+    ; Super-internal functions:
+    
+    quote-identifier : symbol -> string
+
+    quote-data   : type any -> string
+    unquote-data : type string -> any
+
+QUESTION: Is there any way we can rig this so it's easy to override some functions and not others? For example, the meat of v200:select-sql will be the same across the board, but quote-identifier will not be... could we, for example, have internal versions of the functions that pass the unit in as an argument so they can delegate to whatever implementation is necessary:
+
+  v200:select-sql* : sql^ select-query -> string
+
+The DB unit will be a little simpler:
+
+  signature db^:
+  
+    ; Connection:
+    
+    disconnect : any -> void   ; again, any = connection object
+
+    ; Data definition:
+  
+    create-table : entity -> void
+    drop-table   : entity -> void
+  
+    ; Data manipulation:
+  
+    insert-struct : persistent-struct -> void
+    update-struct : persistent-struct -> void
+    delete-struct : persistent-struct -> void
+    
+    ; Querying:
+    
+    find-count : select -> result
+    find-all   : select -> (list-of result)
+    find-one   : select -> result
+
+    ; Transactions:
+
+    with-transaction : thunk -> void
+    
+    ; Handy functions:
+    ; (delete-by-id is an extra that I'd like to have)
+    
+    find-by-id   : entity integer -> persistent-struct
+    delete-by-id : entity integer -> void
+
+and we'll have a DBMS-specific connect function to create the unit:
+
+  sqlite-connect : sqlite-config -> db^
+  mysql-connect  : mysql-config  -> db^
+
+=====
+UNITS
+=====
+
+I suppose we create a package per database type:
+
+  snooze/sqlite
+  snooze/postgresql
+  snooze/mysql
+  
+and stick a file of the same name in each:
+
+  snooze/sqlite/sqlite.ss
+  snooze/postgresql/postgresql.ss
+  snooze/mysql/mysql.ss
+
+that exports the db^ unit and a configuration structure:
+
+  (module sqlite mzscheme
+  
+    (provide 
+      sqlite-db@
+      (struct sqlite-config (path))
+      )
+      
+    ...
+    
+    )
+    
+we don't need to export the sql^ unit - it will only be referred to internally just to keep our code structured nicely.
+
+It might be nice to have a "general" package containing utility functions for the units:
+
+  snooze/general
+
+we can provide a stock unit general-sql@ that exports standard versions of all the relevant functions.
+
+We might also be able to extract some generic code for interpreting results-sets.
+
+==============================
+WRAPPER FUNCTIONS AND SYNTAXES
+==============================
+
+The main body of non-DBMS-specific Snooze code will then become wrappers for whichever DB unit is currently loaded. We change with-database to be:
+
+  syntax with-database : db^ config expr ...
+  
+or maybe we desyntaxify it:
+
+  with-database : db^ config thunk -> void
+  
+Whichever strategy we adopt, we change current-connection to be:
+
+  parameter current-db : db^
+
+and that'll be enough to pass all the relevant calls through.

@@ -1,0 +1,189 @@
+_spgsql: PostgreSQL connectivity_
+=================================
+
+By Ryan Culpepper (rculpepper at users dot sourceforge dot net)
+
+This manual documents spgsql version 4.0.
+
+Keywords: _spgsql_, _postgresql_, _postgres_, _database_
+
+Introduction
+============
+
+The spgsql library provides classes, datatypes, and procedures useful
+for connecting to a PostgreSQL database server over TCP.
+
+Notes on Common Problems
+========================
+
+TCP Interface
+-------------
+By default, many PostgreSQL servers only listen on local domain
+sockets. Since PLT Scheme at this time provides no mechanism to
+connect to such a socket, the server must be reconfigured to listen to
+a TCP port and restarted. See the PostgreSQL manual for information on
+doing this.
+
+Passwords and Authentication
+----------------------------
+PostgreSQL also comes with a configuration file (pg_hba.conf) which
+lists accepted authentication methods. It is often necessary to add
+lines to this file that describe what authentication method is used
+for TCP connections. Methods supported by spgsql include password,
+crypt, and md5 (recommended). Users must also set their passwords
+using the ALTER USER SQL command.
+
+spgsql API
+==========
+
+Use the following module to access spgsql:
+
+  (require (planet "spgsql.ss" ("schematics" "spgsql.plt" 1)))
+
+Making a connection
+-------------------
+
+> (connect server port database user [password]) -> connection<%>
+
+Creates a connection to a PostgreSQL server. The server, database, and
+user are strings, and the port is a number. If password is given, it
+must be a string.
+
+Note: the password will be sent in the clear if that is the
+authentication method requested by the database server.
+
+> interface connection<%>
+
+The connection<%> interface contains the following administrative
+methods:
+
+>   disconnect : -> void
+
+      Disconnects the connection.
+
+>   disconnected? : -> boolean
+
+      Returns true if the connection is disconnected.
+
+>   set-notification-handler : (NotificationResult -> void) -> void
+
+      Sets the procedure used by this connection to handle
+      asynchronous notifications sent by the backend.
+      The default handler does nothing. For more information about
+      notifications, see the SQL commands LISTEN, UNLISTEN, and
+      NOTIFY.
+
+>   set-notice-handler : (NoticeResult -> void) -> void
+
+      Sets the procedure used by this connection to handle
+      asynchronous notices sent by the backend. The default handler
+      prints the notice's message to the current error port.
+
+>   use-type-conversions : boolean -> void
+
+      Determines whether the connection should convert data received
+      from the backend into the appropriate Scheme data. The default
+      is to leave data in string form.
+
+The connection<%> interface contains the following query-related
+methods:
+
+>   fold : sql-string ('a field ... -> 'a) 'a -> 'a
+>   fold-right : sql-string 'a ('a field ... -> 'a) -> 'a
+
+      Left and right folds over the results of a single query.
+
+>   query-list : sql-string -> (listof value) | raises error
+
+      Executes a SQL query and returns the list of (single) values
+      from a query.
+
+>   query-tuple : sql-string -> (vector-of value) | raises error
+
+      Executes a SQL query and returns its (single) tuple result as a
+      vector.
+
+>   query-value : sql-string -> value | raises error
+
+      Executes a SQL query and returns its single value result (that
+      is: one record, one field).
+
+>   map : sql-string (field ... -> 'a) -> (listof 'a)
+
+      Executes a SQL query and maps the given function over the rows,
+      returning a list of results.
+
+>   for-each : sql-string (field ... -> void) -> void
+
+      Executes a SQL query and applies the given function to each row,
+      discarding the result.
+
+>   mapfilter : sql-string (field... -> 'a) (field... -> boolean) 
+                -> (listof 'a)
+
+      Like map, but applies the map function (given first) to only
+      those rows which satisfy the given predicate (given second).
+
+>   exec : sql-string -> void | raises error
+
+      Executes a SQL query for effect and discards the (usually
+      trivial) result.
+
+
+> sql-null
+> sql-null?
+
+A special value and predicates used to represent NULL values in
+queries.
+
+> exn:spgsql
+
+The root type of all spgsql-specific exceptions.
+
+> exn:spgsql:fatal
+> exn:spgsql:nonfatal
+
+Fatal errors automatically cause the connection to become
+disconnected. After a nonfatal error, further use of a connection is
+generally possible.
+
+> exn:spgsql:auth
+
+Error occurred during the authentication process. For example, the
+given password was not accepted.
+
+> exn:spgsql:communication
+
+Communication with the backend has been disrupted. For example, the
+network connection is abruptly disconnected.
+
+> exn:spgsql:internal
+
+Internal error in spgsql---report this as a bug!
+
+> exn:spgsql:query
+
+The backend sent an error in response to a query. For example, bad SQL
+syntax, reference to a non-existant table, or a constraint violation.
+
+> exn:spgsql:user
+
+User error. For example, using query-list on a SQL statement that
+returns results with multiple fields.
+
+
+Type Conversions
+================
+
+By default, data is returned from queries as strings in a
+platform-independent external representation. Thus:
+
+  (send c query-value "select 18") => "18"
+  (send c query-value "select false") => "f"
+
+The single exception is that SQL NULL values are always translated
+into the unique sql-null value provided by spgsql.
+
+Connections can automatically convert data into appropriate Scheme
+representations in many cases. To enable this conversion, use the
+method use-type-conversion (documented above).

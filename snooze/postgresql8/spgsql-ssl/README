@@ -1,0 +1,19 @@
+
+SPGSQL Version 4
+http://schematics.sourceforge.net/
+
+Please visit Schematics for the latest news, documentation, and source code.
+
+SPGSQL is licensed under the 3-clause BSD license. See the file
+COPYRIGHT for details.
+
+Ryan Culpepper
+(rculpepper at users.sourceforge.net)
+
+------------------
+Changes highlights
+------------------
+  * Updated to PLT Scheme 299/30X
+    Thanks to Mike Burns and Doug Orleans for porting help!
+
+  * Packaged as PLaneT package: see http://planet.plt-scheme.org/
