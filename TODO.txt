@@ -1,0 +1,10 @@
+DONE 1. Add type:guid
+2. Allow guids in queries
+3. Extract guids correctly from query results
+4. Implement cache/context object
+5. Cache structs in find -- g:find should add structurs to the cache
+6. save and delete should update the cache
+7. optimise find-by-guid to go by the cache first
+8. create find-by-guids : (listof guids) -> (listof struct) which goes via the cache
+9. add relationships in model
+10. generate accessors that understand and lazy load relationships.  e.g. student-advisor accessors from student-advisor-id accessor 
