@@ -1,0 +1,12 @@
+_Snooze_ : A persistence library by Untyped
+===========================================
+
+By  Dave Gurnell (dave at untyped dot com)
+and Noel Welsh   (noel at untyped dot com)
+and Matt Jadud   (matt at untyped dot com)
+
+There is currently no up-to-date documentation for Snooze.
+See example.ss for some stop-over documentation while we fix things up.
+Time-stamp: <2007-01-21 12:10:00 dave>
+
+Keywords: _snooze_, _persistence_, _structure_
