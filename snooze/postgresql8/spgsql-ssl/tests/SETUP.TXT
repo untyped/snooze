@@ -1,0 +1,29 @@
+After installing Postgresql, the following steps will setup the server for the tests.
+
+createdb testdb
+createuser test -P
+  password: test
+  answer n to all other questions
+
+In pg_hba.conf add the line
+  # This is the setup we use for live databases
+  hostssl all	    all		0.0.0.0/0	      md5
+
+
+In postgresql.conf uncomment the line
+  ssl=on
+
+In $PGDATA directory run the following commands
+
+  openssl req -new -text -out server.req
+    Make sure that you enter the local host name as "Common Name"
+
+  openssl rsa -in privkey.pem -out server.key
+  rm privkey.pem
+  openssl req -x509 -in server.req -text -key server.key -out server.crt
+  chmod og-rwx server.key
+  rm server.req
+
+To run the database
+
+  pg_ctl -w -l ~/tmp/server.log start
