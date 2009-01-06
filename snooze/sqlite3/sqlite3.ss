@@ -7,7 +7,7 @@
          "../generic/database.ss"
          "database.ss")
 
-; path -> database%
+; (U path ':memory: ':temp:) -> database%
 (define (make-database path)
   (new database% [path path]))
 
@@ -17,4 +17,4 @@
          database%)
 
 (provide/contract
- [make-database (-> (or/c path? string?) (is-a?/c database<%>))])
+ [make-database (-> (or/c path? ':memory: ':temp:) (is-a?/c database<%>))])

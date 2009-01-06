@@ -47,9 +47,9 @@ All you need to do to complete @filepath{db.ss} is fill in the arguments to @sch
 @itemize{
   @item{if you are using SQLite, rewrite the call to @scheme[make-database] like this:
 
-    @schemeblock[(make-database "<<FILENAME>>")]
+    @schemeblock[(make-database <<PATH>>)]
 
-    where @litchar{<<FILENAME>>} is the path to your database file;}
+    where @litchar{<<PATH>>} is either a @scheme[path] to your database file or one of the special symbols @scheme[':memory:] (in-memory database) or @scheme[':temp:] (temporary file);}
         
   @item{if you are using PostgreSQL, rewrite the call to @scheme[make-database] like this:
   
@@ -115,7 +115,7 @@ Now you are ready to connect to a database and start storing data. Create a new 
     (lambda ()
 
       (code:comment "Create a database table to house person data:")      
-      (create-table person)
+      (create-table entity:person)
           
       (code:comment "There aren't any people saved yet:")
       (print-people)
@@ -135,7 +135,7 @@ Now you are ready to connect to a database and start storing data. Create a new 
       (print-people)
       
       (code:comment "Okay, we're done. Drop the table:")
-      (drop-table person)))]
+      (drop-table entity:person)))]
       
 Run the code with the following command line:
 

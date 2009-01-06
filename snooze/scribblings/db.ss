@@ -8,7 +8,7 @@
 ; DB interface (for documentation labels) ------
 
 (define-snooze-interface 
-  (make-snooze (make-database (make-temporary-file "temp~a.sqlite"))))
+  (make-snooze (make-database ':memory:)))
 
 ; Provide statements --------------------------- 
 

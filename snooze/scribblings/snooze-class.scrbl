@@ -20,7 +20,7 @@ Snooze objects guarantee thread safety: multiple threads can connect concurrentl
   (code:comment "snooze%")
   (code:comment "")           
   (code:comment "Interface to the SQLite database in \"mydata.db\":")
-  (define mydata (make-snooze (make-database "mydata.db")))
+  (define mydata (make-snooze (make-database (build-path "mydata.db"))))
   
   (code:comment "(persistent-struct (U string #f))")
   (define-persistent-struct person
@@ -94,10 +94,10 @@ Defines a procedure for each of the methods in @scheme[snooze<%>], such that eac
            
 @schemeblock[
   (define db1-snooze
-    (make-snooze (sqlite:make-database "db1.sqlite")))    
+    (make-snooze (sqlite:make-database (build-path "db1.sqlite"))))    
   
   (define db2-snooze
-    (make-snooze (sqlite:make-database "db2.sqlite")))    
+    (make-snooze (sqlite:make-database (build-path "db2.sqlite"))))    
 
   (define-snooze-interface db1-snooze)
   (define-snooze-interface alt: db2-snooze)
