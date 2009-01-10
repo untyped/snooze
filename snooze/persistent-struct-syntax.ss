@@ -5,8 +5,8 @@
                      scheme/pretty
                      scheme/provide-transform
                      scheme/struct-info
-                     (only-in srfi/1/list append-map)
-                     srfi/26/cut
+                     (only-in srfi/1 append-map)
+                     srfi/26
                      (planet untyped/unlib:3/debug)
                      (planet untyped/unlib:3/syntax)
                      "persistent-struct-info.ss"
@@ -222,8 +222,15 @@
                         (let ([certify (syntax-local-certifier #t)])
                           ; Cache persistent-struct-specific compile time information:
                           (persistent-struct-info-set! (certify #'name)
+                                                       (certify #'struct-type)
                                                        (certify #'entity)
+                                                       (certify #'constructor)
+                                                       (certify #'constructor/defaults)
+                                                       (certify #'copy-struct)
+                                                       (certify #'predicate)
                                                        (list (certify #'attr-id) ...)
+                                                       (list (certify #'accessor) ...)
+                                                       (list (certify #'mutator) ...)
                                                        (list 'attr-name* ...))
                           ; Return general compile-time information:
                           (make-struct-info 

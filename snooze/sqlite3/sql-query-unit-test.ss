@@ -82,7 +82,7 @@ ENDSQL
       
       (check-equal? (what-sql (list count-star count-p1 count-p1-id count-p2-id sum-ids) (list count-p2-id))
                     #<<ENDSQL
-COUNT(*) AS [count-star], COUNT([p1].*) AS [count-p1], COUNT([p1].[id]) AS [count-p1-id], [count-p2-id], ([p1].[id] + [p2].[id]) AS [sum-ids]
+count(*) AS [count-star], count([p1].*) AS [count-p1], count([p1].[id]) AS [count-p1-id], [count-p2-id], ([p1].[id] + [p2].[id]) AS [sum-ids]
 ENDSQL
                     "expression aliases"))
     
@@ -156,6 +156,11 @@ ENDSQL
                                     (list p1-name))
                     "(([p1].[id] = 123) AND (([p1-name] || ' of Loxley') = 'Robin of Loxley'))"
                     "nested expressions")
+      (check-equal? (expression-sql (sql:and) null) "true" "argumentless and")
+      (check-equal? (expression-sql (sql:or) null) "false" "argumentless or")
+      (check-equal? (expression-sql (sql:+) null) "0" "argumentless +")
+      (check-equal? (expression-sql (sql:*) null) "1" "argumentless *")
+      (check-equal? (expression-sql (sql:-) null) "0" "argumentless -")
       (check-equal? (expression-sql (sql:in p1-id (sql:select #:what p1-id #:from p1)) null)
                     "([p1].[id] IN (SELECT [p1].[id] AS [p1-id] FROM [Person] AS [p1]))"
                     "sql:in")
@@ -216,7 +221,7 @@ ENDSQL
         
         (define sql3
           #<<ENDSQL
-SELECT [a].[id] AS [a-id], [a].[revision] AS [a-revision], [a].[name] AS [a-name], COUNT([b].*) AS [expr] FROM [Person] AS [a] INNER JOIN [Pet] AS [b] ON ([a].[id] = [b].[ownerID]) GROUP BY [a-id], [a-revision], [a-name]
+SELECT [a].[id] AS [a-id], [a].[revision] AS [a-revision], [a].[name] AS [a-name], count([b].*) AS [expr] FROM [Person] AS [a] INNER JOIN [Pet] AS [b] ON ([a].[id] = [b].[ownerID]) GROUP BY [a-id], [a-revision], [a-name]
 ENDSQL
           )
         

@@ -36,7 +36,9 @@
     [(_ id val)
      (entity-identifier? #'val)
      (match (persistent-struct-info-ref #'val)
-       [(struct persistent-struct-info (entity-stx attr-stxs attr-names))
+       [(and (app persistent-struct-info-entity-id entity-stx)
+             (app persistent-struct-info-attribute-ids attr-stxs)
+             (app persistent-struct-info-attribute-names attr-names))
         (with-syntax ([entity        entity-stx]
                       [(attr-id ...) (map (cut make-id #'id #'id '- <>) attr-names)]
                       [(attr ...)    attr-stxs])

@@ -37,26 +37,42 @@
             (make-check-warning "Warning")
             (make-check-failure "Failure")))
     
-    (test-case "check-problems works as expected"
-      (let ([exn (make-exn "Dang" (current-continuation-marks))])
-        (check-equal? (check-problems
-                       (check-pass)
-                       (check-warn  "w1")
-                       (check-fail "f1")
-                       (list (make-check-fatal "e1" exn))
-                       (check-pass)
-                       (check-warn  "w2")
-                       (check-fail "f2")
-                       (list (make-check-fatal "e2" exn)))
-                      (check-all
-                       (check-warn  "w1")
-                       (check-fail "f1")
-                       (list (make-check-fatal "e1" exn))
-                       (check-warn  "w2")
-                       (check-fail "f2")
-                       (list (make-check-fatal "e2" exn))))))
+    (test-case "check-successes, check-problems, check-warnings, check-errors, check-failures, check-fatals"
+      (let* ([exn (make-exn "Dang" (current-continuation-marks))]
+             [all (check-all (check-pass)
+                             (check-warn  "w1")
+                             (check-fail "f1")
+                             (list (make-check-fatal "e1" exn))
+                             (check-pass)
+                             (check-warn  "w2")
+                             (check-fail "f2")
+                             (list (make-check-fatal "e2" exn)))])
+        (check-equal? (check-successes all)
+                      (check-all (check-pass)
+                                 (check-pass)))
+        (check-equal? (check-problems all)
+                      (check-all (check-warn  "w1")
+                                 (check-fail "f1")
+                                 (list (make-check-fatal "e1" exn))
+                                 (check-warn  "w2")
+                                 (check-fail "f2")
+                                 (list (make-check-fatal "e2" exn))))
+        (check-equal? (check-warnings all)
+                      (check-all (check-warn  "w1")
+                                 (check-warn  "w2")))
+        (check-equal? (check-errors all)
+                      (check-all (check-fail "f1")
+                                 (list (make-check-fatal "e1" exn))
+                                 (check-fail "f2")
+                                 (list (make-check-fatal "e2" exn))))
+        (check-equal? (check-failures all)
+                      (check-all (check-fail "f1")
+                                 (check-fail "f2")))
+        (check-equal? (check-fatals all)
+                      (check-all (list (make-check-fatal "e1" exn))
+                                 (list (make-check-fatal "e2" exn))))))
     
-    (test-case "check-warnings+failures+fatals works as expected"
+    (test-case "check-warnings+failures+fatals"
       (let*-values ([(exn) (make-exn "Dang" (current-continuation-marks))]
                     [(warnings failures fatals)
                      (check-warnings+failures+fatals 

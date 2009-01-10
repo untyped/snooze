@@ -10,21 +10,37 @@
 (define result-combinator-tests
   (test-suite "result-combinator.ss"
     
-    (test-case "check-problems? works as expected"
-      (check-true  (check-problems? (check-all (check-pass) (check-warn "Dang"))))
-      (check-false (check-problems? (check-all (check-pass) (check-pass)))))
+    (test-case "check-successes?"
+      (check-true  (check-successes? (check-pass) (check-warn "Dang")))
+      (check-false (check-successes? (check-warn "Dang") (check-warn "Dang"))))
     
-    (test-case "check-errors? works as expected"
-      (check-true  (check-fatals? (check-with-handlers (cut raise-exn exn:fail "Dang"))))
-      (check-true  (check-errors? (check-all (check-pass) (check-fail "Dang"))))
-      (check-false (check-errors? (check-all (check-pass) (check-warn "Dang"))))
-      (check-false (check-errors? (check-all (check-pass) (check-pass)))))
+    (test-case "check-problems?"
+      (check-true  (check-problems? (check-pass) (check-warn "Dang")))
+      (check-true  (check-problems? (check-pass) (check-fail "Dang")))
+      (check-false (check-problems? (check-pass) (check-pass))))
     
-    (test-case "check-fatals? works as expected"
+    (test-case "check-warnings?"
+      (check-true  (check-warnings? (check-pass) (check-warn "Dang")))
+      (check-false (check-warnings? (check-pass) (check-fail "Dang")))
+      (check-false (check-warnings? (check-pass) (check-pass))))
+    
+    (test-case "check-errors?"
+      (check-true  (check-errors? (check-with-handlers (cut raise-exn exn:fail "Dang"))))
+      (check-true  (check-errors? (check-pass) (check-fail "Dang")))
+      (check-false (check-errors? (check-pass) (check-warn "Dang")))
+      (check-false (check-errors? (check-pass) (check-pass))))
+    
+    (test-case "check-failures?"
+      (check-false (check-failures? (check-with-handlers (cut raise-exn exn:fail "Dang"))))
+      (check-true  (check-failures? (check-pass) (check-fail "Dang")))
+      (check-false (check-failures? (check-pass) (check-warn "Dang")))
+      (check-false (check-failures? (check-pass) (check-pass))))
+    
+    (test-case "check-fatals?"
       (check-true  (check-fatals? (check-with-handlers (cut raise-exn exn:fail "Dang"))))
-      (check-false (check-fatals? (check-all (check-pass) (check-fail "Dang"))))
-      (check-false (check-fatals? (check-all (check-pass) (check-warn "Dang"))))
-      (check-false (check-fatals? (check-all (check-pass) (check-pass)))))))
+      (check-false (check-fatals? (check-pass) (check-fail "Dang")))
+      (check-false (check-fatals? (check-pass) (check-warn "Dang")))
+      (check-false (check-fatals? (check-pass) (check-pass))))))
 
 ; Provide statements -----------------------------
 

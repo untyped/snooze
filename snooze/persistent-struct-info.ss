@@ -9,15 +9,71 @@
 
 ; Structure types --------------------------------
 
+; (struct syntax
+;         syntax
+;         syntax
+;         syntax
+;         syntax
+;         syntax
+;         syntax
+;         (listof syntax)
+;         (listof syntax)
+;         (listof syntax)
+;         (listof symbol))
 (define-struct persistent-struct-info
-  (entity-id attribute-ids attribute-names)
+  (id
+   struct-type-id
+   entity-id
+   constructor-id
+   constructor/defaults-id
+   copy-struct-id
+   predicate-id
+   attribute-ids
+   accessor-ids
+   mutator-ids
+   attribute-names)
   #:transparent)
 
 ; Procedures -------------------------------------
 
-; syntax syntax (listof syntax) (listof symbol) -> boolean
-(define (persistent-struct-info-set! id entity-id attr-ids attr-names)
-  (module-identifier-mapping-put! info-cache id (make-persistent-struct-info entity-id attr-ids attr-names)))
+;  syntax
+;  syntax
+;  syntax
+;  syntax
+;  syntax
+;  syntax
+;  syntax
+;  (listof syntax)
+;  (listof syntax)
+;  (listof syntax)
+;  (listof symbol)
+; ->
+;  boolean
+(define (persistent-struct-info-set!
+         id
+         struct-type-id
+         entity-id
+         constructor-id
+         constructor/defaults-id
+         copy-struct-id
+         predicate-id
+         attribute-ids
+         accessor-ids
+         mutator-ids
+         attribute-names)
+  (module-identifier-mapping-put! info-cache
+                                  id
+                                  (make-persistent-struct-info id
+                                                               struct-type-id
+                                                               entity-id
+                                                               constructor-id
+                                                               constructor/defaults-id
+                                                               copy-struct-id
+                                                               predicate-id
+                                                               attribute-ids
+                                                               accessor-ids
+                                                               mutator-ids
+                                                               attribute-names)))
 
 ; syntax -> boolean
 (define (persistent-struct-info-set? id)
@@ -32,9 +88,28 @@
 ; Provide statements -----------------------------
 
 (provide/contract
- [struct persistent-struct-info ([entity-id       identifier?]
-                                 [attribute-ids   (listof identifier?)]
-                                 [attribute-names (listof symbol?)])]
- [persistent-struct-info-set!   (-> identifier? identifier? (listof identifier?) (listof symbol?) void?)]
+ [struct persistent-struct-info ([id                      identifier?]
+                                 [struct-type-id          identifier?]
+                                 [entity-id               identifier?]
+                                 [constructor-id          identifier?]
+                                 [constructor/defaults-id identifier?]
+                                 [copy-struct-id          identifier?]
+                                 [predicate-id            identifier?]
+                                 [attribute-ids           (listof identifier?)]
+                                 [accessor-ids            (listof identifier?)]
+                                 [mutator-ids             (listof identifier?)]
+                                 [attribute-names         (listof symbol?)])]
+ [persistent-struct-info-set!   (-> identifier?
+                                    identifier?
+                                    identifier?
+                                    identifier?
+                                    identifier?
+                                    identifier?
+                                    identifier?
+                                    (listof identifier?)
+                                    (listof identifier?)
+                                    (listof identifier?)
+                                    (listof symbol?)
+                                    void?)]
  [persistent-struct-info-set?   (-> identifier? boolean?)]
  [persistent-struct-info-ref    (-> identifier? (or/c persistent-struct-info? false/c))])

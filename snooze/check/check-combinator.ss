@@ -26,13 +26,29 @@
 ; (listof check-result) ... -> (listof check-result)
 (define check-all append)
 
-; (listof check-result) ... -> (listof check-result)
+; (listof check-result) ... -> (listof check-success)
+(define (check-successes . args)
+  (filter check-success? (apply check-all args)))
+
+; (listof check-result) ... -> (listof check-problem)
 (define (check-problems . args)
   (filter check-problem? (apply check-all args)))
 
-; (listof check-result) ... -> (listof check-result)
+; (listof check-result) ... -> (listof check-warning)
+(define (check-warnings . args)
+  (filter check-warning? (apply check-all args)))
+
+; (listof check-result) ... -> (listof check-error)
 (define (check-errors . args)
   (filter check-error? (apply check-all args)))
+
+; (listof check-result) ... -> (listof check-failure)
+(define (check-failures . args)
+  (filter check-failure? (apply check-all args)))
+
+; (listof check-result) ... -> (listof check-fatal)
+(define (check-fatals . args)
+  (filter check-fatal? (apply check-all args)))
 
 ;  (listof check-result)
 ;  ...
@@ -92,8 +108,12 @@
  [check-warn                     (-> string?       (list/c check-warning?))]
  [check-fail                     (-> string?       (list/c check-failure?))]
  [check-all                      (->* () () #:rest (listof (listof check-result?)) (listof check-result?))]
- [check-problems                 (->* () () #:rest (listof (listof check-result?)) (listof check-result?))]
+ [check-successes                (->* () () #:rest (listof (listof check-result?)) (listof check-success?))]
+ [check-problems                 (->* () () #:rest (listof (listof check-result?)) (listof check-problem?))]
+ [check-warnings                 (->* () () #:rest (listof (listof check-result?)) (listof check-warning?))]
  [check-errors                   (->* () () #:rest (listof (listof check-result?)) (listof check-result?))]
+ [check-failures                 (->* () () #:rest (listof (listof check-result?)) (listof check-failure?))]
+ [check-fatals                   (->* () () #:rest (listof (listof check-result?)) (listof check-fatal?))]
  [check-warnings+failures+fatals   (->* () () #:rest (listof (listof check-result?))
                                         (values (listof check-warning?)
                                                 (listof check-failure?)

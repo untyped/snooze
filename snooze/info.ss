@@ -7,7 +7,10 @@
        (tt "persistent-structs") " and serialize them to an SQLite or PostgreSQL database.")))
 
 (define release-notes
-  '((p "Fixes to documentation compilation bugs.")))
+  '((p "Changes:")
+    (ul (li "corrected typos in the quick start in the docs;")
+        (li "updated the contract on the " (tt "make-database") " procedure for the SQLite backend, "
+            "to match changes in the contract on the " (tt "open") " procedure in " (tt "sqlite.plt") "."))))
 
 (define primary-file "main.ss")
 

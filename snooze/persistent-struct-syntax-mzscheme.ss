@@ -223,8 +223,15 @@
                         (let ([certify (syntax-local-certifier #t)])
                           ; Cache persistent-struct-specific compile time information:
                           (persistent-struct-info-set! (certify #'name)
+                                                       (certify #'struct-type)
                                                        (certify #'entity)
+                                                       (certify #'constructor)
+                                                       (certify #'constructor/defaults)
+                                                       (certify #'copy-struct)
+                                                       (certify #'predicate)
                                                        (list (certify #'attr-id) ...)
+                                                       (list (certify #'accessor) ...)
+                                                       (list (certify #'mutator) ...)
                                                        (list 'attr-name* ...))
                           ; Return general compile-time information:
                           (make-struct-info 

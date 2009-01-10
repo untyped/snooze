@@ -264,11 +264,11 @@
   (match agg
     [(struct aggregate (type op args))
      (case op
-       [(count)   (display "COUNT(" out)]
-       [(count*)  (display "COUNT(" out)]
-       [(max)     (display "MAX(" out)]
-       [(min)     (display "MIN(" out)]
-       [(average) (display "AVERAGE(" out)]
+       [(count)   (display "count(" out)]
+       [(count*)  (display "count(" out)]
+       [(max)     (display "max(" out)]
+       [(min)     (display "min(" out)]
+       [(average) (display "average(" out)]
        [else      (raise-exn exn:fail:contract (format "Unknown aggregate operator: ~a" op))])
      (case op
        [(count*)  (if (null? args)
@@ -283,53 +283,58 @@
   (match func
     [(struct function (type op args))
      (case op
-       [(and)                (display-expression/infix  args " AND " imported out)]
-       [(or)                 (display-expression/infix  args " OR " imported out)]
-       [(not)                (display-expression/outfix args "NOT " #f imported out)]
-       [(+)                  (display-expression/infix  args " + " imported out)]
-       [(-)                  (display-expression/infix  args " - " imported out)]
-       [(*)                  (display-expression/infix  args " * " imported out)]
-       [(/)                  (display-expression/infix  args " / " imported out)]
-       [(abs)                (display-expression/outfix args "abs(" ")" imported out)]
-       [(floor)              (display-expression/outfix args "floor(" ")" imported out)]
-       [(ceiling)            (display-expression/outfix args "ceiling(" ")" imported out)]
-       [(round)              (display-expression/outfix args "round(" ")" imported out)]
-       [(=)                  (display-expression/infix  args " = " imported out)]
-       [(<>)                 (display-expression/infix  args " <> " imported out)]
-       [(<)                  (display-expression/infix  args " < " imported out)]
-       [(>)                  (display-expression/infix  args " > " imported out)]
-       [(<=)                 (display-expression/infix  args " <= " imported out)]
-       [(>=)                 (display-expression/infix  args " >= " imported out)]
-       [(like)               (display-expression/infix  args " LIKE " imported out)]
-       [(regexp-match)       (display-expression/infix  args " ~ " imported out)]
-       [(regexp-match-ci)    (display-expression/infix  args " ~* " imported out)]
-       [(regexp-replace)     (display-expression/outfix args "regexp_replace(" ")" imported out)]
-       [(regexp-replace-ci)  (display-expression/outfix args "regexp_replace(" ", 'i')" imported out)]
-       [(regexp-replace*)    (display-expression/outfix args "regexp_replace(" ", 'g')" imported out)]
-       [(regexp-replace*-ci) (display-expression/outfix args "regexp_replace(" ", 'gi')" imported out)]
-       [(string-append)      (display-expression/infix  args " || " imported out)]
-       [(string-replace)     (display-expression/outfix args "replace(" ")" imported out)]
-       [(null?)              (display-expression/outfix args #f " IS NULL" imported out)]
-       [(coalesce)           (display-expression/outfix args "coalesce(" ")" imported out)]
-       [(->string)           (display-expression/outfix args "to_char(" ")" imported out)]
-       [(->symbol)           (display-expression/outfix args "to_char(" ")" imported out)]
+       [(and)                (display-expression/infix  op args " AND " "true" imported out)]
+       [(or)                 (display-expression/infix  op args " OR " "false" imported out)]
+       [(not)                (display-expression/outfix op args "NOT " #f imported out)]
+       [(+)                  (display-expression/infix  op args " + " "0" imported out)]
+       [(-)                  (display-expression/infix  op args " - " "0" imported out)]
+       [(*)                  (display-expression/infix  op args " * " "1" imported out)]
+       [(/)                  (display-expression/infix  op args " / " #f imported out)]
+       [(abs)                (display-expression/outfix op args "abs(" ")" imported out)]
+       [(floor)              (display-expression/outfix op args "floor(" ")" imported out)]
+       [(ceiling)            (display-expression/outfix op args "ceiling(" ")" imported out)]
+       [(round)              (display-expression/outfix op args "round(" ")" imported out)]
+       [(=)                  (display-expression/infix  op args " = " #f imported out)]
+       [(<>)                 (display-expression/infix  op args " <> " #f imported out)]
+       [(<)                  (display-expression/infix  op args " < " #f imported out)]
+       [(>)                  (display-expression/infix  op args " > " #f imported out)]
+       [(<=)                 (display-expression/infix  op args " <= " #f imported out)]
+       [(>=)                 (display-expression/infix  op args " >= " #f imported out)]
+       [(like)               (display-expression/infix  op args " LIKE " #f imported out)]
+       [(regexp-match)       (display-expression/infix  op args " ~ " #f imported out)]
+       [(regexp-match-ci)    (display-expression/infix  op args " ~* " #f imported out)]
+       [(regexp-replace)     (display-expression/outfix op args "regexp_replace(" ")" imported out)]
+       [(regexp-replace-ci)  (display-expression/outfix op args "regexp_replace(" ", 'i')" imported out)]
+       [(regexp-replace*)    (display-expression/outfix op args "regexp_replace(" ", 'g')" imported out)]
+       [(regexp-replace*-ci) (display-expression/outfix op args "regexp_replace(" ", 'gi')" imported out)]
+       [(string-append)      (display-expression/infix  op args " || " "''" imported out)]
+       [(string-replace)     (display-expression/outfix op args "replace(" ")" imported out)]
+       [(null?)              (display-expression/outfix op args #f " IS NULL" imported out)]
+       [(coalesce)           (display-expression/outfix op args "coalesce(" ")" imported out)]
+       [(->string)           (display-expression/outfix op args "to_char(" ")" imported out)]
+       [(->symbol)           (display-expression/outfix op args "to_char(" ")" imported out)]
        [(in)                 (display-expression/in     (car args) (cadr args) imported out)]
        [(if)                 (display-expression/if     (car args) (cadr args) (caddr args) imported out)]
        [else                 (raise-exn exn:fail:contract (format "Unknown function operator: ~a" op))])]))
 
-; (listof expression) string (listof column) output-port -> void
-(define (display-expression/infix args delim imported out)
-  (display "(" out)
-  (let loop ([args args] [first? #t])
-    (unless (null? args)
-      (unless first?
-        (display delim out))
-      (display-expression (car args) imported out)
-      (loop (cdr args) #f)))
-  (display ")" out))
-
-; (listof expression) string string (listof column) output-port -> void
-(define (display-expression/outfix args prefix suffix imported out)
+; symbol (listof expression) string (U string #f) (listof column) output-port -> void
+(define (display-expression/infix op args delim default imported out)
+  (if (pair? args)
+      (begin
+        (display "(" out)
+        (let loop ([args args] [first? #t])
+          (unless (null? args)
+            (unless first?
+              (display delim out))
+            (display-expression (car args) imported out)
+            (loop (cdr args) #f)))
+        (display ")" out))
+      (if default
+          (display default out)
+          (error (format "~a: expected one or more arguments, received ~s" op args)))))
+  
+; symbol (listof expression) string string (listof column) output-port -> void
+(define (display-expression/outfix op args prefix suffix imported out)
   (display "(" out)
   (when prefix
     (display prefix out))
