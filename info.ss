@@ -8,9 +8,9 @@
 
 (define release-notes
   '((p "Changes:")
-    (ul (li "corrected typos in the quick start in the docs;")
-        (li "updated the contract on the " (tt "make-database") " procedure for the SQLite backend, "
-            "to match changes in the contract on the " (tt "open") " procedure in " (tt "sqlite.plt") "."))))
+    (ul (li "argumentless " (tt "and") " and " (tt "or") " are supported;")
+        (li "added extra functions to the check library;")
+        (li "added extra information to " (tt "persistent-struct-info") ", supporting simple development of more advanced persistent struct related macros."))))
 
 (define primary-file "main.ss")
 
