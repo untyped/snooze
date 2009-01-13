@@ -81,11 +81,11 @@
        (if (keyword? (syntax->datum #'kw))
            (raise-syntax-error #f "no value for keyword" stx #'kw)
            (raise-syntax-error #f "not a valid keyword" stx #'kw))]
-      [(kw val rest ...)
-       (begin (match (syntax->datum #'kw)
-                ['#:order (set! order-stx #'val)]
-                [else (raise-syntax-error #f "not a valid keyword" stx #'kw)])
-              (loop #'(rest ...)))])))
+      [(#:order val rest ...)
+       (begin (set! order-stx #'val)
+              (loop #'(rest ...)))]
+      [(_ val rest ...)
+       (raise-syntax-error #f "not a valid keyword" stx #'kw)])))
 
 ; Syntax -----------------------------------------
 
