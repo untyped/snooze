@@ -20,4 +20,5 @@ Snooze currently includes back-end code to connect to SQLite 3.6+ and PostgreSQL
 @include-section{era.scrbl}
 @include-section{snooze-class.scrbl}
 @include-section{query.scrbl}
+@include-section{quick-find.scrbl}
 @include-section{acknowledgements.scrbl}

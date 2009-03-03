@@ -13,7 +13,7 @@
 ; Helpers ----------------------------------------
 
 ; syntax boolean syntax syntax syntax syntax -> syntax
-(define-for-syntax (make-quick-find stx count? struct-stx snooze-stx method-stx order-stx)
+(define-for-syntax (make-quick-find stx count? struct-stx snooze-stx method-stx order-stxs)
   (let* ([info       ; persistent-struct-info
           (with-handlers ([exn? (lambda (exn) 
                                   (raise-syntax-error #f "not a persistent struct" stx struct-stx))])
@@ -44,45 +44,47 @@
                        #`(#,(car arg-stxs) (void))
                        (loop (cdr key-stxs) (cdr arg-stxs)))))])
     
-    (with-syntax ([struct        struct-stx]
-                  [struct-id     (make-id struct-stx struct-stx '-id)]
-                  [snooze        snooze-stx]
-                  [find-whatever method-stx]
-                  [entity        entity-stx]
-                  [(attr ...)    attr-stxs]
-                  [(key ...)     key-stxs]
-                  [(arg ...)     arg-stxs]
-                  [(key+arg ...) key+arg-stxs]
-                  [order         order-stx])
+    (with-syntax ([struct              struct-stx]
+                  [struct-id           (make-id struct-stx struct-stx '-id)]
+                  [snooze              snooze-stx]
+                  [find-whatever       method-stx]
+                  [entity              entity-stx]
+                  [(attr ...)          attr-stxs]
+                  [(key ...)           key-stxs]
+                  [(arg ...)           arg-stxs]
+                  [(key+arg ...)       key+arg-stxs]
+                  [(default-order ...) order-stxs])
       (with-syntax ([what (if count? #'(count struct-id) #'struct)])
         (syntax/loc stx
-          (lambda (key+arg ...)
-            (let-alias ([struct struct])
+          (let-alias ([struct struct])
+            (lambda (key+arg ... #:limit [limit  #f] #:offset [offset #f])
               (send snooze find-whatever
-                    (sql (select #:what  what
-                                 #:from  struct
-                                 #:where ,(sql:and (or (void? arg)
-                                                       (quick-find-expression
-                                                        (sql:attr struct attr) 
-                                                        arg))
-                                                   ...)
-                                 #:order order))))))))))
+                    (sql (select #:what   what
+                                 #:from   struct
+                                 #:where  ,(sql:and (or (void? arg)
+                                                        (quick-find-expression
+                                                         (sql:attr struct attr) 
+                                                         arg))
+                                                    ...)
+                                 #:order  (default-order ...)
+                                 #:limit  ,limit
+                                 #:offset ,offset))))))))))
 
 ; syntax syntax -> syntax
 (define-for-syntax (parse-kws stx kw-stx)
-  ; syntax
-  (define order-stx #'())
+  ; (listof syntax)
+  (define order-stxs null)
   
   (let loop ([kw-stx kw-stx])
     (syntax-case kw-stx ()
       [()
-       (values order-stx)]
+       (values order-stxs)]
       [(kw)
        (if (keyword? (syntax->datum #'kw))
            (raise-syntax-error #f "no value for keyword" stx #'kw)
            (raise-syntax-error #f "not a valid keyword" stx #'kw))]
       [(#:order val rest ...)
-       (begin (set! order-stx #'val)
+       (begin (set! order-stxs (syntax->list #'val))
               (loop #'(rest ...)))]
       [(_ val rest ...)
        (raise-syntax-error #f "not a valid keyword" stx #'kw)])))
@@ -93,28 +95,28 @@
 (define-syntax (custom-find-count stx)
   (syntax-case stx ()
     [(_ struct snooze kw ...) 
-     (make-quick-find stx #t #'struct #'snooze #'find-one #'())]))
+     (make-quick-find stx #t #'struct #'snooze #'find-one null)]))
 
 ; (_ struct-id snooze) -> (#:attr any ... -> (U persistent-struct #f))
 (define-syntax (custom-find-one stx)
   (syntax-case stx ()
     [(_ struct snooze kw ...) 
-     (let-values ([(order-stx) (parse-kws stx #'(kw ...))])
-       (make-quick-find stx #f #'struct #'snooze #'find-one order-stx))]))
+     (let ([order-stxs (parse-kws stx #'(kw ...))])
+       (make-quick-find stx #f #'struct #'snooze #'find-one order-stxs))]))
 
 ; (_ struct-id snooze) -> (#:attr any ... -> (listof persistent-struct))
 (define-syntax (custom-find-all stx)
   (syntax-case stx ()
     [(_ struct snooze kw ...) 
-     (let-values ([(order-stx) (parse-kws stx #'(kw ...))])
-       (make-quick-find stx #f #'struct #'snooze #'find-all order-stx))]))
+     (let ([order-stxs (parse-kws stx #'(kw ...))])
+       (make-quick-find stx #f #'struct #'snooze #'find-all order-stxs))]))
 
 ; (_ struct-id snooze) -> (#:attr any ... -> (gen-> persistent-struct))
 (define-syntax (custom-g:find stx)
   (syntax-case stx ()
     [(_ struct snooze kw ...)
-     (let-values ([(order-stx) (parse-kws stx #'(kw ...))])
-       (make-quick-find stx #f #'struct #'snooze #'g:find order-stx))]))
+     (let ([order-stxs (parse-kws stx #'(kw ...))])
+       (make-quick-find stx #f #'struct #'snooze #'g:find order-stxs))]))
 
 ; Provide statements -----------------------------
 

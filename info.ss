@@ -7,10 +7,8 @@
        (tt "persistent-structs") " and serialize them to an SQLite or PostgreSQL database.")))
 
 (define release-notes
-  '((p "Changes:")
-    (ul (li "argumentless " (tt "and") " and " (tt "or") " are supported;")
-        (li "added extra functions to the check library;")
-        (li "added extra information to " (tt "persistent-struct-info") ", supporting simple development of more advanced persistent struct related macros."))))
+  '((p "Changes and additions:")
+    (ul (li "added optional " (tt "#:limit") " and " (tt "#:offset") " arguments to quick-find procedures."))))
 
 (define primary-file "main.ss")
 
