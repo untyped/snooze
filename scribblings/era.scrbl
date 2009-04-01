@@ -15,7 +15,7 @@ Snooze attaches @italic{ERA metadata} to persistent struct types, providing info
   @item{each @scheme[entity] contains, among other things, a list of @scheme[attributes] that provides information on the fields of the struct type;}
   @item{support for @scheme[relationships] between entities is planned for a future version of Snooze.}}
   
-@section{Entities}
+@section[#:tag "era-entities"]{Entities}
 
 @scheme[define-persistent-struct] binds the struct name to the entity metadata for each persistent struct type:
 
@@ -60,7 +60,7 @@ Returns the value of @scheme[prop:entity] that is associated with @scheme[struct
   (struct-entity struct:person)
   (struct-entity (make-person "Dave" 30))]}
 
-@section{Relationships}
+@section[#:tag "era-relationships"]{Relationships}
 
 Snooze does not currently have explicit support for relationships. These are planned for a future release. For now, the recommended way of creating a relationship between two structures is by using a foreign key field of @scheme[type:integer]:
 
@@ -81,7 +81,7 @@ A caveat to this approach is that you have to make sure the target structure is 
   (code:comment "The call to save! allocates an ID for the person:")
   (make-pet "Garfield" (person-id (save! (make-person "Jon"))))]
 
-@section{Attributes}
+@section[#:tag "era-attributes"]{Attributes}
 
 @defform[(attr entity attribute-id)]{
 Macro that expands to an @scheme[attribute] structure for a given attribute:
@@ -120,7 +120,7 @@ Determines if @scheme[entity] has the supplied @scheme[attribute]. Returns the a
   (entity-attribute person 'name)
   (entity-attribute person 'nom)]}
 
-@section{Attribute types}
+@section[#:tag "era-types"]{Attribute types}
 
 Each attribute has an associated @italic{type} that determines the type of column used in the database. Types come in several flavours, described below. Note that the reflection of a type may be different in different DBMS types. For example, SQLite does not support the SQL @tt{TIMESTAMP} data type, so Snooze uses integers to serialize time values.
 
@@ -153,7 +153,7 @@ Stores SRFI 19 UTC times as GMT @tt{TIMESTAMP WITHOUT TIME ZONEs} (or @tt{INTEGE
   ([max-length integer?])]{
 Like @scheme[time-utc-type] but for SRFI 19 TAI times.}
 
-@section{Shorthand types}
+@section[#:tag "era-shorthand-types"]{Shorthand types}
 
 Snooze provides a number of short-hand types. The types below all allow and default to @tt{NULL}, and @scheme[type:string] and @scheme[type:symbol] allow data of arbitrary length:
 

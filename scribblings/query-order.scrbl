@@ -4,15 +4,13 @@
 
 @title[#:tag "order"]{The @scheme[#:order] clause}
 
-@(declare-exporting (planet untyped/snooze))
-
 The @scheme[#:order] clause specifies the order in which query results
 should be returned.
 
 The clause is a list of @italic{order terms}, each of which can be
 one of the following:
 
-@defform[(order expr direction)]{
+@specform[(order expr direction)]{
 Sort by @scheme[expr], where @scheme[expr] is an attribute or expression.
 @scheme[direction] can be the literal @scheme['asc] (ascending order):
 
@@ -33,10 +31,10 @@ or an unquoted Scheme expression evaluating to @scheme['asc] or @scheme['desc]:
                #:order ((order person.age 
                                ,(string->symbol "asc")))))]}
 
-@defform[(asc expr)]{
+@specform[(asc expr)]{
 Shorthand for @scheme[(order expr 'asc)].}
 
-@defform[(desc expr)]{
+@specform[(desc expr)]{
 Shorthand for @scheme[(order expr 'desc)].}
 
 When multiple terms are specified, they are treated in descending order of

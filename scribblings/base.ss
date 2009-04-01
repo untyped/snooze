@@ -7,6 +7,7 @@
          scribble/struct
          scribble/urls
          scribblings/icons
+         (planet cce/scheme:4/planet)
          (planet untyped/unlib:3/scribble)
          (for-label scheme
                     (planet untyped/unlib:3/generator)
@@ -61,6 +62,7 @@
                        scribble/eval
                        scribble/manual
                        scribble/urls
+                       (planet cce/scheme:4/planet)
                        (planet untyped/unlib:3/scribble))
          (all-defined-out)
          (for-label (all-from-out scheme

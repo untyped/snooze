@@ -2,7 +2,7 @@
 
 @(require "base.ss")
 
-@title[#:tag "limit"]{@scheme[#:group] and @scheme[#:having] clauses}
+@title[#:tag "limit"]{@scheme[#:limit] and @scheme[#:offset] clauses}
 
 @extmore["http://www.postgresql.org/docs/8.3/interactive/queries-limit.html"]{LIMIT
 in PostgreSQL} The @scheme[#:limit] and @scheme[#:offset] clauses allow you 

@@ -24,10 +24,14 @@ We recommend you require and re-provide this interface from a single module in y
 
 Snooze currently supports the DBMS back-ends listed below, although support for more back-ends is forthcoming. Choose one of the following modules depending on which back-end you are using:
 
+@subsection{SQLite}
+
 @defmodule[(planet untyped/snooze:2/sqlite3/sqlite3)]{
 SQLite 3.x specific definitions. This module uses Jay McCarthy's @link[url:sqlite.plt]{sqlite.plt} package to create database connections.
 
 You must make sure your SQLite installation is compiled with thread safety enabled if you wish to access a single database from multiple concurrent Scheme threads.}
+
+@subsection{PostgreSQL}
 
 @defmodule[(planet untyped/snooze:2/postgresql8/postgresql8)]{
 PostgreSQL 8.x specific definitions. This module uses Ryan Culpepper's @link[url:spgsql.plt]{spgsql.plt} package to create database connections.

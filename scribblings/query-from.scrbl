@@ -46,7 +46,7 @@ Snooze supports four types of join. The semantics of different join types are
 beyond the scope of these document. See @link["http://en.wikipedia.org/wiki/Join_(SQL)"]{Wikipedia's}
 page on joins for more information.
 
-@defform[(inner source1 source2 on)]{
+@specform[(inner source1 source2 on)]{
 Creates an @italic{inner join} or @scheme{equi-join} between two sources, 
 @scheme[source1] and @scheme[source2]. The @schemeid[on] argument is a 
 Boolean-valued expression specifying the join criteria.
@@ -67,7 +67,7 @@ is equivalent to:
   SELECT person.*, pet.*
   FROM person INNER JOIN pet ON person.petID = pet.id;}}
 
-@defform[(left source1 source2 on)]{
+@specform[(left source1 source2 on)]{
 Creates a @italic{left join} between two sources, @scheme[source1] and 
 @scheme[source2]. The @schemeid[on] argument is a Boolean-valued expression 
 specifying the join criteria.
@@ -88,7 +88,7 @@ is equivalent to:
   SELECT person.*, pet.*
   FROM person LEFT JOIN pet ON person.petID = pet.id;}}
 
-@defform[(right source1 source2 on)]{
+@specform[(right source1 source2 on)]{
 Creates a @italic{right join} between two sources, @scheme[source1] and 
 @scheme[source2]. The @schemeid[on] argument is a Boolean-valued expression 
 specifying the join criteria.
@@ -109,7 +109,7 @@ is equivalent to:
   SELECT pet.*, person.* 
   FROM pet RIGHT JOIN person ON person.petID = pet.id;}}
 
-@defform[(outer source1 source2)]{
+@specform[(outer source1 source2)]{
 Creates a @italic{cross join} between two sources, @scheme[source1] and 
 @scheme[source2]. The @schemeid[on] argument is a Boolean-valued expression 
 specifying the join criteria.

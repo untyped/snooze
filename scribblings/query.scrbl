@@ -4,6 +4,8 @@
           
 @title[#:tag "query"]{Queries}
 
+@(declare-exporting (planet untyped/snooze))
+
 @extmore["http://en.wikipedia.org/wiki/SQL"]{SQL on Wikipedia} 
 Snooze uses a combinator-based query language that mirrors a large subset of standard SQL, including joins, nested queries, aggregate functions, limits and offsets.
 
