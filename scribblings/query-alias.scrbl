@@ -5,34 +5,53 @@
 @(define snooze-eval (make-snooze-eval))
 
 @(declare-exporting (planet untyped/snooze))
-          
+        
 @title[#:tag "alias"]{Aliases}
 
-To create a query, you first need to @italic{alias} one or more entities 
-and attributes. This is analogous to the @scheme{AS} operator from SQL: 
-by aliasing a single item more than once, you can refer to it in more 
-than one context without ambiguity. While SQL allows you to omit aliases
-where you are only referring to an item once, Snooze requires you to be
-explicit at all times.
+Aliases are Snooze's mechanism for letting you to refer to
+individual instances of an entity or expression within a query.
 
-@defproc*[([(sql:alias [id symbol?] [entity entity?])      entity-alias?]
-           [(sql:alias [id symbol?] [query  query?])       query-alias?]
-           [(sql:alias [id symbol?] [expr   expression?])  expression-alias?]
-           [(sql:alias [entity entity-alias?] 
-                       [attr   (U attribute? symbol?)])    attribute-alias?])]{
-Creates an alias for the supplied entity, attribute, SQL query, or SQL expression. Aliases defined with this procedure can only be used with the procedural version of the query language.}
+You can introduce aliases for entities, attributes or expressions
+using the following forms (see below for examples):
 
-@defform[(let-alias ([id datum] ...) expr ...)]{
-Syntax wrapper for @scheme[sql:alias] that expands into a @scheme[let] block that binds @scheme[id]@schemeidfont{s} to aliases for each @scheme[datum]. 
+@defform[(define-alias id expr)]{
+Introduces an alias for @scheme[expr] using the same scoping 
+rules as @scheme[define].}
 
-Each @scheme[datum] can be an @scheme[entity], @scheme[attribute], @scheme[query], @scheme[expression] as decribed above, or it can be the name of a persistent struct. In this last case, @scheme[let-alias] binds identifiers for aliases for the corresponding entity and all of its attributes.
+@defform[(let-alias ([id expr] ...) body-expr ...)]{
+Like @scheme[define-alias] but uses the same scoping rules as
+@scheme[let].}
 
-@examples[
-  #:eval snooze-eval
-  (define-persistent-struct person
-    ([name type:string] [age type:integer]))
-  (let-alias ([P person])
-    (pretty-print (list P P-id P-age)))]}
+@section{Entity aliases}
 
-@defform[(define-alias id datum)]{
-Version of @scheme[let-alias] that expands into a @scheme[define] statement.}
+It is sometimes necessary to refer to more than one instance of
+an entity within a query. Snooze lets you do this by defining 
+@italic{aliases} for entities. For example:
+
+@schemeblock[
+  (define-alias father person)
+  
+  (code:comment "Luke's father:")
+  (find-one
+   (sql (select #:what  father
+                #:from  (inner person
+                               father
+                               (= person.father-id father.id))
+                #:where (= person.name "Luke"))))]
+
+@section{Attribute and expression aliases}
+
+It is sometimes useful to assign an alias to an attribute or  expression. 
+
+For example, if you are @scheme[#:order]@schemeidfont{ing}
+on an expression, SQL 97 requires you to add the @italic{same}
+expression to your @scheme[#:what] clause. The only way to do this is
+to alias the expression:
+
+@schemeblock[
+  (code:comment "All people and BMIs, ordered by BMI:")
+  (let-alias ([bmi (/ person.weight person.height)])
+    (find-all
+     (sql (select #:what  (person bmi)
+                  #:from  person
+                  #:order ((asc bmi))))))]

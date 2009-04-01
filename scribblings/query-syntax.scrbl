@@ -1,17 +1,11 @@
 #lang scribble/doc
 
 @(require "base.ss")
+          
+@title[#:style '(toc) #:tag "query-syntax"]{Query syntax}
 
-@title[#:tag "query-syntax"]{Syntax query language}
-
-@(declare-exporting (planet untyped/snooze))
-
-@extmore[url:mirrors.plt]{Mirrors.plt on PLaneT}
-Snooze provides a syntax wrapper for the procedural query language. This looks and behaves in the same way as the various languages in the Mirrors package.
-
-Informally, you can convert a procedural query to a syntax one by wrapping it in an @scheme[(sql ...)] form and removing the @scheme[sql:] prefixes from each term. Use @scheme[unquote] to switch back into Scheme at any point.
-
-Formally, the @scheme[sql] macro has the following syntax. Attribute, expression, query and entity aliases must be defined with @scheme[define-alias] or @scheme[let-alias]:
+Formally, @scheme[sql] blocks have the syntax below.
+The parts of the syntax are described in subsequent sections:
 
 @defform/subs[
   #:literals (select or and unquote inner outer left right asc desc)
@@ -84,3 +78,13 @@ Formally, the @scheme[sql] macro has the following syntax. Attribute, expression
    [order          (code:line (asc column))
                    (code:line (desc column))
                    (code:line (unquote scheme-expr))])]
+
+@include-section{query-from.scrbl}
+@include-section{query-what.scrbl}
+@include-section{query-where.scrbl}
+@include-section{query-order.scrbl}
+@include-section{query-group.scrbl}
+@include-section{query-limit.scrbl}
+@include-section{query-distinct.scrbl}
+@include-section{query-alias.scrbl}
+@include-section{query-proc.scrbl}

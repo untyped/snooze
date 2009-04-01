@@ -48,12 +48,12 @@
 (define (intmore tag)
   (apply margin-note (decode-content (list finger (secref tag)))))
 
-; string string -> margin-note
+; string string ... -> margin-note
 ;
 ; Creates a margin note pointing to an external web site.
 ; Pilfered from collects/scribblings/guide/guide-utils.ss... yuk yuk yuk.
-(define (extmore url text)
-  (apply margin-note (decode-content (list finger (link url text)))))
+(define (extmore url . texts)
+  (apply margin-note (decode-content (list finger (apply link url texts)))))
 
 ; Provide statements --------------------------- 
 

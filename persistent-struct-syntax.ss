@@ -15,7 +15,8 @@
          scheme/serialize
          "base.ss"
          "persistent-struct.ss"
-         "era/era.ss")
+         "era/era.ss"
+         (prefix-in sql: "sql/sql-lang.ss"))
 
 ; Helpers ----------------------------------------
 
@@ -27,6 +28,19 @@
               (syntax->list attr-ids))))
 
 ; Syntax -----------------------------------------
+
+; (_ id id) -> attribute
+(define-syntax (attr stx)
+  (syntax-case stx ()
+    [(_ entity-id attr-id)
+     (and (identifier? #'entity-id)
+          (identifier? #'attr-id))
+     (let ([info     (persistent-struct-info-ref #'entity-id)]
+           [attr-sym (syntax->datum #'attr-id)])
+       (or (for/or ([attr (in-list (persistent-struct-info-attribute-ids info))]
+                    [sym  (in-list (persistent-struct-info-attribute-names info))])
+                   (and (eq? attr-sym sym) attr))
+           (raise-syntax-error #f "attribute not found" #'attr-id stx)))]))
 
 (define-syntax (define-persistent-struct stx)
   
@@ -215,32 +229,35 @@
                                 (provide deserialize-info))
                             #'(begin))
                       
+                      (define default-alias
+                        (sql:alias 'name entity))
+                      
                       ; Transformer binding: makes things like (struct ...) in plt-match work.
                       ; Copied by-example from an expanded define-struct.
                       ; The syntax-quotes-within-syntax-quotes are intensional.
                       (define-syntaxes (name)
                         (let ([certify (syntax-local-certifier #t)])
                           ; Cache persistent-struct-specific compile time information:
-                          (persistent-struct-info-set! (certify #'name)
-                                                       (certify #'struct-type)
-                                                       (certify #'entity)
-                                                       (certify #'constructor)
-                                                       (certify #'constructor/defaults)
-                                                       (certify #'copy-struct)
-                                                       (certify #'predicate)
-                                                       (list (certify #'attr-id) ...)
-                                                       (list (certify #'accessor) ...)
-                                                       (list (certify #'mutator) ...)
-                                                       (list 'attr-name* ...))
-                          ; Return general compile-time information:
-                          (make-struct-info 
+                          (persistent-struct-info-set!
                            (lambda ()
                              (list (certify #'struct-type)
                                    (certify #'constructor)
                                    (certify #'predicate)
                                    (reverse (list (certify #'accessor) ...))
                                    (reverse (list (certify #'mutator) ...))
-                                   (certify #'persistent-struct)))))))))))
+                                   (certify #'persistent-struct)))
+                           (certify #'name)
+                           (certify #'struct-type)
+                           (certify #'entity)
+                           (certify #'constructor)
+                           (certify #'constructor/defaults)
+                           (certify #'copy-struct)
+                           (certify #'predicate)
+                           (certify #'default-alias)
+                           (list (certify #'attr-id) ...)
+                           (list (certify #'accessor) ...)
+                           (list (certify #'mutator) ...)
+                           (list 'attr-name* ...)))))))))
   
   ; Main transformer body:
   
@@ -285,6 +302,7 @@
 
 ; Provide statements -----------------------------
 
-(provide define-persistent-struct
+(provide attr
+         define-persistent-struct
          persistent-struct-out
          persistent-struct-extras-out)

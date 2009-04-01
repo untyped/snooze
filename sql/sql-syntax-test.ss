@@ -38,6 +38,14 @@
     (test-case "literal"
       (check-equal? (sql 1) (sql:literal 1)))
     
+    (test-case "dotted identifier"
+      (let-alias ([p person])
+        (check-equal? (sql p.id) (sql p-id))))
+    
+    (test-case "default entity alias"
+      (check-equal? (sql person)      (sql:alias 'person entity:person))
+      (check-equal? (sql person.name) (sql:alias (sql:alias 'person entity:person) attr:person-name)))
+    
     (test-case "expression"
       (check-equal? (sql (= 1 2)) (sql:= 1 2))
       (check-equal? (sql (+ 2 4)) (sql:+ 2 4)))

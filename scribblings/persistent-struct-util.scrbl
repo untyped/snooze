@@ -24,7 +24,7 @@ Returns @scheme[#t] if @scheme[struct] has an attribute with the supplied @schem
 
 @examples[
   #:eval snooze-eval
-  (struct-has-attribute? dave attr:person-name)
+  (struct-has-attribute? dave (attr person name))
   (struct-has-attribute? dave 'age)
   (struct-has-attribute? dave 'nom)]}
 
@@ -35,7 +35,7 @@ Returns the value from @scheme[struct] of the attribute with the supplied @schem
 
 @examples[
   #:eval snooze-eval
-  (struct-attribute dave attr:person-name)
+  (struct-attribute dave (attr person name))
   (struct-attribute dave 'age)
   (struct-attribute dave 'nom)]}
 
@@ -47,7 +47,7 @@ Mutates @scheme[struct], setting the @scheme[value] of the attribute with the su
 
 @examples[
   #:eval snooze-eval
-  (set-struct-attribute! dave attr:person-name "Noel")
+  (set-struct-attribute! dave (attr person name) "Noel")
   (set-struct-attribute! dave 'age #f)
   (struct-attributes dave)]}
 
@@ -75,7 +75,7 @@ Each @scheme[attr] must be followed by a corresponding @scheme[value].
 @examples[
   #:eval snooze-eval
   (make-persistent-struct/defaults
-   entity:person attr:person-name "Noel")]}
+   person (attr person name) "Noel")]}
 
 @defproc[(copy-persistent-struct
           [struct persistent-struct?]
@@ -95,4 +95,4 @@ Mutates @scheme[struct] to be the same as @scheme[copy]. Used when rolling back 
 
 @examples[
   #:eval snooze-eval
-  (copy-persistent-struct dave attr:person-name "Noel")]}
+  (copy-persistent-struct dave (attr person name) "Noel")]}

@@ -45,7 +45,7 @@
     (define transaction-pipeline
       null)
     
-    ; Public interface -----------------------------
+    ; Public interface ---------------------------
     
     ; -> database<%>
     (define/public (get-database)
@@ -285,6 +285,12 @@
       (auto-connect)
       (send database table-exists? (current-connection) table))
     
+    ; query -> string
+    (define/public (query->string query)
+      (let ([out (open-output-string)])
+        (send database dump-sql query out "~a")
+        (get-output-string out)))
+    
     ;  select
     ;  [#:output-port output-port]
     ;  [#:format string]
@@ -295,7 +301,7 @@
     (define/public (dump-sql query [format "~a~n"] [output-port (current-output-port)])
       (send database dump-sql query output-port format))
     
-    ; Helpers ---------------------------------------
+    ; Helpers ------------------------------------
     
     ; entity integer integer -> boolean
     (define (record-exists-with-revision? entity id revision)
@@ -363,9 +369,8 @@
     [table-names               (-> (listof symbol?))]
     [table-exists?             (-> (or/c entity? symbol?) boolean?)]
     
-    [dump-sql                  (->* (query?)
-                                    (string? output-port?)
-                                    query?)]))
+    [query->string             (-> query? string?)]
+    [dump-sql                  (->* (query?) (string? output-port?) query?)]))
 
 (provide/contract
  [snooze%     class?]

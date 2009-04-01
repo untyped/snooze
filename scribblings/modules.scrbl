@@ -10,15 +10,15 @@ The majority of Snooze is provided in two parts: a @italic{DBMS independent part
 
 Require the following module for the DBMS independent part of Snooze:
 
-@defmodule[(planet untyped/snooze:2/snooze)]{
+@defmodule[(planet untyped/snooze:2)]{
 Compatible with the @scheme[scheme] and @scheme[scheme/base] languages.}
 
 We recommend you require and re-provide this interface from a single module in your application. For example:
 
 @schememod[
   scheme/base
-  (require (planet untyped/snooze:2/snooze))
-  (provide (all-from-out (planet untyped/snooze:2/snooze)))]
+  (require (planet untyped/snooze:2))
+  (provide (all-from-out (planet untyped/snooze:2)))]
 
 @section{DBMS specific code}
 

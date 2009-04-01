@@ -12,7 +12,7 @@ We hope you enjoy Snooze!
 
 @section{Install a DBMS}
 
-The first thing you'll need to do is download and install a DBMS. Snooze currently supports two database backends: SQLite 3.6x and PostgreSQL 8.3x. Get hold of one of these, install it, configure it, and set up a blank database:
+The first thing you'll need to do is download and install a DBMS. Snooze currently supports two database backends: SQLite 3.6+ and PostgreSQL 8.3+. Get hold of one of these, install it, configure it, and set up a blank database:
 
 @itemize{
   @item{if you are using SQLite, creating a database is as simple as creating a file somewhere on your local filesystem;} 
@@ -85,19 +85,9 @@ Now you are ready to connect to a database and start storing data. Create a new 
      [age    type:integer]
      [gender type:symbol]))
 
-  (code:comment "Define aliases of person and its attributes.")
-  (code:comment "These aliases are used in queries:")    
-  (code:comment "  - person1")
-  (code:comment "  - person1-id")
-  (code:comment "  - person1-revision")
-  (code:comment "  - person1-name")
-  (code:comment "  - person1-age")
-  (code:comment "  - person1-gender")
-  (define-alias person1 person)
-
   (code:comment "Print the people that are saved in the database:")
   (define (print-people)
-    (define people (find-all (sql (select #:from person1))))
+    (define people (find-all (sql (select #:from person))))
     (printf "People in the database:~n")
     (if (null? people)
         (printf "    NONE~n")
@@ -115,7 +105,7 @@ Now you are ready to connect to a database and start storing data. Create a new 
     (lambda ()
 
       (code:comment "Create a database table to house person data:")      
-      (create-table entity:person)
+      (create-table person)
           
       (code:comment "There aren't any people saved yet:")
       (print-people)
@@ -135,7 +125,7 @@ Now you are ready to connect to a database and start storing data. Create a new 
       (print-people)
       
       (code:comment "Okay, we're done. Drop the table:")
-      (drop-table entity:person)))]
+      (drop-table person)))]
       
 Run the code with the following command line:
 

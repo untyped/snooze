@@ -4,7 +4,7 @@
 
 @(define snooze-eval (make-snooze-eval))
           
-@title[#:tag "snooze-object"]{Connecting to, querying and updating databases}
+@title[#:tag "snooze-class"]{Connecting to, querying and updating databases}
 
 @(declare-exporting (planet untyped/snooze))
 
@@ -14,13 +14,14 @@ Snooze objects guarantee thread safety: multiple threads can connect concurrentl
 
 @schememod[scheme/base
   
-  (require (planet untyped/snooze:2/snooze)
+  (require (planet untyped/snooze:2)
            (planet untyped/snooze:2/sqlite3/sqlite3))
   
   (code:comment "snooze%")
   (code:comment "")           
   (code:comment "Interface to the SQLite database in \"mydata.db\":")
-  (define mydata (make-snooze (make-database (build-path "mydata.db"))))
+  (define mydata
+    (make-snooze (make-database (build-path "mydata.db"))))
   
   (code:comment "(persistent-struct (U string #f))")
   (define-persistent-struct person
@@ -133,8 +134,6 @@ The lifecycle of the @scheme[id] and @scheme[revision] fields is summarised in t
 
 @italic{Note: The repeated calls to @scheme[call-with-connection] are only necessary to get Scribble to print the results of each statement: normal application programs should be able to all of this interaction with a single connection.}
 
-@italic{Extra note: The printed values in this example may not be correct. This is because of the way Scribble renders example blocks. A solution for this issue is being worked on.}
-
 @interaction[
   #:eval snooze-eval
   
@@ -144,30 +143,26 @@ The lifecycle of the @scheme[id] and @scheme[revision] fields is summarised in t
     
   (code:comment "Create a DB table for this new type:")
   (call-with-connection
-   (lambda ()
-     (create-table entity:person)))
+   (lambda () (create-table person)))
      
   (code:comment "Create a struct: initially it has no corresponding DB record:") 
-  (define person (make-person "Dave"))
+  (define p (make-person "Dave"))
+  
   person
   
   (code:comment "Insert a DB record and set the struct's ID and revision:")
   (call-with-connection
-   (lambda ()
-     (save! person)))
+   (lambda () (save! p)))
     
   (code:comment "Update the record and increment the revision:")
   (set-person-name! person "Noel")
   (call-with-connection
-   (lambda ()
-     (save! person)))
+   (lambda () (save! p)))
     
   (code:comment "Deleted the record and set the ID and revision to #f:")
   (call-with-connection
-   (lambda ()
-     (delete! person)))
+   (lambda () (delete! p)))
      
   (code:comment "Finally, delete the DB table to clean up:")
   (call-with-connection
-   (lambda ()
-     (drop-table entity:person)))]
+   (lambda () (drop-table person)))]

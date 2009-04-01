@@ -20,8 +20,7 @@
 Creates a new persistent structure, and binds variables related to the new structure type. A @scheme[define-persistent-struct] with @italic{n} attributes defines the following identifiers:
 
 @itemize{
-  @item{@intmore{era} @schemeidfont{entity:}@scheme[id], an @italic{entity metadata} value that can be used in queries and with other Snooze  procedures;}
-  @item{@schemeidfont{attr:}@scheme[id]@schemeidfont{-}@scheme[attr-id], a set of @italic{attribute metadata} values that can be used in queries and with other Snooze procedures;}
+  @item{@intmore{era} @scheme[id], an @italic{entity metadata} value that can be used in queries and other Snooze procedures, doubles as a transformer binding that can be used with PLT forms such as @scheme[shared] and @scheme[match] ;}
   @item{@extmore["http://pre.plt-scheme.org/docs/html/reference/structures.html#(part%20define-struct)"]{
     Structure types in the PLT Reference} @schemeidfont{struct:}@scheme[id], the usual @italic{structure type descriptor} defined by @scheme[define-struct];}
   @item{@schemeidfont{make-}@scheme[id], a @italic{constructor} procedure that takes @italic{n} arguments and returns a new struct;}
@@ -31,7 +30,9 @@ Creates a new persistent structure, and binds variables related to the new struc
   @item{@scheme[id]@schemeidfont{-}@scheme[attr-id], a set of @italic{accessor} procedures, including @scheme[id]@schemeidfont{-id} and @scheme[id]@schemeidfont{-revision}, that take a persistent structure as an argument and return the value of the corresponding attribute;}
   @item{@schemeidfont{set-}@scheme[id]@schemeidfont{-}@scheme[attr-id]@schemeidfont{!}, a set of @italic{mutator} procedures, including @schemeidfont{set-}@scheme[id]@schemeidfont{-id!} and @schemeidfont{set-}@scheme[id]@schemeidfont{-revision!}, that take a persistent structure and an arbitrary Scheme value as arguments, and mutate the structure to set the corresponding attribute to the supplied value;}
   @item{@extmore["http://pre.plt-scheme.org/docs/html/reference/structures.html#(part%20structinfo)"]{
-    Structure type transformer bindings in the PLT Reference} @scheme[id], the transformer binding provided by @scheme[define-struct], used with PLT forms such as @scheme[shared] and @scheme[match].}}
+    Structure type transformer bindings in the PLT Reference} @scheme[id], the transformer binding provided by @scheme[define-struct], used with PLT forms such as @scheme[shared] and @scheme[match];}
+  @item{@schemeidfont{entity:}@scheme[id], an alias for @scheme[id], is provided for backwards compatibility only (replaced by @scheme[id]);}
+  @item{@schemeidfont{attr:}@scheme[id]@schemeidfont{-}@scheme[attr-id], a set of @italic{attribute metadata} values, are provided for backwards compatibility only (replaced by the @scheme[attr] macro);}}
 
 By default, persistent structures are stored in rows in a database table of the same name. The @scheme[#:table-name] entity option allows you to override the default table name and provide something more user-friendly: hyphen characters in table names must be escaped in most DBMSs. Similarly, the @scheme[#:column-name] attribute option allows you to override the default column name for each attribute. The column names for @schemeidfont{id} and @schemeidfont{revision} may not be changed.
 

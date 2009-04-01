@@ -14,8 +14,17 @@ Snooze attaches @italic{ERA metadata} to persistent struct types, providing info
   @item{each persistent struct type has an associated @scheme[entity] that provides structural information on structures of that type;}
   @item{each @scheme[entity] contains, among other things, a list of @scheme[attributes] that provides information on the fields of the struct type;}
   @item{support for @scheme[relationships] between entities is planned for a future version of Snooze.}}
-
+  
 @section{Entities}
+
+@scheme[define-persistent-struct] binds the struct name to the entity metadata for each persistent struct type:
+
+@interaction[
+  #:eval snooze-eval
+  (define-persistent-struct person
+    ([name type:string]
+     [age  type:integer]))
+  person]
 
 @defstruct[entity ([name            symbol?]
                    [table-name      symbol?]
@@ -30,16 +39,7 @@ Snooze attaches @italic{ERA metadata} to persistent struct types, providing info
 Metadata describing a particular @scheme[struct-type]. Pipeline procedures are of type:
 
 @schemeblock[
-  (connection? persistent-struct? -> persistent-struct?)]
-
-While the entity itself is useful to application programmers in a number of circumstances, most of the information inside the entity does not need to be accessed form application code. @scheme[define-persistent-struct] automatically binds an identifier of the form @schemeidfont{entity:foo} to the entity for each persistent struct type:
-
-@interaction[
-  #:eval snooze-eval
-  (define-persistent-struct person
-    ([name type:string]
-     [age  type:integer]))
-  entity:person]}
+  (connection? persistent-struct? -> persistent-struct?)]}
 
 @defthing[prop:entity property?]{
 A structure type property used to attach @scheme[entity] metadata to persistent structure types.}
@@ -83,6 +83,16 @@ A caveat to this approach is that you have to make sure the target structure is 
 
 @section{Attributes}
 
+@defform[(attr entity attribute-id)]{
+Macro that expands to an @scheme[attribute] structure for a given attribute:
+
+@examples[
+  #:eval snooze-eval
+  (attr person id)
+  (attr person revision)
+  (attr person name)
+  (attr person age)]}
+
 @defstruct[attribute ([name        symbol?]
                       [column-name symbol?]
                       [entity      entity?]
@@ -90,16 +100,7 @@ A caveat to this approach is that you have to make sure the target structure is 
                       [accessor    (persistent-struct? -> any)]
                       [mutator     (persistent-struct? any -> void?)]
                       [type        type?])]{
-Metadata describing a particular attribute (or field or column) of an entity.
-
-@scheme[define-persistent-struct] automatically binds an identifier of the form @schemeidfont{attr:foo-bar} for each attribute of each persistent struct type:
-
-@interaction[
-  #:eval snooze-eval
-  attr:person-id
-  attr:person-revision
-  attr:person-name
-  attr:person-age]}
+Metadata describing a particular attribute (or field or column) of an entity.}
 
 @defproc[(entity-has-attribute? [entity entity?] 
                                 [attribute (U attribute? symbol?)]) boolean?]{
@@ -107,17 +108,17 @@ Returns @scheme[#t] if @scheme[entity] has the supplied @scheme[attribute], @sch
 
 @examples[
   #:eval snooze-eval
-  (entity-has-attribute? entity:person attr:person-name)
-  (entity-has-attribute? entity:person 'name)]}
+  (entity-has-attribute? person (attr person name))
+  (entity-has-attribute? person 'name)]}
 
 @defproc[(entity-attribute [entity entity?] [name (U attribute? symbol?)]) attribute?]{
 Determines if @scheme[entity] has the supplied @scheme[attribute]. Returns the attribute exists; raises @scheme[exn:fail] otherwise.
 
 @examples[
   #:eval snooze-eval
-  (entity-attribute entity:person attr:person-name)
-  (entity-attribute entity:person 'name)
-  (entity-attribute entity:person 'nom)]}
+  (entity-attribute person (attr person name))
+  (entity-attribute person 'name)
+  (entity-attribute person 'nom)]}
 
 @section{Attribute types}
 

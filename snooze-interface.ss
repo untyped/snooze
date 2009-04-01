@@ -105,6 +105,9 @@
     ; the transaction is rolled back.
     call-with-transaction
     
+    ; query -> string
+    query->string
+    
     ;  select
     ;  [#:output-port output-port]
     ;  [#:format string]

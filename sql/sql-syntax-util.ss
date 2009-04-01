@@ -44,11 +44,10 @@
 ; The private identifiers have the sql-identifier-key syntax-property set to #t.
 (define (sql-identifier? stx)
   (and (identifier? stx)
-       (let ([proc (with-handlers ([exn? (lambda args #f)])
-                     (syntax-local-value stx #f))])
-         (if (procedure? proc)
-             (private-sql-identifier? (proc))
-             #f))))
+       (with-handlers ([exn? (lambda _ #f)])
+         (let ([proc (syntax-local-value stx #f)])
+           (and (procedure? proc)
+                (private-sql-identifier? (proc)))))))
 
 ; syntax -> boolean
 (define (self-quoting-literal? stx)
@@ -62,9 +61,8 @@
 
 ; syntax -> boolean
 (define (entity-identifier? stx)
-  (if (identifier? stx)
-      (persistent-struct-info-set? stx)
-      #f))
+  (and (identifier? stx)
+       (persistent-struct-info-set? stx)))
 
 ; Provide statements -----------------------------
 

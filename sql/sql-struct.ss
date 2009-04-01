@@ -140,7 +140,7 @@
         [(literal-value? arg)         (create-literal arg)]
         [(query? arg)                 (make-query-alias (string->symbol (symbol->string (gensym 'subq))) arg)]
         [else (raise-exn exn:fail:contract
-                (format "Expected (opt-listof (U expression query boolean integer real string symbol time-tai time-utc)), received ~s" arg))]))
+                (format "Expected (opt-listof (U expression entity attribute query boolean integer real string symbol time-tai time-utc)), received ~s" arg))]))
 
 ; Provide statements --------------------------
 

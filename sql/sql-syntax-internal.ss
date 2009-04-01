@@ -1,10 +1,11 @@
 #lang scheme/base
 
 (require scheme/match
-         srfi/13/string
-         srfi/26/cut
+         scheme/string
+         srfi/26
          (planet untyped/unlib:3/syntax)
          "../base.ss"
+         "../persistent-struct-info.ss"
          (prefix-in sql: "sql-lang.ss")
          "sql-struct.ss"
          "sql-syntax-util.ss"
@@ -44,13 +45,18 @@
 
 (define (expand-identifier stx)
   (syntax-case stx ()
+    [id (simple-dotted-identifier? #'id 2 2)
+        (with-syntax ([(alias attr) (dotted-identifier-split #'id)])
+          (cond [(sql-identifier? #'alias)
+                 #'(sql:attr alias 'attr)]
+                [(entity-identifier? #'alias)
+                 #`(sql:attr #,(persistent-struct-info-default-alias-id (persistent-struct-info-ref #'alias)) 'attr)]
+                [else (raise-syntax-error 'expand-identifier "not an SQL identifier" stx #'id)]))]
     [id (identifier? #'id)
-        (if (sql-identifier? #'id)
-            #'id
-            (raise-syntax-error 'expand-identifier
-                                (format "not an SQL identifier: ~a" (syntax->datum #'id))
-                                stx
-                                #'id))]))
+        (cond [(sql-identifier? #'id) #'id]
+              [(entity-identifier? #'id)
+               (persistent-struct-info-default-alias-id (persistent-struct-info-ref #'id))]
+              [else (raise-syntax-error 'expand-identifier "not an SQL identifier" stx #'id)])]))
 
 (define (expand-literal stx)
   (syntax-case* stx (quote quasiquote) symbolic-identifier=?
@@ -61,6 +67,10 @@
 (define (expand-true+false stx)
   (syntax-case* stx () symbolic-identifier=?
     [#t #'#t]
+    [#f #'#f]))
+
+(define (expand-false stx)
+  (syntax-case* stx () symbolic-identifier=?
     [#f #'#f]))
 
 (define expand-literal+unquote
@@ -79,17 +89,21 @@
    expand-integer
    expand-unquote))
 
-(define (expand-join stx)
-  (syntax-case* stx (outer inner left right) symbolic-identifier=?
-    [(outer a b)    #`(sql:outer #,(expand-source+unquote #'a) #,(expand-source+unquote #'b))]
-    [(inner a b on) #`(sql:inner #,(expand-source+unquote #'a) #,(expand-source+unquote #'b) #,(expand-expression+unquote #'on))]
-    [(left a b on)  #`(sql:left  #,(expand-source+unquote #'a) #,(expand-source+unquote #'b) #,(expand-expression+unquote #'on))]
-    [(right a b on) #`(sql:right #,(expand-source+unquote #'a) #,(expand-source+unquote #'b) #,(expand-expression+unquote #'on))]))
+(define expand-integer+false+unquote
+  ((or-expand "integer+unquote")
+   expand-integer
+   expand-false
+   expand-unquote))
 
-(define expand-source
-  ((or-expand "source")
-   expand-join
-   expand-identifier))
+(define (expand-source stx)
+  (syntax-case* stx (outer inner left right select) symbolic-identifier=?
+    [(outer a b)      #`(sql:outer #,(expand-source+unquote #'a) #,(expand-source+unquote #'b))]
+    [(inner a b on)   #`(sql:inner #,(expand-source+unquote #'a) #,(expand-source+unquote #'b) #,(expand-expression+unquote #'on))]
+    [(left  a b on)   #`(sql:left  #,(expand-source+unquote #'a) #,(expand-source+unquote #'b) #,(expand-expression+unquote #'on))]
+    [(right a b on)   #`(sql:right #,(expand-source+unquote #'a) #,(expand-source+unquote #'b) #,(expand-expression+unquote #'on))]
+    [(select arg ...) (expand-select #'(select arg ...))]
+    [id               (identifier? #'id)
+                      (expand-identifier #'id)]))
 
 (define expand-source+unquote
   ((or-expand "source+unquote")
@@ -124,7 +138,7 @@
     [(regexp-replace*    arg1 arg2 arg3) #`(sql:regexp-replace*    #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
     [(regexp-replace-ci  arg1 arg2 arg3) #`(sql:regexp-replace-ci  #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
     [(regexp-replace*-ci arg1 arg2 arg3) #`(sql:regexp-replace*-ci #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
-    [(string-append      arg1 arg2)      #`(sql:string-append      #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
+    [(string-append      arg ...)        #`(sql:string-append      #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
     [(string-replace     arg1 arg2 arg3) #`(sql:string-replace     #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
     [(null?              arg)            #`(sql:null?              #,@(map expand-expression+unquote (syntax->list #'(arg))))]
     [(coalesce           arg ...)        #`(sql:coalesce           #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
@@ -136,11 +150,11 @@
 (define (expand-aggregate stx)
   (syntax-case* stx (count* count min max average) symbolic-identifier=?
     [(count*)           #`(sql:count*)]
-    [(count*   alias)   #`(sql:count*  #,(expand-identifier #'alias))]
-    [(count    alias)   #`(sql:count   #,(expand-identifier #'alias))]
-    [(min      alias)   #`(sql:min     #,(expand-identifier #'alias))]
-    [(max      alias)   #`(sql:max     #,(expand-identifier #'alias))]
-    [(average  alias)   #`(sql:average #,(expand-identifier #'alias))]))
+    [(count*   alias)   #`(sql:count*  #,(expand-expression+unquote #'alias))]
+    [(count    alias)   #`(sql:count   #,(expand-expression+unquote #'alias))]
+    [(min      alias)   #`(sql:min     #,(expand-expression+unquote #'alias))]
+    [(max      alias)   #`(sql:max     #,(expand-expression+unquote #'alias))]
+    [(average  alias)   #`(sql:average #,(expand-expression+unquote #'alias))]))
 
 (define expand-expression
   ((or-expand "expression")
@@ -263,12 +277,11 @@
            [(eq? key '#:having)   (list* key-stx
                                          (expand-expression+unquote arg-stx)
                                          (expand-select-arguments select-stx rest))]
-           ; TODO : Only allow integers
            [(eq? key '#:limit)    (list* key-stx
-                                         (expand-integer+unquote arg-stx)
+                                         (expand-integer+false+unquote arg-stx)
                                          (expand-select-arguments select-stx rest))]
            [(eq? key '#:offset)   (list* key-stx
-                                         (expand-integer+unquote arg-stx)
+                                         (expand-integer+false+unquote arg-stx)
                                          (expand-select-arguments select-stx rest))]
            [(eq? key '#:distinct) (list* key-stx
                                          (expand-distinct+unquote arg-stx)

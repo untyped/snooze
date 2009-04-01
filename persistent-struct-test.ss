@@ -31,6 +31,11 @@
 (define persistent-struct-tests
   (test-suite "persistent-struct.ss"
     
+    (test-case "new entity and attribute syntax"
+      (check-eq? person entity:person)
+      (check-eq? (attr person id) attr:person-id)
+      (check-eq? (attr entity:person id) attr:person-id))
+    
     ; The very fact this test compiles indicates that it is successful.
     (test-case "define-persistent-struct defines an appropriate constructor, id accessor and revision accessor"
       (check-false (person-id       (make-person "Dave")))
@@ -41,7 +46,9 @@
         (check-pred person? (construct #f #f "Dave"))))
     
     (test-case "define-persistent-struct defines correct metadata"
+      (check-pred entity? course)
       (check-pred entity? entity:course)
+      (check-eq? course entity:course)
       (check-eq? (entity-name entity:course) 'course)
       (check-eq? (entity-table-name entity:course) 'Course)
       (let ([attrs (entity-attributes entity:course)])

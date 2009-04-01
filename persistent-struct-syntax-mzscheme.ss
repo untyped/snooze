@@ -18,7 +18,8 @@
          "base.ss"
          "persistent-struct.ss"
          "persistent-struct-util.ss"
-         "era/era.ss")
+         "era/era.ss"
+         (prefix q: "sql/sql-lang.ss"))
 
 ; Helpers ----------------------------------------
 
@@ -216,32 +217,35 @@
                            (values constructor/defaults
                                    copy-struct))))
                       
+                      (define default-alias
+                        (q:alias 'name entity))
+                      
                       ; Transformer binding: makes things like (struct ...) in plt-match work.
                       ; Copied by-example from an expanded define-struct.
                       ; The syntax-quotes-within-syntax-quotes are intensional.
                       (define-syntaxes (name)
                         (let ([certify (syntax-local-certifier #t)])
                           ; Cache persistent-struct-specific compile time information:
-                          (persistent-struct-info-set! (certify #'name)
-                                                       (certify #'struct-type)
-                                                       (certify #'entity)
-                                                       (certify #'constructor)
-                                                       (certify #'constructor/defaults)
-                                                       (certify #'copy-struct)
-                                                       (certify #'predicate)
-                                                       (list (certify #'attr-id) ...)
-                                                       (list (certify #'accessor) ...)
-                                                       (list (certify #'mutator) ...)
-                                                       (list 'attr-name* ...))
-                          ; Return general compile-time information:
-                          (make-struct-info 
+                          (persistent-struct-info-set!
                            (lambda ()
                              (list (certify #'struct-type)
                                    (certify #'constructor)
                                    (certify #'predicate)
                                    (reverse (list (certify #'accessor) ...))
                                    (reverse (list (certify #'mutator) ...))
-                                   (certify #'persistent-struct)))))))))))
+                                   (certify #'persistent-struct)))
+                           (certify #'name)
+                           (certify #'struct-type)
+                           (certify #'entity)
+                           (certify #'constructor)
+                           (certify #'constructor/defaults)
+                           (certify #'copy-struct)
+                           (certify #'predicate)
+                           (certify #'default-alias)
+                           (list (certify #'attr-id) ...)
+                           (list (certify #'accessor) ...)
+                           (list (certify #'mutator) ...)
+                           (list 'attr-name* ...)))))))))
   
   ; Main transformer body:
   
