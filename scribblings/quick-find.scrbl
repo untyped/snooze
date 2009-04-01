@@ -43,7 +43,7 @@ The quick-find procedures produced are keyword procedures that accept keywords w
      [programmer? type:boolean]))
 
   (define find-person
-    (custom-find-one person #:order ((asc person-name))))]
+    (custom-find-one person #:order ((asc person.name))))]
 
 would accept keyword arguments for @scheme[#:name], @scheme[#:age] and @scheme[#:programmer?]. These attribute arguments can be used in the following ways:
 
@@ -54,22 +54,33 @@ would accept keyword arguments for @scheme[#:name], @scheme[#:age] and @scheme[#
   @item{Passing @scheme[void] matches any value at all (useful when wrapping quick-find calls in other procedures).}
   @item{Arbitrary expressions may be specified by passing a procedure of type @scheme[(attribute-alias -> expression)].}}
 
-Quick find procedures also accept @scheme[#:limit] and @scheme[#:offset] arguments of type @scheme[(U natural#f)].
+Quick find procedures also accept @scheme[#:what], @scheme[#:order], @scheme[#:limit] and @scheme[#:offset] arguments:
+
+@itemize{
+  @item{the @scheme[#:what] argument accepts an entity, attribute, expression,
+    or list of attributes or expression;}
+  @item{the @scheme[#:order] argument accepts a list of order terms;}
+  @item{the @scheme[#:limit] and @scheme[#:offset] arguments accept a
+    natural number or @scheme[#f].}}
 
 Examples:
 
 @schemeblock[
-  (code:comment "SELECT FROM person WHERE name = 'Dave';")
+  (code:comment "SELECT * FROM person WHERE name = 'Dave';")
   (find-person #:name "Dave") 
-  (code:comment "SELECT FROM person WHERE name = 'Dave' AND age = 30;")
+  (code:comment "SELECT * FROM person WHERE name = 'Dave' AND age = 30;")
   (find-person #:name "Dave" #:age 30)
-  (code:comment "SELECT FROM person WHERE name IN ('Dave', 'Noel', 'Matt');")
+  (code:comment "SELECT * FROM person WHERE name IN ('Dave', 'Noel', 'Matt');")
   (find-person #:name (list "Dave" "Noel" "Matt"))
-  (code:comment "SELECT FROM person WHERE name IS NULL AND \"programmer?\" = false;")
+  (code:comment "SELECT * FROM person WHERE name IS NULL AND \"programmer?\" = false;")
   (find-person #:name #f #:programmer? #f) 
-  (code:comment "SELECT FROM person;")
+  (code:comment "SELECT * FROM person;")
   (find-person #:name (void)) 
-  (code:comment "SELECT FROM person WHERE name ~ 'D.*';")
-  (find-person #:name (lambda (attr) (sql:regexp-match attr "D.*")))]
+  (code:comment "SELECT * FROM person WHERE name ~ 'D.*';")
+  (find-person #:name (lambda (attr) (sql:regexp-match attr "D.*")))
+  (code:comment "SELECT surname FROM person;")
+  (find-person #:what (sql person.surname)) 
+  (code:comment "SELECT * FROM person ORDER BY surname DESC;")
+  (find-person #:order (list (sql (desc person.surname))))]
 
 } @;{end defmodule}

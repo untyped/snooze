@@ -18,7 +18,8 @@
                 (li "the syntax " (tt "(attr entity attr-id)") " has been added to replace "
                     (tt "attr:entity-attr-id") ";")))
         (li "enhancements to the quick-find system:"
-            (ul (li "quick-find procedures now accept " (tt "#:limit") " and " (tt "#:offset") " arguments."))))))
+            (ul (li "quick-find procedures now accept " (tt "#:what") ", " (tt "#:order") ", " 
+                    (tt "#:limit") " and " (tt "#:offset") " arguments."))))))
 
 (define primary-file "main.ss")
 

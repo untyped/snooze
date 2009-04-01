@@ -2,12 +2,13 @@
 
 @(require "base.ss")
         
-@title{Procedural query layer}
+@title[#:tag "proc-query-lang"]{Procedural query layer}
 
 @(declare-exporting (planet untyped/snooze))
 
-The query language described above is a syntax wrapper for a
-set of constructors for specially designed SQL AST nodes.
+The query language described in the previous sections is a 
+syntax wrapper for a set of constructors for specially 
+designed SQL AST nodes.
 
 Code that uses the constructors is generally more verbose than
 code that uses the syntax query language. However, in some cases
@@ -38,25 +39,25 @@ for more information.
 
 @section{Expressions (where/on/having clauses)}
 
-@defproc[(sql:or  [arg expr+quotable] ...) function?]
-@defproc[(sql:and [arg expr+quotable] ...) function?]
-@defproc[(sql:not [arg expr+quotable]) function?]
+@defproc[(sql:or  [arg expr+quotable?] ...) function?]
+@defproc[(sql:and [arg expr+quotable?] ...) function?]
+@defproc[(sql:not [arg expr+quotable?]) function?]
 	
-@defproc[(sql:=   [arg1 expr+quotable] [arg2 expr+quotable]) function?]
-@defproc[(sql:<>  [arg1 expr+quotable] [arg2 expr+quotable]) function?]
-@defproc[(sql:<   [arg1 expr+quotable] [arg2 expr+quotable]) function?]
-@defproc[(sql:>   [arg1 expr+quotable] [arg2 expr+quotable]) function?]
-@defproc[(sql:<=  [arg1 expr+quotable] [arg2 expr+quotable]) function?]
-@defproc[(sql:>=  [arg1 expr+quotable] [arg2 expr+quotable]) function?]
+@defproc[(sql:=   [arg1 expr+quotable?] [arg2 expr+quotable?]) function?]
+@defproc[(sql:<>  [arg1 expr+quotable?] [arg2 expr+quotable?]) function?]
+@defproc[(sql:<   [arg1 expr+quotable?] [arg2 expr+quotable?]) function?]
+@defproc[(sql:>   [arg1 expr+quotable?] [arg2 expr+quotable?]) function?]
+@defproc[(sql:<=  [arg1 expr+quotable?] [arg2 expr+quotable?]) function?]
+@defproc[(sql:>=  [arg1 expr+quotable?] [arg2 expr+quotable?]) function?]
 
-@defproc[(sql:+       [arg1 expr+quotable] ...) function?]
-@defproc[(sql:-       [arg1 expr+quotable] ...) function?]
-@defproc[(sql:*       [arg1 expr+quotable] ...) function?]
-@defproc[(sql:/       [arg1 expr+quotable] [arg2 expr+quotable]) function?]
-@defproc[(sql:abs     [arg  expr+quotable]) function?]
-@defproc[(sql:floor   [arg  expr+quotable]) function?]
-@defproc[(sql:ceiling [arg  expr+quotable]) function?]
-@defproc[(sql:round   [arg  expr+quotable]) function?]
+@defproc[(sql:+       [arg1 expr+quotable?] ...) function?]
+@defproc[(sql:-       [arg1 expr+quotable?] ...) function?]
+@defproc[(sql:*       [arg1 expr+quotable?] ...) function?]
+@defproc[(sql:/       [arg1 expr+quotable?] [arg2 expr+quotable?]) function?]
+@defproc[(sql:abs     [arg  expr+quotable?]) function?]
+@defproc[(sql:floor   [arg  expr+quotable?]) function?]
+@defproc[(sql:ceiling [arg  expr+quotable?]) function?]
+@defproc[(sql:round   [arg  expr+quotable?]) function?]
 
 @defproc[(sql:like               [str  expression?] [pattern expression?]) function?]
 @defproc[(sql:regexp-match       [str  expression?] [pattern expression?]) function?]
@@ -79,8 +80,8 @@ for more information.
                                  [pattern     expression?]
                                  [replacement expression?]) function?]
 
-@defproc[(sql:->string [datum expr+quotable] [format-string expr+quotable]) function?]
-@defproc[(sql:->symbol [datum expr+quotable] [format-string expr+quotable]) function?]
+@defproc[(sql:->string [datum expr+quotable?] [format-string expr+quotable?]) function?]
+@defproc[(sql:->symbol [datum expr+quotable?] [format-string expr+quotable?]) function?]
 
 @defproc[(sql:if [test expr+quotable?]
                  [then expr+quotable?]

@@ -36,7 +36,7 @@ Creates a new persistent structure, and binds variables related to the new struc
 
 By default, persistent structures are stored in rows in a database table of the same name. The @scheme[#:table-name] entity option allows you to override the default table name and provide something more user-friendly: hyphen characters in table names must be escaped in most DBMSs. Similarly, the @scheme[#:column-name] attribute option allows you to override the default column name for each attribute. The column names for @schemeidfont{id} and @schemeidfont{revision} may not be changed.
 
-@intmore{pipelines} The @scheme[#:on-save], @scheme[#:on-insert], @scheme[#:on-update] and @scheme[#:on-delete] keywords allow you to specify @italic{database pipelines} to be run during calls to @scheme[save!] and @scheme[delete!].
+@margin-note{@other-manual['(planet untyped/unlib:3/pipeline)]} The @scheme[#:on-save], @scheme[#:on-insert], @scheme[#:on-update] and @scheme[#:on-delete] keywords allow you to specify @italic{pipelines} to be run during calls to @scheme[save!] and @scheme[delete!].
 
 } @; end of defform for first version of define-persistent-struct
 

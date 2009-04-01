@@ -44,31 +44,40 @@
                        #`(#,(car arg-stxs) (void))
                        (loop (cdr key-stxs) (cdr arg-stxs)))))])
     
-    (with-syntax ([struct              struct-stx]
-                  [struct-id           (make-id struct-stx struct-stx '-id)]
-                  [snooze              snooze-stx]
-                  [find-whatever       method-stx]
-                  [entity              entity-stx]
-                  [(attr ...)          attr-stxs]
-                  [(key ...)           key-stxs]
-                  [(arg ...)           arg-stxs]
-                  [(key+arg ...)       key+arg-stxs]
-                  [(default-order ...) order-stxs])
-      (with-syntax ([what (if count? #'(count struct-id) #'struct)])
-        (syntax/loc stx
-          (let-alias ([struct struct])
-            (lambda (key+arg ... #:limit [limit  #f] #:offset [offset #f])
-              (send snooze find-whatever
-                    (sql (select #:what   what
-                                 #:from   struct
-                                 #:where  ,(sql:and (or (void? arg)
-                                                        (quick-find-expression
-                                                         (sql:attr struct attr) 
-                                                         arg))
-                                                    ...)
-                                 #:order  (default-order ...)
-                                 #:limit  ,limit
-                                 #:offset ,offset))))))))))
+    (with-syntax ([struct        struct-stx]
+                  [struct-id     (make-id struct-stx struct-stx '-id)]
+                  [snooze        snooze-stx]
+                  [find-whatever method-stx]
+                  [entity        entity-stx]
+                  [proc          (make-id struct-stx 'custom- method-stx '/ struct-stx)]
+                  [(attr ...)    attr-stxs]
+                  [(key ...)     key-stxs]
+                  [(arg ...)     arg-stxs]
+                  [(key+arg ...) key+arg-stxs]
+                  [(*order* ...) order-stxs])
+      (quasisyntax/loc stx
+        (let-alias ([struct struct])
+          (letrec ([default-what #,(if count?
+                                       #'(sql (count struct-id))
+                                       #'(sql struct))]
+                   [default-order (list (sql *order*) ...)]
+                   [proc          (lambda (key+arg ...
+                                           #:what   [what   #f]
+                                           #:order  [order  #f]
+                                           #:limit  [limit  #f]
+                                           #:offset [offset #f])
+                                    (send snooze find-whatever
+                                          (sql (select #:what   ,(or what default-what)
+                                                       #:from   struct
+                                                       #:where  ,(sql:and (or (void? arg)
+                                                                              (quick-find-expression
+                                                                               (sql:attr struct attr) 
+                                                                               arg))
+                                                                          ...)
+                                                       #:order  ,(or order default-order)
+                                                       #:limit  ,limit
+                                                       #:offset ,offset))))])
+            proc))))))
 
 ; syntax syntax -> syntax
 (define-for-syntax (parse-kws stx kw-stx)
