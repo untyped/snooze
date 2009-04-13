@@ -2,10 +2,8 @@
 
 (require "../base.ss")
 
-(define snooze<%>
+(define snooze-cache<%>
   (interface ()
-    
-    ; Caching procedures -------------------------
     
     ; thunk -> any
     ;
@@ -29,9 +27,10 @@
     ;
     ; Adds a new struct to the current cache frame.
     ; Raises exn:fail if the guid is already in the frame.
-    cache-add!
-    
-    ; Basic snooze procedures --------------------
+    cache-add!))
+
+(define snooze<%>
+  (interface (snooze-cache<%>)
     
     ; (-> any) -> any
     call-with-connection
@@ -153,51 +152,8 @@
     ; Determines whether the supplied table (or table name) exists in the database.
     table-exists?))
 
-; Cache frame ------------------------------------
-
-;; (struct (U snooze-cache #f) (hashof guid snooze-struct))
-;(define-struct frame (parent data) #:transparent)
-;
-;; (U frame #f) -> frame
-;(define (create-frame parent)
-;  (make-frame parent (make-weak-hasheq)))
-;
-;; object% -> snooze-cache<%>
-;(define snooze-cache-mixin
-;  (mixin () (snooze-cache<%>)
-;    
-;    ; (parameter frame)
-;    (field [current-frame (make-parameter (create-frame #f))])
-;    
-;    ; (-> any) -> any
-;    (define/public (call-with-frame thunk)
-;      (parameterize ([current-frame (create-frame (current-frame))])
-;        (thunk)))
-;    
-;    ; guid [frame] -> snooze-struct
-;    (define/public (cache-ref guid [frame (current-frame)])
-;      (cond [(hash-ref (frame-data frame) guid #f)
-;             => (lambda (local) local)]
-;            [(frame-parent frame)
-;             => (lambda (parent)
-;                  (let* ([remote (cache-ref guid parent)]
-;                         [local  (copy-snooze-struct remote)])
-;                    (cache-set! guid local frame)
-;                    local))]
-;            [else (error "cache-ref: struct not cached" guid)]))
-;
-;    ; guid snooze-struct [frame] -> guid
-;    (define/public (cache-set! guid struct [frame (current-frame)])
-;      (hash-set! (frame-data frame) guid struct)
-;      guid)
-;
-;    ; snooze-struct [frame] -> guid
-;    (define/public (cache-add! struct [frame (current-frame)])
-;      (if (cache-ref (struct-guid struct) frame)
-;          (error "cache-add!: struct already cached" struct)
-;          (cache-set! (struct-guid struct) struct frame)))))
-
 ; Provide statements -----------------------------
 
 (provide/contract
- [snooze<%>      interface?])
+ [snooze-cache<%> interface?]
+ [snooze<%>       interface?])

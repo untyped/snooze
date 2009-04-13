@@ -6,7 +6,8 @@
          srfi/26
          (unlib-in hash)
          "../test-data.ss"
-         "era.ss")
+         "core.ss"
+         (only-in "define-entity.ss" attr))
 
 ; Helpers --------------------------------------
 

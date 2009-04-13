@@ -31,14 +31,14 @@
          #:property
          prop:guid-entity-box
          (box #f)
-         #:property
-         prop:equal+hash
-         (list (lambda (a b same?)
-                 (same? a b))
-               (lambda (a hash-code)
-                 (hash-code a))
-               (lambda (a hash-code)
-                 (hash-code a))))]))
+         #;#:property
+         #;prop:equal+hash
+         #;(list (lambda (a b same?)
+                   (same? a b))
+                 (lambda (a hash-code)
+                   (hash-code a))
+                 (lambda (a hash-code)
+                   (hash-code a))))]))
 
 ; guid -> entity
 (define (guid-entity guid)
@@ -282,7 +282,7 @@
          define-guid-type)
 
 (provide/contract
- [current-snooze                  (parameter/c (is-a?/c snooze<%>))]
+ [current-snooze                  (parameter/c (is-a?/c snooze-cache<%>))]
  [struct guid                     ([id (or/c natural-number/c #f)])]
  [guid-entity-box                 (-> struct-type? box?)]
  [guid-entity                     (-> guid? entity?)]
