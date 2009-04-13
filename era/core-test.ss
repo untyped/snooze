@@ -52,8 +52,7 @@
                      ((entity-guid-constructor person) #f)
                      #f
                      "Dave")
-                    (cache-ref (current-cache)
-                               (make-person "Dave"))))
+                    (cache-ref (make-person "Dave"))))
     
     (test-case "entity-cached-constructor"
       ; see cache-test.ss for more tests
@@ -70,6 +69,24 @@
     (test-case "entity-cached-predicate"
       ; see cache-test.ss for more tests
       (check-pred procedure? (entity-cached-predicate person)))
+    
+    (test-case "entity-guid-constructor"
+      (check-pred procedure? (entity-guid-constructor person)))
+    
+    (test-case "entity-guid-predicate"
+      (check-pred procedure? (entity-guid-predicate person)))
+    
+    (test-case "entity-make-guid"
+      (let ([guid (entity-make-guid person)])
+        (check-pred (entity-guid-predicate person) guid)
+        (check-equal? (guid-id guid) #f))
+      (let ([guid (entity-make-guid person 123)])
+        (check-pred (entity-guid-predicate person) guid)
+        (check-equal? (guid-id guid) 123)))
+    
+    (test-case "entity-guid?"
+      (check-true  (entity-guid? person (entity-make-guid person)))
+      (check-false (entity-guid? person (entity-make-guid pet))))
     
     (test-case "entity-attributes"
       (let ([attrs (entity-attributes pet)])
@@ -91,6 +108,12 @@
       (check-true  (entity-has-attribute? pet (attr pet name)))
       (check-false (entity-has-attribute? pet 'NAME))
       (check-false (entity-has-attribute? pet 'fake)))
+    
+    (test-case "entity-guid-attribute?"
+      (check-true  (entity-guid-attribute? pet 'guid))
+      (check-true  (entity-guid-attribute? pet (attr pet guid)))
+      (check-false (entity-guid-attribute? pet 'name))
+      (check-false (entity-guid-attribute? pet (attr pet name))))
     
     (test-case "entity-attribute"
       
@@ -155,7 +178,6 @@
 
 (define core-tests
   (test-suite "core.ss"
-    
     guid-tests
     type-tests
     entity-tests

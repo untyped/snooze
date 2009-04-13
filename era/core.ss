@@ -181,6 +181,14 @@
                on-save            ; hooks
                on-delete))        ;
 
+; entity [(U natural #f)] -> guid
+(define (entity-make-guid entity [id #f])
+  ((entity-guid-constructor entity) id))
+
+; entity any -> boolean
+(define (entity-guid? entity guid)
+  ((entity-guid-predicate entity) guid))
+
 ; entity (U symbol attribute) -> boolean
 (define (entity-has-attribute? entity name+attr)
   (if (attribute? name+attr)
@@ -188,6 +196,11 @@
       (ormap (lambda (attr)
                (eq? (attribute-name attr) name+attr))
              (entity-attributes entity))))
+
+; entity (U symbol attribute) -> boolean
+(define (entity-guid-attribute? entity name+attr)
+  (or (eq? name+attr (car (entity-attributes entity)))
+      (eq? name+attr 'guid)))
 
 ; entity (U symbol attribute) -> attribute
 (define (entity-attribute entity name+attr)
@@ -299,7 +312,10 @@
                                       procedure?
                                       procedure?
                                       entity?)]
+ [entity-make-guid                (->* (entity?) ((or/c natural-number/c #f)) guid?)]
+ [entity-guid?                    (-> entity? any/c boolean?)]
  [entity-has-attribute?           (-> entity? (or/c symbol? attribute?) boolean?)]
+ [entity-guid-attribute?          (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-attribute                (-> entity? (or/c symbol? attribute?) attribute?)]
  [struct attribute                ([name                symbol?]
                                    [column-name         symbol?]
