@@ -7,46 +7,6 @@
          "core.ss"
          (prefix-in real: "snooze-struct.ss"))
 
-; Cache wrappers ---------------------------------
-
-; [cache] -> cache
-(define (create-cache [parent (current-cache)])
-  (make-cache parent (make-weak-hasheq)))
-
-; guid [cache] -> snooze-struct
-(define (cache-ref guid [cache (current-cache)])
-  (cond [(hash-ref (cache-data cache) guid #f)
-         => (lambda (local) local)]
-        [(cache-parent cache)
-         => (lambda (parent)
-              (let* ([remote (cache-ref guid parent)]
-                     [local  (copy-snooze-struct remote)])
-                (cache-set! guid local cache)
-                local))]
-        [else (error "struct not cached" guid)]))
-
-; guid snooze-struct [cache] -> guid
-(define (cache-set! guid struct [cache (current-cache)])
-  (hash-set! (cache-data cache) guid struct)
-  guid)
-
-; snooze-struct [cache] -> guid
-(define (cache-add! struct [cache (current-cache)])
-  (if (hash-ref (cache-data cache) (real:struct-guid struct) #f)
-      (error "struct already cached" struct)
-      (cache-set! (struct-guid struct) struct cache)))
-
-; Current cache ----------------------------------
-
-; (parameter snooze-cache)
-(define current-cache
-  (make-parameter (create-cache #f)))
-
-; (-> any) -> any
-(define (call-with-cache thunk)
-  (parameterize ([current-cache (create-cache)])
-    (thunk)))
-
 ; Snooze struct wrappers -------------------------
 
 ; (any ... -> snooze-struct) natural attribute attribute -> (any ... -> guid)
