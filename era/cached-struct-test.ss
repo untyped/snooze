@@ -12,17 +12,10 @@
 
 (define-struct normal (a b c) #:transparent)
 
-; Cache infrastructure tests -------------------
+; Tests ------------------------------------------
 
-(define cache-infrastructure-tests
-  (test-suite "cache infrastructure"
-    
-    ))
-
-; Snooze struct tests --------------------------
-
-(define snooze-struct-tests
-  (test-suite "snooze structs"
+(define cached-struct-tests
+  (test-suite "cahed-struct.ss"
     
     (test-case "struct-entity"
       (check-eq? (struct-entity (make-person "Dave")) person)
@@ -196,11 +189,6 @@
         (check-equal? struct1 struct2)
         (check-false (eq? struct1 struct2))))))
 
-(define cache-tests
-  (test-suite "cache.ss"
-    cache-infrastructure-tests
-    snooze-struct-tests))
-
 ; Provide statements -----------------------------
 
-(provide cache-tests)
+(provide cached-struct-tests)

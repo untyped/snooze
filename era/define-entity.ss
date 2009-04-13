@@ -11,7 +11,7 @@
                      "info.ss")
          scheme/serialize
          (except-in "core.ss" make-entity)
-         "cache.ss"
+         "cached-struct.ss"
          "entity.ss"
          "info.ss"
          #;(prefix-in sql: "sql/sql-lang.ss"))
@@ -223,7 +223,7 @@
                                  ; maker
                                  (lambda args
                                    (let ([struct (apply (entity-private-constructor entity-private) args)])
-                                     (cache-set! (current-cache) (struct-guid struct) struct)
+                                     (send (current-snooze) cache-add! struct)
                                      struct))
                                  ; cycle-maker
                                  (lambda ()

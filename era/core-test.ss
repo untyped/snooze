@@ -10,7 +10,10 @@
 
 ; Helpers --------------------------------------
 
-(define-struct normal (a b c) #:transparent)
+; string -> person
+(define make-person*
+  (compose (cut send (current-snooze) cache-ref <>)
+           make-person))
 
 ; Guid tests -----------------------------------
 
@@ -52,7 +55,7 @@
                      ((entity-guid-constructor person) #f)
                      #f
                      "Dave")
-                    (cache-ref (make-person "Dave"))))
+                    (make-person* "Dave")))
     
     (test-case "entity-cached-constructor"
       ; see cache-test.ss for more tests

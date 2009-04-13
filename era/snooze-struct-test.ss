@@ -6,7 +6,6 @@
          srfi/26
          (unlib-in hash)
          "../test-data.ss"
-         (only-in "cache.ss" cache-ref cache-set!)
          "core.ss"
          "define-entity.ss"
          "snooze-struct.ss")
@@ -16,22 +15,19 @@
 (define-struct normal (a b c) #:transparent)
 
 ; string -> person
-(define make-person* (compose cache-ref make-person))
+(define make-person*
+  (compose (cut send (current-snooze) cache-ref <>)
+           make-person))
 
 ; string integer -> pet
-(define make-pet* (compose cache-ref make-pet))
+(define make-pet*
+  (compose (cut send (current-snooze) cache-ref <>)
+           make-pet))
 
-; Cache infrastructure tests -------------------
-
-(define cache-infrastructure-tests
-  (test-suite "cache infrastructure"
-    
-    ))
-
-; Snooze struct tests --------------------------
+; Tests ------------------------------------------
 
 (define snooze-struct-tests
-  (test-suite "snooze structs"
+  (test-suite "snooze-struct.ss"
     
     (test-case "struct-entity"
       (check-eq? (struct-entity (make-person* "Dave")) person)
@@ -203,11 +199,6 @@
         (check-equal? struct1 struct2)
         (check-false (eq? struct1 struct2))))))
 
-(define cache-tests
-  (test-suite "cache.ss"
-    cache-infrastructure-tests
-    snooze-struct-tests))
-
 ; Provide statements -----------------------------
 
-(provide cache-tests)
+(provide snooze-struct-tests)

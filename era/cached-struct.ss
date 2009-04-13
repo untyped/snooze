@@ -3,51 +3,50 @@
 (require "../base.ss")
 
 (require (unlib-in list parameter)
-         "cache-internal.ss"
          "core.ss"
          (prefix-in real: "snooze-struct.ss"))
 
 ; Snooze struct wrappers -------------------------
 
-; (any ... -> snooze-struct) natural attribute attribute -> (any ... -> guid)
+; (any ... -> snooze-struct) natural attribute attribute -> ([#:snooze snooze<%>] any ... -> guid)
 (define (make-cached-constructor
          procedure-name
          struct-constructor
          expected-arity
          guid-attribute
          revision-attribute)
-  (lambda args
+  (lambda (#:snooze [snooze (current-snooze)] . args)
     (unless (= (length args) expected-arity)
       (raise-exn exn:fail:contract
         (format "~a: expected ~a argument(s), received ~s"
                 procedure-name
                 expected-arity
                 args)))
-    (cache-add! (apply struct-constructor
-                       (type-default (attribute-type guid-attribute))
-                       (type-default (attribute-type revision-attribute))
-                       args))))
+    (send snooze cache-add!
+          (apply struct-constructor
+                 (type-default (attribute-type guid-attribute))
+                 (type-default (attribute-type revision-attribute))
+                 args))))
 
-; (any -> boolean) -> (any -> boolean)
+; (any -> boolean) -> (any [#:snooze snooze<%>] -> boolean)
 (define (make-cached-predicate struct-predicate)
-  (lambda (guid)
-    (struct-predicate (cache-ref guid))))
+  (lambda (guid #:snooze [snooze (current-snooze)])
+    (struct-predicate (send snooze cache-ref guid))))
 
-; (struct -> any) -> (guid -> any)
+; (struct -> any) -> (guid [#:snooze snooze<%>] -> any)
 (define (make-cached-accessor struct-accessor)
-  (lambda (guid)
-    (struct-accessor (cache-ref guid))))
+  (lambda (guid #:snooze [snooze (current-snooze)])
+    (struct-accessor (send snooze cache-ref guid))))
 
-; (struct any -> void) -> (guid any -> void)
+; (struct any -> void) -> (guid any [#:snooze snooze<%>] -> void)
 (define (make-cached-mutator struct-mutator)
-  (lambda (guid val)
-    (struct-mutator (cache-ref guid) val)))
+  (lambda (guid val #:snooze [snooze (current-snooze)])
+    (struct-mutator (send snooze cache-ref guid) val)))
 
 ; Standard wrappers ------------------------------
 
 ; any -> boolean
-(define (snooze-struct? guid)
-  (real:snooze-struct? (cache-ref guid)))
+(define snooze-struct? guid?)
 
 ; (U snooze-struct guid) -> entity
 (define (struct-entity struct+guid)
@@ -67,55 +66,49 @@
 ; guid (U natural #f) -> void
 (define set-struct-id! set-guid-id!)
 
-; snooze-struct -> boolean
+; guid -> boolean
 (define (struct-saved? guid)
   (and (guid-id guid) #t))
 
-; guid -> (U natural #f)
-(define (struct-revision guid)
-  (real:struct-revision (cache-ref guid)))
+; guid [#:snooze snooze<%>] -> (U natural #f)
+(define (struct-revision guid #:snooze [snooze (current-snooze)])
+  (real:struct-revision (send snooze cache-ref guid)))
 
-; guid -> (U natural #f)
-(define (set-struct-revision! guid val)
-  (real:set-struct-revision! (cache-ref guid) val))
+; guid [#:snooze snooze<%>] -> (U natural #f)
+(define (set-struct-revision! guid val #:snooze [snooze (current-snooze)])
+  (real:set-struct-revision! (send snooze cache-ref guid) val))
 
-; guid (U symbol attribute) -> any
-(define (snooze-struct-ref guid name+attr)
-  (real:snooze-struct-ref (cache-ref guid) name+attr))
+; guid [#:snooze snooze<%>] (U symbol attribute) -> any
+(define (snooze-struct-ref guid name+attr #:snooze [snooze (current-snooze)])
+  (real:snooze-struct-ref (send snooze cache-ref guid) name+attr))
 
-; guid -> any
-(define (snooze-struct-ref* guid #:copy-guid? [copy-guid? #f])
-  (real:snooze-struct-ref* (cache-ref guid) #:copy-guid? copy-guid?))
+; guid [#:snooze snooze<%>] [#:copy-guid? boolean] -> any
+(define (snooze-struct-ref* guid #:snooze [snooze (current-snooze)] #:copy-guid? [copy-guid? #f])
+  (real:snooze-struct-ref* (send snooze cache-ref guid) #:copy-guid? copy-guid?))
 
-; guid (U symbol attribute) any -> void
-(define (snooze-struct-set! guid name+attr val)
-  (real:snooze-struct-set! (cache-ref guid) name+attr val))
+; guid (U symbol attribute) any [#:snooze snooze<%>] -> void
+(define (snooze-struct-set! guid name+attr val #:snooze [snooze (current-snooze)])
+  (real:snooze-struct-set! (send snooze cache-ref guid) name+attr val))
 
-; guid (listof any) -> void
-(define (snooze-struct-set*! guid vals)
-  (real:snooze-struct-set*! (cache-ref guid) vals))
+; guid (listof any) [#:snooze snooze<%>] -> void
+(define (snooze-struct-set*! guid vals #:snooze [snooze (current-snooze)])
+  (real:snooze-struct-set*! (send snooze cache-ref guid) vals))
 
-; entity <attr any> ... -> guid
-(define (make-snooze-struct/defaults entity . args)
-  (cache-add! (apply real:make-snooze-struct/defaults entity args)))
+; entity [#:snooze snooze<%>] <attr any> ... -> guid
+(define (make-snooze-struct/defaults entity #:snooze [snooze (current-snooze)] . args)
+  (send snooze cache-add! (apply real:make-snooze-struct/defaults entity args)))
 
-; guid <attr any> ... -> guid
-(define (copy-snooze-struct original . args)
-  (cache-add! (apply real:copy-snooze-struct (cache-ref original) args)))
+; guid [#:snooze snooze<%>] <attr any> ... -> guid
+(define (copy-snooze-struct original #:snooze [snooze (current-snooze)] . args)
+  (send snooze cache-add! (apply real:copy-snooze-struct (send snooze cache-ref original) args)))
 
-; guid guid -> void
-(define (update-snooze-struct-from-copy! guid copy)
-  (real:update-snooze-struct-from-copy! (cache-ref guid) (cache-ref copy)))
+; guid guid [#:snooze snooze<%>] -> void
+(define (update-snooze-struct-from-copy! guid copy #:snooze [snooze (current-snooze)])
+  (real:update-snooze-struct-from-copy! (send snooze cache-ref guid) (send snooze cache-ref copy)))
 
 ; Provide statements -----------------------------
 
-(provide (except-out (all-from-out "cache-internal.ss") make-cache))
-
 (provide/contract
- [rename create-cache make-cache  (->* () ((or/c cache? #f)) cache?)]
- [cache-ref                       (->* (guid?) (cache?) prop:entity-set?)]
- [cache-set!                      (->* (guid? real:snooze-struct?) (cache?) void?)]
- [current-cache                   (parameter/c cache?)]
  [make-cached-constructor         (-> symbol?
                                       procedure?
                                       natural-number/c
@@ -131,12 +124,32 @@
  [struct-id                       (-> guid? (or/c natural-number/c #f))]
  [set-struct-id!                  (-> guid? (or/c natural-number/c #f) void?)]
  [struct-saved?                   (-> guid? boolean?)]
- [struct-revision                 (-> guid? (or/c natural-number/c #f))]
- [set-struct-revision!            (-> guid? (or/c natural-number/c #f) void?)]
- [snooze-struct-ref               (-> guid? (or/c attribute? symbol?) any)]
- [snooze-struct-ref*              (->* (guid?) (#:copy-guid? boolean?) list?)]
- [snooze-struct-set!              (-> guid? (or/c attribute? symbol?) any/c void?)]
- [snooze-struct-set*!             (-> guid? list? void?)]
- [make-snooze-struct/defaults     (->* (entity?) () #:rest real:attr/value-list? guid?)]
- [copy-snooze-struct              (->* (guid?) () #:rest real:attr/value-list? guid?)]
- [update-snooze-struct-from-copy! (-> guid? guid? void?)])
+ [struct-revision                 (->* (guid?)
+                                       (#:snooze (is-a?/c snooze<%>))
+                                       (or/c natural-number/c #f))]
+ [set-struct-revision!            (->* (guid? (or/c natural-number/c #f))
+                                       (#:snooze (is-a?/c snooze<%>))
+                                       void?)]
+ [snooze-struct-ref               (->* (guid? (or/c attribute? symbol?))
+                                       (#:snooze (is-a?/c snooze<%>))
+                                       any)]
+ [snooze-struct-ref*              (->* (guid?)
+                                       (#:snooze (is-a?/c snooze<%>) #:copy-guid? boolean?)
+                                       list?)]
+ [snooze-struct-set!              (->* (guid? (or/c attribute? symbol?) any/c)
+                                       (#:snooze (is-a?/c snooze<%>))
+                                       void?)]
+ [snooze-struct-set*!             (->* (guid? list?)
+                                       (#:snooze (is-a?/c snooze<%>))
+                                       void?)]
+ [make-snooze-struct/defaults     (->* (entity?)
+                                       (#:snooze (is-a?/c snooze<%>))
+                                       #:rest real:attr/value-list?
+                                       guid?)]
+ [copy-snooze-struct              (->* (guid?)
+                                       (#:snooze (is-a?/c snooze<%>))
+                                       #:rest real:attr/value-list?
+                                       guid?)]
+ [update-snooze-struct-from-copy! (->* (guid? guid?)
+                                       (#:snooze (is-a?/c snooze<%>))
+                                       void?)])

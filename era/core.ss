@@ -2,12 +2,18 @@
 
 (require "../base.ss")
 
-(require (for-syntax scheme/base))
+(require (for-syntax scheme/base)
+         "core-snooze-interface.ss")
+
+(define current-snooze
+  (make-parameter #f))
 
 ; Guids ------------------------------------------
 
 ; (struct integer)
-(define-serializable-struct guid ([id #:mutable]) #:transparent)
+(define-serializable-struct guid
+  ([id #:mutable])
+  #:transparent)
 
 ; property
 ; guid -> boolean
@@ -24,7 +30,15 @@
          #:transparent
          #:property
          prop:guid-entity-box
-         (box #f))]))
+         (box #f)
+         #:property
+         prop:equal+hash
+         (list (lambda (a b same?)
+                 (same? a b))
+               (lambda (a hash-code)
+                 (hash-code a))
+               (lambda (a hash-code)
+                 (hash-code a))))]))
 
 ; guid -> entity
 (define (guid-entity guid)
@@ -264,9 +278,11 @@
 
 ; Provide statements -----------------------------
 
-(provide define-guid-type)
+(provide (all-from-out "core-snooze-interface.ss")
+         define-guid-type)
 
 (provide/contract
+ [current-snooze                  (parameter/c (is-a?/c snooze<%>))]
  [struct guid                     ([id (or/c natural-number/c #f)])]
  [guid-entity-box                 (-> struct-type? box?)]
  [guid-entity                     (-> guid? entity?)]

@@ -1,16 +1,20 @@
 #lang scheme/base
   
 (require "../test-base.ss"
-         "annotation-test.ss"
-         "era-test.ss")
+         "cached-struct-test.ss"
+         "core-test.ss"
+         "define-entity-test.ss"
+         "snooze-struct-test.ss")
 
 ; Tests -------------------------------------------
 
 ; test-suite
 (define all-era-tests
   (test-suite "era"
-    annotation-tests
-    era-tests))
+    core-tests
+    snooze-struct-tests
+    cached-struct-tests
+    define-entity-tests))
 
 ; Provide statements -----------------------------
 
