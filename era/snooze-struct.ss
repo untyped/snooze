@@ -74,7 +74,7 @@
                         (format "list of ~a values" (length attrs))
                         vals))
     (for ([attr (in-list attrs)]
-          [val  (in-list values)])
+          [val  (in-list vals)])
       (snooze-struct-set! struct attr val))))
 
 ; entity <attr any> ... -> struct
@@ -83,6 +83,7 @@
     (apply (entity-private-constructor entity)
            (for/list ([attr (in-list (entity-attributes entity))])
              (attribute-keyword-get
+              entity
               attr
               arg-attrs
               arg-vals
@@ -93,11 +94,12 @@
   (let*-values ([(entity)             (struct-entity original)]
                 [(arg-attrs arg-vals) (check-attribute-keywords entity args)]
                 [(attrs)              (entity-attributes entity)]
-                [(existing)           (snooze-struct-ref* original #:copy-guid? #t)])
+                [(existing)           (snooze-struct-ref* original)])
     (apply (entity-private-constructor entity)
            (for/list ([attr     (in-list attrs)]
                       [existing (in-list existing)])
              (attribute-keyword-get
+              entity
               attr
               arg-attrs
               arg-vals
@@ -152,19 +154,23 @@
                   (raise-type-error 'check-attribute-keywords "attribute specified more than once" attr)
                   (loop (not even?) (cdr args) (cons attr attrs-accum) vals-accum)))))))
 
-
-; attribute (listof attribute) (listof any) any -> any
+; entity attribute (listof attribute) (listof any) any -> any
 ;
 ; We search for attributes by name so we don't have to worry that, for example,
 ; attr:struct-guid and attr:person-guid are not equal. Note that we are reliant on
 ; check-attribute-keywords to chuck out attributes from other entities, otherwise
 ; we might get confused between, for example, attr:person-name and attr:pet-name.
-(define (attribute-keyword-get needle attrs vals default)
-  (let/ec return
-    (for ([attr attrs] [val vals])
-      (when (eq? needle attr)
-        (return val)))
-    default))
+(define (attribute-keyword-get entity needle attrs vals default)
+  (let ([guid? (entity-guid-attribute? entity needle)])
+    (let/ec return
+      (for ([attr attrs] [val vals])
+        (when (eq? needle attr)
+          (return (if guid?
+                      (entity-make-guid entity (guid-id val))
+                      val))))
+      (if guid?
+          (entity-make-guid entity (guid-id default))
+          default))))
 
 ; any -> boolean
 (define (attr/value-list? item)
