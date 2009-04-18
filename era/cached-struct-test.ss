@@ -23,8 +23,12 @@
     
     (test-case "struct-guid"
       (let ([struct (make-person "Dave")])
-        (check-equal? (struct-guid struct)
-                      ((entity-guid-constructor person) #f))))
+        (check-equal? (guid-id (struct-guid struct))
+                      (guid-id (entity-make-guid person #f)))
+        (check-equal? (guid-id (struct-guid struct))
+                      (guid-id (struct-guid (make-person "Dave"))))
+        (check-not-equal? (struct-guid struct)
+                          (struct-guid (make-person "Dave2")))))
     
     (test-case "struct-saved?"
       (let ([struct (make-person "Dave")])
@@ -53,8 +57,10 @@
         (check-equal? (pet-name struct) "Odie")))
     
     (test-case "snooze-struct-ref"
-      (let ([struct (make-pet 3 "Garfield")]
-            [guid1  ((entity-guid-constructor pet) 1)])
+      (let* ([struct (make-pet 3 "Garfield")]
+             [guid1  (copy-snooze-struct struct
+                                         (attr pet guid)     (entity-make-guid pet 1)
+                                         (attr pet revision) 2)])
         (set-struct-id! struct 1)
         (set-struct-revision! struct 2)
         
@@ -75,10 +81,7 @@
         (set-struct-revision! struct 2)
         
         (check-equal? (snooze-struct-ref* struct)
-                      (list ((entity-guid-constructor pet) 1)
-                            2
-                            3
-                            "Garfield"))
+                      (list struct 2 3 "Garfield"))
         
         (check-exn exn:fail? (cut snooze-struct-ref* (make-normal 1 2 3)))))
     
@@ -92,10 +95,10 @@
       ; Guids:
       (let ([struct (make-pet 3 "Garfield")]
             [guid   (entity-make-guid pet 100)])
-        (check-false (equal? (struct-guid struct) guid))
+        (check-not-equal? (struct-id struct) 100)
         (snooze-struct-set! struct 'guid guid)
-        (check-equal? (struct-guid struct) guid)
-        (check-false (eq? (struct-guid struct) guid))
+        (check-equal? (struct-id struct) 100)
+        (check-not-eq? (struct-guid struct) guid)
         (check-exn exn:fail:contract?
           (cut snooze-struct-set! struct 'guid 100))
         (check-exn exn:fail:contract?
@@ -113,7 +116,10 @@
     (test-case "make-snooze-struct/defaults"
       (check-equal? (make-snooze-struct/defaults person)
                     (make-person #f))
-      (check-equal? (make-snooze-struct/defaults person (attr person name) "Dave")
+      (check-equal? (make-snooze-struct/defaults
+                     person
+                     (attr person name)
+                     "Dave")
                     (make-person "Dave"))
       
       ; Guid (in)equality:
@@ -161,15 +167,18 @@
           (check-equal? (person-name struct2)      (person-name struct1)))
         
         (let ([struct2 (copy-snooze-struct struct1 (attr person name) "Noel")])
-          (check-equal? (struct-guid struct1)      (struct-guid struct2))
-          (check-false  (eq? (struct-guid struct1) (struct-guid struct2)))
-          (check-equal? (struct-id struct2)        (struct-id struct1))
-          (check-equal? (struct-revision struct2)  (struct-revision struct1))
-          (check-false  (equal? (person-name struct2) (person-name struct1))))))
+          (check-not-equal? struct1                   struct2)
+          (check-not-eq?    struct1                   struct2)
+          (check-equal?     (struct-id struct2)       (struct-id struct1))
+          (check-equal?     (struct-revision struct2) (struct-revision struct1))
+          (check-not-equal? (person-name struct2)     (person-name struct1)))))
     
     (test-case "update-snooze-struct-from-copy!"
       (let* ([guid    (entity-make-guid pet 20)]
-             [struct1 (make-snooze-struct/defaults pet (attr pet owner-id) 1000 (attr pet name) "Garfield")]
+             [struct1 (make-snooze-struct/defaults
+                       pet
+                       (attr pet owner-id) 1000
+                       (attr pet name)     "Garfield")]
              [struct2 (make-snooze-struct/defaults
                        pet
                        (attr pet guid)     guid
@@ -179,8 +188,8 @@
         
         (update-snooze-struct-from-copy! struct1 struct2)
         
-        (check-equal?  struct2 guid)
-        (check-not-eq? struct2 guid)
+        (check-not-eq? struct2 struct1)
+        (check-eq?     struct2 guid)
         
         (check-equal? (struct-id struct2)       20)
         (check-equal? (struct-revision struct1) 200)

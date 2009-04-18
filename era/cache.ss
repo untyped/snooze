@@ -18,10 +18,16 @@
 (define snooze-cache-mixin
   (mixin () (snooze-cache<%>)
     
-    (super-new)
+    ; Fields -------------------------------------
     
     ; (parameter frame)
     (field [current-frame (make-parameter (create-frame #f))])
+    
+    ; Constructor --------------------------------
+    
+    (super-new)
+    
+    ; Methods ------------------------------------
     
     ; (-> any) -> any
     (define/public (call-with-cache-frame thunk)
@@ -30,7 +36,6 @@
     
     ; guid [frame] [(U any (-> any))] -> snooze-struct
     (define/public (cache-ref guid [frame (current-frame)] [default (cut error "cache-ref: struct not cached" guid)])
-      (pretty-print (list 'ref guid))
       (cond [(hash-ref (frame-data frame) guid #f)
              => (lambda (local) local)]
             [(frame-parent frame)
@@ -45,7 +50,6 @@
 
     ; guid snooze-struct [frame] -> guid
     (define/public (cache-set! guid struct [frame (current-frame)])
-      (pretty-print (list 'set! guid struct))
       (hash-set! (frame-data frame) guid struct)
       guid)
 
@@ -53,7 +57,11 @@
     (define/public (cache-add! struct [frame (current-frame)])
       (if (cache-ref (struct-guid struct) frame #f)
           (error "cache-add!: struct already cached" struct)
-          (cache-set! (struct-guid struct) struct frame)))))
+          (cache-set! (struct-guid struct) struct frame)))
+    
+        ; -> #s(snooze ...)
+    (define/public (get-serializable-cache-address)
+      '#s(snooze no-database))))
 
 ; Provide statements -----------------------------
 

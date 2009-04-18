@@ -5,15 +5,26 @@
 (require (for-syntax scheme/base)
          "core-snooze-interface.ss")
 
-(define current-snooze
-  (make-parameter #f))
+; Snooze objects ---------------------------------
+
+(define current-snooze (make-parameter #f))
 
 ; Guids ------------------------------------------
 
-; (struct integer)
+; (struct snooze-cache<%> integer)
 (define-serializable-struct guid
-  ([id #:mutable])
-  #:transparent)
+  (snooze [id #:mutable])
+  #:transparent
+  #:property
+  prop:custom-write
+  (lambda (guid out write?)
+    (define show (if write? write display))
+    (display "#(guid " out)
+    (show (guid-id guid) out)
+    (display ")" out)))
+
+(define (create-guid #:snooze [snooze (current-snooze)] id)
+  (make-guid snooze id))
 
 ; property
 ; guid -> boolean
@@ -25,24 +36,48 @@
 (define-syntax (define-guid-type stx)
   (syntax-case stx ()
     [(_ id)
-     #'(define-serializable-struct (id guid)
-         ()
-         #:transparent
-         #:property
-         prop:guid-entity-box
-         (box #f)
-         #;#:property
-         #;prop:equal+hash
-         #;(list (lambda (a b same?)
-                   (same? a b))
-                 (lambda (a hash-code)
-                   (hash-code a))
-                 (lambda (a hash-code)
-                   (hash-code a))))]))
+     (with-syntax ([print-prefix (format "#(~a " (syntax->datum #'id))])
+       #'(define-serializable-struct (id guid)
+           ()
+           #:transparent
+           #:property
+           prop:guid-entity-box
+           (box #f)
+           #:property
+           prop:custom-write
+           (lambda (guid out write?)
+             (define show (if write? write display))
+             (display print-prefix out)
+             (show (guid-id guid) out)
+             (let ([struct (guid-cache-ref guid)])
+               (when struct
+                 (for ([val (in-vector (struct->vector struct) 2)])
+                   (display " " out)
+                   (show val out))))
+             (display ")" out))
+           #:property
+           prop:equal+hash
+           (list (lambda (guid1 guid2 same?)
+                   (and (same? (guid-id guid1)
+                               (guid-id guid2))
+                        (same? (send (guid-snooze guid1) cache-ref guid1)
+                               (send (guid-snooze guid2) cache-ref guid2))))
+                 (lambda (guid recur)
+                   (recur guid))
+                 (lambda (guid recur)
+                   (recur guid)))))]))
 
 ; guid -> entity
 (define (guid-entity guid)
   (unbox (guid-entity-box guid)))
+
+; guid -> snooze-struct
+(define (guid-cache-ref guid)
+  (send (guid-snooze guid) cache-ref guid))
+
+; [(U natural #f)] -> guid
+(define (guid-copy guid [id (guid-id guid)] #:snooze [snooze (guid-snooze guid)])
+  (entity-make-guid #:snooze snooze (guid-entity guid) id))
 
 ; Attribute types --------------------------------
 
@@ -195,9 +230,9 @@
                on-save            ; hooks
                on-delete))        ;
 
-; entity [(U natural #f)] -> guid
-(define (entity-make-guid entity [id #f])
-  ((entity-guid-constructor entity) id))
+; entity [#:snooze snooze] [(U natural #f)] -> guid
+(define (entity-make-guid entity #:snooze [snooze (current-snooze)] [id #f])
+  ((entity-guid-constructor entity) snooze id))
 
 ; entity any -> boolean
 (define (entity-guid? entity guid)
@@ -279,13 +314,26 @@
 ; Provide statements -----------------------------
 
 (provide (all-from-out "core-snooze-interface.ss")
-         define-guid-type)
+         define-guid-type
+         guid
+         struct:guid)
 
 (provide/contract
  [current-snooze                  (parameter/c (is-a?/c snooze-cache<%>))]
- [struct guid                     ([id (or/c natural-number/c #f)])]
+ [rename create-guid make-guid    (->* ((or/c natural-number/c #f))
+                                       (#:snooze (is-a?/c snooze-cache<%>))
+                                       guid?)]
+ [guid?                           procedure?]
+ [guid-snooze                     (-> guid? (is-a?/c snooze-cache<%>))]
+ [guid-id                         (-> guid? (or/c natural-number/c #f))]
+ [set-guid-id!                    (-> guid? (or/c natural-number/c #f) void?)]
  [guid-entity-box                 (-> struct-type? box?)]
  [guid-entity                     (-> guid? entity?)]
+ [guid-cache-ref                  (-> guid? snooze-struct?)]
+ [guid-copy                       (->* (guid?)
+                                       ((or/c natural-number/c #f)
+                                        #:snooze (is-a?/c snooze-cache<%>))
+                                       guid?)]
  [struct type                     ([allows-null? boolean?] [default-maker (-> any)])]
  [struct (guid-type type)         ([allows-null? boolean?] [default-maker (-> (or/c guid?     #f))] [entity entity?])]
  [struct (boolean-type type)      ([allows-null? boolean?] [default-maker (-> (or/c boolean?  #f))])]
@@ -316,7 +364,9 @@
                                    [private-mutator     procedure?]
                                    [cached-constructor  procedure?]
                                    [cached-predicate    procedure?]
-                                   [guid-constructor    (-> (or/c natural-number/c #f) guid?)]
+                                   [guid-constructor    (-> (is-a?/c snooze-cache<%>)
+                                                            (or/c natural-number/c #f)
+                                                            guid?)]
                                    [guid-predicate      (-> any/c boolean?)]
                                    [attributes          (listof attribute?)]
                                    [on-save             (-> (-> snooze-struct? any) snooze-struct? snooze-struct?)]
@@ -328,7 +378,9 @@
                                       procedure?
                                       procedure?
                                       entity?)]
- [entity-make-guid                (->* (entity?) ((or/c natural-number/c #f)) guid?)]
+ [entity-make-guid                (->* (entity?)
+                                       (#:snooze (is-a?/c snooze-cache<%>)
+                                                 (or/c natural-number/c #f)) guid?)]
  [entity-guid?                    (-> entity? any/c boolean?)]
  [entity-has-attribute?           (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-guid-attribute?          (-> entity? (or/c symbol? attribute?) boolean?)]

@@ -11,7 +11,7 @@
 ;   symbol
 ;   (listof symbol)
 ;   (listof type)
-;   ((U natural #f) -> guid)
+;   (snooze-cache<%> (U natural #f) -> guid)
 ;   (any -> boolean)
 ;   [#:table-name   symbol]
 ;   [#:column-names (listof symbol)]
@@ -62,7 +62,9 @@
      num-attrs                  ; number of fields passed in constructor (excludes fields from supertype)
      0                          ; number of auto-value fields
      (void)                     ; values for auto-value fields
-     (cons (cons prop:entity entity) properties) ; properties
+     (list* (cons prop:entity entity)
+            (cons prop:equal+hash snooze-struct-equal+hash)
+            properties)         ; properties
      #f))                       ; inspector-or-#f
   
   (define guid-attribute
@@ -92,11 +94,10 @@
   ; any ... -> guid
   (define cached-constructor
     (make-cached-constructor
+     entity
      (symbol-append 'make- name)
      struct-constructor
-     (- (length attributes) 2)
-     guid-attribute
-     revision-attribute))
+     (- (length attributes) 2)))
   
   ; any -> boolean
   (define cached-predicate
@@ -130,6 +131,23 @@
                     cached-accessor
                     cached-mutator)))
 
+; (listof procedure)
+(define snooze-struct-equal+hash
+  (list (lambda (struct1 struct2 same?)
+          (let ([vec1 (struct->vector struct1)]
+                [vec2 (struct->vector struct2)])
+            (and (same? (vector-ref vec1 0)
+                        (vector-ref vec2 0))
+                 (same? (guid-id (vector-ref vec1 1))
+                        (guid-id (vector-ref vec2 1)))
+                 (for/and ([item1 (in-vector vec1 2)]
+                           [item2 (in-vector vec2 2)])
+                   (same? item1 item2)))))
+        (lambda (struct recur)
+          (recur struct))
+        (lambda (struct recur)
+          (recur struct))))
+
 ; Provide statements -----------------------------
 
 (provide/contract
@@ -138,15 +156,19 @@
          (->* (symbol?
                (listof symbol?)
                (listof type?)
-               (-> (or/c natural-number/c #f) guid?)
+               (-> (is-a?/c snooze-cache<%>)
+                   (or/c natural-number/c #f)
+                   guid?)
                (-> any/c boolean?))
               (#:table-name symbol?
                             #:column-names (listof symbol?)
                             #:on-save      procedure?
                             #:on-delete    procedure?
-                            #:properties   (listof (cons/c (and/c struct-type-property?
-                                                                  (not/c (cut eq? <> prop:entity)))
-                                                           any/c)))
+                            #:properties   (listof (cons/c
+                                                    (and/c struct-type-property?
+                                                           (not/c (cut eq? <> prop:entity))
+                                                           (not/c (cut eq? <> prop:equal+hash)))
+                                                    any/c)))
               (values entity?
                       struct-type?
                       procedure?

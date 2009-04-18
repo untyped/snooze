@@ -5,6 +5,9 @@
 (define snooze-cache<%>
   (interface ()
     
+    ; -> #s(snooze ...)
+    get-serializable-cache-address
+    
     ; thunk -> any
     ;
     ; Pushes a new frame onto the cache stack and calls thunk in

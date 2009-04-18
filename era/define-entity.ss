@@ -198,24 +198,27 @@
                (define-values (revision-mutator mutator ...)
                  (apply values (map attribute-cached-mutator (cdr (entity-attributes entity-private)))))
                
-               (define (constructor/defaults #,@(append-map (lambda (kw attr name)
-                                                              (list kw #`[#,name (type-default (attribute-type #,attr))]))
-                                                            (syntax->list #'(attr-kw ...))
-                                                            (syntax->list #'(attr-private ...))
-                                                            (syntax->list #'(attr ...))))
-                 ((entity-cached-constructor entity-private) attr ...))
-               
-               (define (copy-struct
-                        original
-                        #,@(append-map (lambda (kw accessor name)
-                                         (list kw #`[#,name (#,accessor original)]))
+               (define (constructor/defaults
+                        #:snooze   [snooze   (current-snooze)]
+                        #:guid     [guid     (entity-make-guid #:snooze snooze entity-private #f)]
+                        #:revision [revision #f]
+                        #,@(append-map (lambda (kw attr name)
+                                         (list kw #`[#,name (type-default (attribute-type #,attr))]))
                                        (syntax->list #'(attr-kw ...))
-                                       (syntax->list #'(accessor ...))
+                                       (syntax->list #'(attr-private ...))
                                        (syntax->list #'(attr ...))))
-                 (let ([ans ((entity-cached-constructor entity-private) attr ...)])
-                   (set-struct-id! ans (struct-id original))
-                   (set-struct-revision! ans (struct-revision original))
-                   ans))
+                 ((entity-cached-constructor entity-private) #:snooze snooze #:guid guid #:revision revision attr ...))
+               
+               (define (copy-struct original
+                                    #:snooze   [snooze   (guid-snooze original)]
+                                    #:guid     [guid     (entity-make-guid #:snooze snooze (guid-entity original) (guid-id original))]
+                                    #:revision [revision (struct-revision original)]
+                                    #,@(append-map (lambda (kw accessor name)
+                                                     (list kw #`[#,name (#,accessor original)]))
+                                                   (syntax->list #'(attr-kw ...))
+                                                   (syntax->list #'(accessor ...))
+                                                   (syntax->list #'(attr ...))))
+                 ((entity-cached-constructor entity-private) #:snooze snooze #:guid guid #:revision revision attr ...))
                
                #,(if (eq? (syntax-local-context) 'module)
                      #'(begin (define deserialize-info

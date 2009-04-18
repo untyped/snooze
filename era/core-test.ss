@@ -9,13 +9,6 @@
          "core.ss"
          (only-in "define-entity.ss" attr))
 
-; Helpers --------------------------------------
-
-; string -> person
-(define make-person*
-  (compose (cut send (current-snooze) cache-ref <>)
-           make-person))
-
 ; Guid tests -----------------------------------
 
 (define guid-tests
@@ -27,7 +20,9 @@
       (check-exn exn:fail:contract? (cut make-guid -123)))
     
     (test-case "make-person-guid"
-      (check-equal? (guid-entity (person-guid (make-person "Dave"))) person))))
+      (let ([guid (make-person "Dave")])
+        (check-equal? (guid-entity guid) person)
+        (check-equal? (guid-id guid) #f)))))
 
 ; Type tests -----------------------------------
 
@@ -51,22 +46,17 @@
     
     (test-case "entity-private-constructor"
       (check-pred procedure? (entity-private-constructor person))
-      (check-pred procedure? (entity-guid-constructor person))
-      (check-equal? ((entity-private-constructor person)
-                     ((entity-guid-constructor person) #f)
-                     #f
-                     "Dave")
-                    (make-person* "Dave")))
+      (check-pred procedure? (entity-guid-constructor person)))
     
     (test-case "entity-cached-constructor"
       ; see cache-test.ss for more tests
       (check-pred procedure? (entity-cached-constructor person)))
-
+    
     (test-case "entity-private-predicate"
       (check-pred procedure? (entity-private-predicate person))
       (check-pred (entity-private-predicate person)
                   ((entity-private-constructor person)
-                   ((entity-guid-constructor person) #f)
+                   ((entity-guid-constructor person) (current-snooze) #f)
                    #f
                    "Dave")))
     

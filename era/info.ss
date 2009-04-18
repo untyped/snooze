@@ -13,10 +13,10 @@
    constructor-id
    predicate-id
    constructor/defaults-id
+   copy-struct-id
    guid-id
    guid-constructor-id
    guid-predicate-id
-   copy-struct-id
    default-alias-id
    attribute-info)
   private-id)

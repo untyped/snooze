@@ -32,7 +32,21 @@
         (check-equal?     a1 a2)
         (check-not-eq?    a1 a2)
         (check-not-equal? a1 b)
-        (check-not-eq?    a1 b)))))
+        (check-not-eq?    a1 b)))
+    
+    (test-case "keyword constructor"
+      (check-equal? (make-person/defaults #:guid (entity-make-guid person #f) #:name "Dave")
+                    (make-person "Dave"))
+      (check-equal? (make-person/defaults #:guid (entity-make-guid person 123) #:name "Dave")
+                    (make-person #:guid (entity-make-guid person 123) "Dave"))
+      (check-equal? (make-person/defaults #:guid (entity-make-guid person 123) #:name "Dave")
+                    (let ([person (make-person "Dave")])
+                      (set-struct-id! person 123)
+                      person)))
+    
+    (test-case "copy constructor"
+      (check-equal? (make-person/defaults #:guid (entity-make-guid person 123) #:name "Dave")
+                    (copy-person (make-person "Dave") #:guid (entity-make-guid person 123))))))
 
 ; Provide statements -----------------------------
 

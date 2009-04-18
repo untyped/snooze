@@ -78,7 +78,7 @@
       (snooze-struct-set! struct attr val))))
 
 ; entity <attr any> ... -> struct
-(define (make-snooze-struct/defaults entity . args)
+(define (make-snooze-struct/defaults #:snooze [snooze (current-snooze)] entity . args)
   (let-values ([(arg-attrs arg-vals) (check-attribute-keywords entity args)])
     (apply (entity-private-constructor entity)
            (for/list ([attr (in-list (entity-attributes entity))])
@@ -87,9 +87,12 @@
               attr
               arg-attrs
               arg-vals
-              (type-default (attribute-type attr)))))))
+              (lambda (attr)
+                (if (entity-guid-attribute? entity attr)
+                    (entity-make-guid #:snooze snooze entity #f)
+                    (type-default (attribute-type attr)))))))))
 
-; snooze-struct <attr any> ... -> guid
+; [#:snooze snooze] snooze-struct <attr any> ... -> guid
 (define (copy-snooze-struct original . args)
   (let*-values ([(entity)             (struct-entity original)]
                 [(arg-attrs arg-vals) (check-attribute-keywords entity args)]
@@ -103,7 +106,10 @@
               attr
               arg-attrs
               arg-vals
-              existing)))))
+              (lambda (attr)
+                (if (entity-guid-attribute? entity attr)
+                    (entity-make-guid #:snooze (guid-snooze existing) entity (guid-id existing))
+                    existing)))))))
 
 ; snooze-struct snooze-struct -> void
 (define (update-snooze-struct-from-copy! struct copy)
@@ -154,23 +160,19 @@
                   (raise-type-error 'check-attribute-keywords "attribute specified more than once" attr)
                   (loop (not even?) (cdr args) (cons attr attrs-accum) vals-accum)))))))
 
-; entity attribute (listof attribute) (listof any) any -> any
+; entity attribute (listof attribute) (listof any) (attribute -> any) -> any
 ;
 ; We search for attributes by name so we don't have to worry that, for example,
 ; attr:struct-guid and attr:person-guid are not equal. Note that we are reliant on
 ; check-attribute-keywords to chuck out attributes from other entities, otherwise
 ; we might get confused between, for example, attr:person-name and attr:pet-name.
-(define (attribute-keyword-get entity needle attrs vals default)
+(define (attribute-keyword-get entity needle attrs vals default-ref)
   (let ([guid? (entity-guid-attribute? entity needle)])
     (let/ec return
       (for ([attr attrs] [val vals])
         (when (eq? needle attr)
-          (return (if guid?
-                      (entity-make-guid entity (guid-id val))
-                      val))))
-      (if guid?
-          (entity-make-guid entity (guid-id default))
-          default))))
+          (return val)))
+      (default-ref needle))))
 
 ; any -> boolean
 (define (attr/value-list? item)
