@@ -27,7 +27,10 @@
 ; Type tests -----------------------------------
 
 (define type-tests
-  (test-suite "type"))
+  (test-suite "type"
+    
+    (test-case "type-name"
+      (check-equal? (type-name (make-guid-type #f person)) 'person))))
 
 ; Entity tests ---------------------------------
 
@@ -133,7 +136,7 @@
         ; We can't make a type that is equal? to a guid type,
         ; so we test the type using type-compatible? instead:
         (check-true (type-compatible? (attribute-type (attr pet guid))
-                                      (make-guid-type #f (lambda () #f) pet))))
+                                      (make-guid-type #f pet))))
       
       (let ([expected (list 'revision 'revision 1 #t #t #t #t)])
         (check-attribute 'revision expected)

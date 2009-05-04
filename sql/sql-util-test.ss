@@ -11,9 +11,7 @@
 ; Tests ----------------------------------------
 
 (define sql-util-tests
-  (test-suite "sql-util.ss"
-
-    ))
+  (test-suite "sql-util.ss"))
 
 ; Provide statements -----------------------------
 

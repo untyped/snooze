@@ -12,7 +12,6 @@
          (for-label scheme
                     (planet untyped/unlib:3/generator)
                     (planet untyped/unlib:3/gen)
-                    (planet untyped/unlib:3/pipeline)
                     "db.ss"))
 
 ; Helpers ----------------------------------------
@@ -33,7 +32,6 @@
     scheme
     (planet untyped/unlib:3/generator)
     (planet untyped/unlib:3/gen)
-    (planet untyped/unlib:3/pipeline)
     ; It seems that the sandbox evaluator resolves files
     ; with respect to the current directory, not the
     ; directory in which this file is written.  Since we
@@ -68,5 +66,4 @@
          (for-label (all-from-out scheme
                                   (planet untyped/unlib:3/generator)
                                   (planet untyped/unlib:3/gen)
-                                  (planet untyped/unlib:3/pipeline)
                                   "db.ss")))

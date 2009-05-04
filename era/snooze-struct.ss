@@ -90,7 +90,7 @@
               (lambda (attr)
                 (if (entity-guid-attribute? entity attr)
                     (entity-make-guid #:snooze snooze entity #f)
-                    (type-default (attribute-type attr)))))))))
+                    (attribute-default #:snooze snooze attr))))))))
 
 ; [#:snooze snooze] snooze-struct <attr any> ... -> guid
 (define (copy-snooze-struct original . args)

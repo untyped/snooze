@@ -14,7 +14,7 @@
          "cached-struct.ss"
          "entity.ss"
          "info.ss"
-         #;(prefix-in sql: "sql/sql-lang.ss"))
+         (prefix-in sql: "../sql/sql-lang.ss"))
 
 ; Syntax -----------------------------------------
 
@@ -42,7 +42,8 @@
   ; Attributes:
   (define attr-stxs null)                 ; (gender age name)
   (define attr-private-stxs null)         ; (attr:person-gender attr:person-age attr:person-name attr:person-revision attr:person-guid)
-  (define attr-type-stxs null)            ; (type:symbol type:integer type:string)
+  (define attr-type-stxs null)            ; ((make-symbol-type #t) (make-integer-type #f) ...)
+  (define attr-default-stxs null)         ; (#t 123 ...)
   (define attr-kw-stxs null)              ; (#:person-gender #:person-age #:person-name #:person-revision #:person-guid)
   (define column-stxs null)               ; ('gender 'age 'name)
   (define accessor-stxs null)             ; (person-gender person-age person-name person-revision person-guid)
@@ -74,16 +75,42 @@
               (parse-entity-kws #'(entity-kw ...)))]))
   
   (define (parse-attr stx)
-    (define my-name-stx #f)
-    (define my-private-stx #f)
-    (define my-type-stx #f)
-    (define my-kw-stx #f)
-    (define my-accessor-stx #f)
-    (define my-mutator-stx #f)
-    (define my-column-stx #f)
+    (define my-name-stx        #f)
+    (define my-private-stx     #f)
+    (define my-allows-null-stx #'#t)
+    (define my-max-length-stx  #'#f)
+    (define my-default-stx     #'(lambda (snooze) #f))
+    (define my-type-stx        #f)
+    (define my-kw-stx          #f)
+    (define my-accessor-stx    #f)
+    (define my-mutator-stx     #f)
+    (define my-column-stx      #f)
+    
+    (define (parse-attr-type stx)
+      (with-syntax ([allows-null? my-allows-null-stx])
+        (syntax-case stx (boolean integer real symbol string time-tai time-utc)
+          [boolean  (set! my-type-stx #'(make-boolean-type allows-null?))]
+          [integer  (set! my-type-stx #'(make-integer-type allows-null?))]
+          [real     (set! my-type-stx #'(make-real-type allows-null?))]
+          [symbol   (set! my-type-stx (with-syntax ([max-length my-max-length-stx])
+                                           #'(make-symbol-type allows-null? max-length)))]
+          [string   (set! my-type-stx (with-syntax ([max-length my-max-length-stx])
+                                           #`(make-string-type allows-null? max-length)))]
+          [time-tai (set! my-type-stx #'(make-time-tai-type allows-null?))]
+          [time-utc (set! my-type-stx #'(make-time-utc-type allows-null?))]
+          [entity   (set! my-type-stx #'(make-guid-type allows-null? entity))])))
     
     (define (parse-attr-kws stx)
       (syntax-case stx ()
+        [(#:allow-null? val other ...)
+         (begin (set! my-allows-null-stx #'val)
+                (parse-attr-kws #'(other ...)))]
+        [(#:default val other ...)
+         (begin (set! my-default-stx #'(lambda (snooze) val))
+                (parse-attr-kws #'(other ...)))]
+        [(#:default-maker val other ...)
+         (begin (set! my-default-stx #'val)
+                (parse-attr-kws #'(other ...)))]
         [(#:column-name val other ...)
          (begin (set! my-column-stx #'val)
                 (parse-attr-kws #'(other ...)))]
@@ -95,6 +122,7 @@
       (set! attr-stxs         (cons my-name-stx     attr-stxs))
       (set! attr-private-stxs (cons my-private-stx  attr-private-stxs))
       (set! attr-type-stxs    (cons my-type-stx     attr-type-stxs))
+      (set! attr-default-stxs (cons my-default-stx  attr-default-stxs))
       (set! attr-kw-stxs      (cons my-kw-stx       attr-kw-stxs))
       (set! accessor-stxs     (cons my-accessor-stx accessor-stxs))
       (set! mutator-stxs      (cons my-mutator-stx  mutator-stxs))
@@ -102,14 +130,15 @@
     
     (syntax-case stx ()
       [(name type arg ...)
-       (identifier? #'name)
+       (and (identifier? #'name)
+            (identifier? #'type))
        (begin (set! my-name-stx     #'name)
               (set! my-private-stx  (make-id #f 'attr: entity-stx '- #'name))
-              (set! my-type-stx     #'type)
               (set! my-kw-stx       (datum->syntax #f (string->keyword (symbol->string (syntax->datum #'name)))))
               (set! my-accessor-stx (make-id entity-stx entity-stx '- #'name))
               (set! my-mutator-stx  (make-id entity-stx 'set- entity-stx '- #'name '!))
               (set! my-column-stx   #''name)
+              (parse-attr-type #'type)
               (parse-attr-kws #'(arg ...)))]))
   
   (define (parse-entity-kws stx)
@@ -156,6 +185,7 @@
                                                                            '#:revision
                                                                            (reverse attr-kw-stxs))]
                   [(attr-type ...)                                  (reverse attr-type-stxs)]
+                  [(attr-default ...)                               (reverse attr-default-stxs)]
                   [(guid-accessor revision-accessor accessor ...)   (list* (make-id entity-stx entity-stx '-guid)
                                                                            (make-id entity-stx entity-stx '-revision)
                                                                            (reverse accessor-stxs))]
@@ -171,6 +201,7 @@
                  (make-entity 'entity
                               (list 'attr ...)
                               (list attr-type ...)
+                              (list attr-default ...)
                               entity-guid-constructor
                               entity-guid-predicate
                               #:column-names
@@ -203,7 +234,7 @@
                         #:guid     [guid     (entity-make-guid #:snooze snooze entity-private #f)]
                         #:revision [revision #f]
                         #,@(append-map (lambda (kw attr name)
-                                         (list kw #`[#,name (type-default (attribute-type #,attr))]))
+                                         (list kw #`[#,name (attribute-default #:snooze snooze #,attr)]))
                                        (syntax->list #'(attr-kw ...))
                                        (syntax->list #'(attr-private ...))
                                        (syntax->list #'(attr ...))))
@@ -234,14 +265,14 @@
                               (provide deserialize-info))
                      #'(begin))
                
-               (define default-alias 'entity #;(sql:alias 'entity entity-private))
+               (define default-alias (sql:alias 'entity entity-private))
                
                ; Transformer binding: makes things like (struct ...) in plt-match work.
                ; Copied by-example from an expanded define-struct.
                ; The syntax-quotes-within-syntax-quotes are intensional.
                (define-syntaxes (entity)
                  (let ([certify (syntax-local-certifier #t)])
-                   ; Cache persistent-struct-specific compile time information:
+                   ; Cache snooze-struct-specific compile time information:
                    (entity-info-add!
                     (make-entity-info
                      (lambda ()

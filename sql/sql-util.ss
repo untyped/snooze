@@ -8,7 +8,7 @@
          srfi/26/cut
          (planet untyped/unlib:3/symbol)
          "../base.ss"
-         "../era/era.ss"
+         "../era/core.ss"
          "sql-struct.ss")
 
 ; Extract info and automatic #:what arguments ----

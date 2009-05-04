@@ -7,7 +7,7 @@
          (planet untyped/unlib:3/time)
          (planet untyped/unlib:3/symbol)
          "../base.ss"
-         "../era/era.ss")
+         "../era/core.ss")
 
 ; ***** NOTE *****
 ; The terms "entity" and "attribute" are used here
@@ -81,6 +81,7 @@
         [(symbol? val)   (make-literal type:symbol   val)]
         [(time-utc? val) (make-literal type:time-utc val)]
         [(time-tai? val) (make-literal type:time-tai val)]
+        [(guid? val)     (make-literal (make-guid-type #f (guid-entity val)) val)]
         [else            (raise-exn exn:fail:contract
                            (format "Expected (U boolean integer real string symbol time-tai time-utc), received ~s" val))]))
 
@@ -124,23 +125,27 @@
       (string? item)
       (symbol? item)
       (time-tai? item)
-      (time-utc? item)))
+      (time-utc? item)
+      (guid? item)))
 
 ; any -> boolean
 (define (quotable? item)
   (or (expression? item)
       (literal-value? item)
       (query? item)
-      (query-alias? item)))
+      (query-alias? item)
+      (guid? item)))
 
 ; (U expression source query boolean integer real string symbol time-tai time-utc) -> (U expression source)
 (define (quote-argument arg)
-  (cond [(expression? arg)            arg]
-        [(source? arg)                arg]
-        [(literal-value? arg)         (create-literal arg)]
-        [(query? arg)                 (make-query-alias (string->symbol (symbol->string (gensym 'subq))) arg)]
-        [else (raise-exn exn:fail:contract
-                (format "Expected (opt-listof (U expression entity attribute query boolean integer real string symbol time-tai time-utc)), received ~s" arg))]))
+  (cond [(expression? arg)    arg]
+        [(source? arg)        arg]
+        [(literal-value? arg) (create-literal arg)]
+        [(query? arg)         (make-query-alias (string->symbol (symbol->string (gensym 'subq))) arg)]
+        [else (raise-type-error
+               'quote-argument
+               "(opt-listof (U expression entity attribute query boolean integer real string symbol time-tai time-utc guid))"
+               arg)]))
 
 ; Provide statements --------------------------
 

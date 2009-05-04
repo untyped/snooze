@@ -38,11 +38,11 @@
           (escape-name table-name)
           (escape-name sequence-name)))
 
-; persistent-struct -> string
-(define (insert-sql struct [preserve-ids? #f])
-  (car (insert-multiple-sql (list struct) preserve-ids?)))
+; snooze-struct -> string
+(define (insert-sql struct [preserve-guids? #f])
+  (car (insert-multiple-sql (list struct) preserve-guids?)))
 
-; (listof persistent-struct) [boolean] -> (listof string)
+; (listof snooze-struct) [boolean] -> (listof string)
 ; 
 ; We don't insert the ID or revision explicitly: we rely on the SEQUENCE
 ; to generate the ID and the DEFAULT VALUE of the revision field.
@@ -50,10 +50,10 @@
 ; We will always be in a transaction at this point, so (insert-record ...)
 ; can perform a subsequent "SELECT currval('sequence');" to retrieve the last ID
 ; inserted. From this value we can calculate the IDs of every inserted struct.
-(define (insert-multiple-sql structs [preserve-ids? #f])
+(define (insert-multiple-sql structs [preserve-guids? #f])
   (cond [(not (list? structs))
          (raise-exn exn:fail:contract
-           (format "Expected (listof persistent-struct), received ~s" structs))]
+           (format "Expected (listof snooze-struct), received ~s" structs))]
         [(null? structs) null]
         [else
          (begin-with-definitions
@@ -64,7 +64,7 @@
            ;
            ; Checks all the structs are unsaved and of the same type.
            ; Raises exn:fail:snooze if they aren't.
-           (check-insert-structs entity structs preserve-ids?)
+           (check-insert-structs entity structs preserve-guids?)
            
            ; symbol
            (define table-name 
@@ -72,7 +72,7 @@
            
            ; string ; cddr skips id and revision
            (define col-names
-             (string-join (if preserve-ids?
+             (string-join (if preserve-guids?
                               (column-names entity)
                               (cddr (column-names entity)))
                           ", "))
@@ -81,7 +81,7 @@
            (define col-values
              (string-join (map (lambda (struct)
                                  ; string ; cddr skips id and revision
-                                 (string-append "(" (string-join (if preserve-ids?
+                                 (string-append "(" (string-join (if preserve-guids?
                                                                      (column-values struct)
                                                                      (cddr (column-values struct)))
                                                                  ", ") ")"))
@@ -91,44 +91,40 @@
            ; (listof string) ; one string per SQL statement, and PostgreSQL can do it all in one statement
            (list (string-append "INSERT INTO " table-name " (" col-names ") VALUES " col-values ";")))]))
 
-; persistent-struct -> string
+; snooze-struct -> string
 (define (update-sql struct)
   (define entity (struct-entity struct))
-  (define id (struct-id struct))
-  (if id
+  (if (struct-saved? struct)
       (string-append "UPDATE " (escape-name (entity-table-name entity)) " SET "
                      (string-join (map (lambda (attr value)
                                          (define name (attribute-column-name attr))
                                          (define type (attribute-type attr))
                                          (string-append (escape-name name) " = " (escape-value type value)))
                                        (cdr (entity-attributes entity))
-                                       (cdr (struct-attributes struct)))
+                                       (cdr (snooze-struct-ref* struct)))
                                   ", ")
-                     " WHERE " (escape-name 'id) " = " (escape-value type:id id) ";")
-      (raise-exn exn:fail:snooze
-        (format "ID must be non-#f to perform an UPDATE: ~s" struct))))
+                     " WHERE " (escape-name 'id) " = " (escape-value type:integer (guid-id (struct-guid struct))) ";")
+      (error "struct not in database" struct)))
 
 ; guid -> string
 (define (delete-sql guid)
   (define name (entity-table-name (guid-entity guid)))
-  (define id (guid-id guid))
-  (string-append "DELETE FROM " (escape-name name) " WHERE " (escape-name 'id) " = " (escape-value type:id id) ";"))
+  (string-append "DELETE FROM " (escape-name name) " WHERE " (escape-name 'id) " = " (escape-value type:integer (guid-id guid)) ";"))
 
 ; Helpers --------------------------------------
 
-; entity (listof persistent-struct) [boolean] -> void | exn:fail:snooze
+; entity (listof snooze-struct) [boolean] -> void | exn:fail:snooze
 ;
 ; Checks all structs are unsaved and of the specified type.
-(define (check-insert-structs entity structs [skip-id-check? #f])
+(define (check-insert-structs entity structs [skip-guid-check? #f])
   (for-each (lambda (struct)
               ; void | exn:fail:snooze
               (unless (eq? entity (struct-entity struct))
                 (raise-exn exn:fail:snooze
                   (format "All structs must be of the same type: ~s" structs)))
               ; void | exn:fail:snooze
-              (when (and (struct-id struct) (not skip-id-check?))
-                (raise-exn exn:fail:snooze
-                  (format "ID must be #f to perform an INSERT: ~s" struct))))
+              (when (and (struct-saved? struct) (not skip-guid-check?))
+                (error "struct already in database" struct)))
             structs))
 
 ; entity -> string
@@ -137,11 +133,7 @@
   (string-join (list* (string-append (escape-name 'id) " INTEGER PRIMARY KEY "
                                      "DEFAULT nextval('" (escape-name seq-name) "')")
                       (string-append (escape-name 'revision) "INTEGER NOT NULL DEFAULT 0")
-                      (map (lambda (attr)
-                             (define name (attribute-column-name attr))
-                             (define type (attribute-type attr))
-                             (string-append (escape-name name) " " (type-definition-sql type)))
-                           (cddr (entity-attributes entity))))
+                      (map attribute-definition-sql (cddr (entity-attributes entity))))
                ", "))
 
 ; entity -> (list-of string)
@@ -150,32 +142,35 @@
          (escape-name (attribute-column-name attr)))
        (entity-attributes entity)))
 
-; persistent-struct -> string
+; snooze-struct -> string
 (define (column-values struct)
   (define entity (struct-entity struct))
   (map (lambda (attr value)
          (escape-value (attribute-type attr) value))
        (entity-attributes entity)
-       (struct-attributes struct)))
+       (snooze-struct-ref* struct)))
 
-; type -> string
-(define (type-definition-sql type)
-  (string-join (append (list (cond [(guid-type? type)     (format "INTEGER REFERENCES ~a.~a" 
-                                                                  (escape-name (entity-name (guid-type-entity type)))
-                                                                  (escape-name 'id))]
-                                   [(boolean-type? type)  "BOOLEAN"]
-                                   [(integer-type? type)  "INTEGER"]
-                                   [(real-type? type)     "REAL"]
-                                   [(string-type? type)   (string-type-definition-sql (string-type-max-length type))]
-                                   [(symbol-type? type)   (string-type-definition-sql (symbol-type-max-length type))]
-                                   [(time-tai-type? type) "TIMESTAMP WITHOUT TIME ZONE"]
-                                   [(time-utc-type? type) "TIMESTAMP WITHOUT TIME ZONE"]
-                                   [else                  (raise-exn exn:fail:snooze (format "Unrecognised type: ~a" type))]))
-                       (if (type-allows-null? type)
-                           null
-                           (list "NOT NULL"))
-                       (list (string-append "DEFAULT " (escape-value type (type-default type)))))
-               " "))
+; attribute -> string
+(define (attribute-definition-sql attr)
+  (let ([type (attribute-type attr)]
+        [name (attribute-column-name attr)])
+    (string-join (append (list (escape-name name)
+                               (cond [(guid-type? type)     (format "INTEGER REFERENCES ~a.~a" 
+                                                                    (escape-name (entity-name (guid-type-entity type)))
+                                                                    (escape-name 'id))]
+                                     [(boolean-type? type)  "BOOLEAN"]
+                                     [(integer-type? type)  "INTEGER"]
+                                     [(real-type? type)     "REAL"]
+                                     [(string-type? type)   (string-type-definition-sql (string-type-max-length type))]
+                                     [(symbol-type? type)   (string-type-definition-sql (symbol-type-max-length type))]
+                                     [(time-tai-type? type) "TIMESTAMP WITHOUT TIME ZONE"]
+                                     [(time-utc-type? type) "TIMESTAMP WITHOUT TIME ZONE"]
+                                     [else                  (raise-exn exn:fail:snooze (format "Unrecognised type: ~a" type))]))
+                         (if (type-allows-null? type)
+                             null
+                             (list "NOT NULL"))
+                         (list (string-append "DEFAULT " (escape-value type (attribute-default attr)))))
+                 " ")))
 
 ; (U integer #f) -> string
 (define (string-type-definition-sql max-length)

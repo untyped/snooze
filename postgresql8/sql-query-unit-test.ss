@@ -47,9 +47,9 @@
 ; expression-alias
 (define count-star (sql:alias 'count-star (sql:count*)))
 (define count-p1 (sql:alias 'count-p1 (sql:count* p1)))
-(define count-p1-id (sql:alias 'count-p1-id (sql:count p1-id)))
-(define count-p2-id (sql:alias 'count-p2-id (sql:count p2-id)))
-(define sum-ids (sql:alias 'sum-ids (sql:+ p1-id p2-id)))
+(define count-p1-id (sql:alias 'count-p1-id (sql:count (sql p1.guid))))
+(define count-p2-id (sql:alias 'count-p2-id (sql:count (sql p2.guid))))
+(define sum-ids (sql:alias 'sum-ids (sql:+ (sql p1.guid) (sql p2.guid))))
 
 ; Tests ----------------------------------------
 
@@ -61,19 +61,19 @@
       (check-equal? (distinct-sql (list) (list)) 
                     "DISTINCT "
                     "no expressions")
-      (check-equal? (distinct-sql (list (sql:= p1-id 123)) (list p1-id))
+      (check-equal? (distinct-sql (list (sql:= (sql p1.guid) 123)) (list (sql p1.guid)))
                     #<<ENDSQL
 DISTINCT ON ("p1-id" = 123) 
 ENDSQL
                     "single expression")
-      (check-equal? (distinct-sql (list (sql:= p1-id 123) (sql:= p1-revision 123)) (list p1-id))
+      (check-equal? (distinct-sql (list (sql:= (sql p1.guid) 123) (sql:= (sql p1.revision) 123)) (list (sql p1.guid)))
                     #<<ENDSQL
 DISTINCT ON ("p1-id" = 123), ("p1"."revision" = 123) 
 ENDSQL
                     "multiple expressions"))
     
     (test-case "display-what"
-      (check-equal? (what-sql (list p1-id p1-revision p1-name) (list p1-name))
+      (check-equal? (what-sql (list (sql p1.guid) (sql p1.revision) (sql p1.name)) (list (sql p1.name)))
                     #<<ENDSQL
 "p1"."id" AS "p1-id", "p1"."revision" AS "p1-revision", "p1-name"
 ENDSQL
@@ -98,15 +98,15 @@ ENDSQL
 ENDSQL
                     "subquery")
       
-      (check-equal? (from-sql (sql:inner p1 (sql:alias 'subq (sql:select #:from p2)) (sql:= p1-id p2-id))
-                              (list p2-id p2-revision p2-name))
+      (check-equal? (from-sql (sql:inner p1 (sql:alias 'subq (sql:select #:from p2)) (sql:= (sql p1.guid) (sql p2.guid)))
+                              (list (sql p2.guid) (sql p2.revision) (sql p2.name)))
                     #<<ENDSQL
 ("Person" AS "p1" INNER JOIN (SELECT "p2"."id" AS "p2-id", "p2"."revision" AS "p2-revision", "p2"."name" AS "p2-name" FROM "Person" AS "p2") AS "subq" ON ("p1"."id" = "p2-id"))
 ENDSQL
                     "inner join"))
     
     (test-case "display-group"
-      (check-equal? (group-sql (list p1-id p1-revision p1-name) (list p1-id p1-revision p1-name))
+      (check-equal? (group-sql (list (sql p1.guid) (sql p1.revision) (sql p1.name)) (list (sql p1.guid) (sql p1.revision) (sql p1.name)))
                     #<<ENDSQL
 "p1-id", "p1-revision", "p1-name"
 ENDSQL
@@ -119,7 +119,7 @@ ENDSQL
                     "expression aliases"))
     
     (test-case "display-order"
-      (check-equal? (order-sql (list (sql:asc p1-id) (sql:desc p1-revision) (sql:order p1-name 'asc)) (list p1-name))
+      (check-equal? (order-sql (list (sql:asc (sql p1.guid)) (sql:desc (sql p1.revision)) (sql:order (sql p1.name) 'asc)) (list (sql p1.name)))
                     #<<ENDSQL
 "p1"."id" ASC, "p1"."revision" DESC, "p1-name" ASC
 ENDSQL
@@ -131,16 +131,16 @@ ENDSQL
 ENDSQL
                     "expression aliases")
       
-      (check-equal? (order-sql (list (sql:asc (sql:+ p1-id p2-id))) null)
+      (check-equal? (order-sql (list (sql:asc (sql:+ (sql p1.guid) (sql p2.guid)))) null)
                     #<<ENDSQL
 ("p1"."id" + "p2"."id") ASC
 ENDSQL
                     "expressions"))
     
     (test-case "display-expression"
-      (check-equal? (expression-sql (sql:and (sql:= p1-id 123) 
-                                             (sql:= (sql:string-append p1-name " of Loxley") "Robin of Loxley"))
-                                    (list p1-name))
+      (check-equal? (expression-sql (sql:and (sql:= (sql p1.guid) 123) 
+                                             (sql:= (sql:string-append (sql p1.name) " of Loxley") "Robin of Loxley"))
+                                    (list (sql p1.name)))
                     "((\"p1\".\"id\" = 123) AND ((\"p1-name\" || ' of Loxley') = 'Robin of Loxley'))"
                     "nested expressions")
       (check-equal? (expression-sql (sql:and) null) "true" "argumentless and")
@@ -148,7 +148,7 @@ ENDSQL
       (check-equal? (expression-sql (sql:+) null) "0" "argumentless +")
       (check-equal? (expression-sql (sql:*) null) "1" "argumentless *")
       (check-equal? (expression-sql (sql:-) null) "0" "argumentless -")
-      (check-equal? (expression-sql (sql:in p1-id (sql:select #:what p1-id #:from p1)) null)
+      (check-equal? (expression-sql (sql:in (sql p1.guid) (sql:select #:what (sql p1.guid) #:from p1)) null)
                     "(\"p1\".\"id\" IN (SELECT \"p1\".\"id\" AS \"p1-id\" FROM \"Person\" AS \"p1\"))"
                     "sql:in")
       (check-equal? (expression-sql (sql:regexp-replace     "a" "b" "c") null)    "(regexp_replace('a', 'b', 'c'))"       "sql:regexp-replace")
@@ -169,23 +169,23 @@ ENDSQL
         
         (define query1
           (sql:select #:what   (list a b)
-                      #:from   (sql:inner a b (sql:= a-id b-owner-id))
-                      #:where  (sql:= a-name "Jon Arbuckle")
-                      #:order  (list (sql:asc a-name)
-                                     (sql:asc b-name))
+                      #:from   (sql:inner a b (sql:= (sql a.guid) (sql b.owner-id)))
+                      #:where  (sql:= (sql a.name) "Jon Arbuckle")
+                      #:order  (list (sql:asc (sql a.name))
+                                     (sql:asc (sql b.name)))
                       #:limit  10
                       #:offset 20))
         
         (define query2
           (sql:select #:what   (list a b)
-                      #:from   (sql:inner (sql:alias 'subq (sql:select #:from a)) b (sql:= a-id b-owner-id))
-                      #:where  (sql:= a-name b-name)
-                      #:order  (list (sql:asc a-name)
-                                     (sql:asc b-name))))
+                      #:from   (sql:inner (sql:alias 'subq (sql:select #:from a)) b (sql:= (sql a.guid) (sql b.owner-id)))
+                      #:where  (sql:= (sql a.name) (sql b.name))
+                      #:order  (list (sql:asc (sql a.name))
+                                     (sql:asc (sql b.name)))))
         
         (define query3
           (sql:select #:what  (list a expr)
-                      #:from  (sql:inner a b (sql:= a-id b-owner-id))
+                      #:from  (sql:inner a b (sql:= (sql a.guid) (sql b.owner-id)))
                       #:group (list a)))
         
         (define sql1

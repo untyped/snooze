@@ -9,7 +9,7 @@
          (planet untyped/unlib:3/list)
          (planet untyped/unlib:3/symbol)
          "../base.ss"
-         "../era/era.ss"
+         "../era/core.ss"
          "sql-struct.ss"
          "sql-util.ss")
 
@@ -29,17 +29,11 @@
      (make-expression-alias id item)]
     [(list (and alias (struct entity-alias (name entity))) (? attribute? attr))
      (define entity (source-alias-value alias))
-     (if (memq (attribute-entity attr) (list entity entity:persistent-struct))
+     (if (eq? (attribute-entity attr) entity)
          (make-attribute-alias alias attr)
          (raise-exn exn:fail:contract
            (format "Entity does not contain that attribute: ~a ~a" entity attr)))]
     [other (raise-exn exn:fail:contract (format "Bad arguments to sql:alias: ~s" other))]))
-
-; symbol entity -> entity-alias
-(define sql:entity
-  (case-lambda 
-    [(entity)    (sql:entity (gensym (entity-name entity)) entity)]
-    [(id entity) (make-entity-alias id entity)]))
 
 ; entity-alias (U symbol attribute) -> attribute-alias
 ;
@@ -212,7 +206,7 @@
   (let ([arg (quote-argument alias)])
     (if (numeric-expression? arg)
         (make-aggregate type:real 'average (list arg))
-        (raise-type-error 'average (list arg)))))
+        (raise-type-error 'average "numeric-expression" arg))))
 
 ; expression+quotable ... -> function
 (define-function (sql:and . args)
@@ -467,8 +461,6 @@
                                                  (or/c integer? false/c)
                                                  (or/c integer? false/c)
                                                  query?)]
- [rename sql:entity          entity          (case-> (-> entity? entity-alias?)
-                                                     (-> symbol? entity? entity-alias?))]
  [rename sql:attr            attr            (-> entity-alias? (or/c attribute? symbol?) attribute-alias?)]
  [rename sql:count           count           (-> attribute-alias? aggregate?)]
  [rename sql:count*          count*          (->* () ((or/c entity-alias? query-alias?)) aggregate?)]

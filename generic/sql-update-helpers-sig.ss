@@ -6,5 +6,5 @@ create-fields-sql
 ; entity -> string
 column-names
 
-; persistent-struct -> string
+; snooze-struct -> string
 column-values

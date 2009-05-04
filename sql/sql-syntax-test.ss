@@ -2,11 +2,12 @@
 
 (require (for-syntax scheme/base
                      "sql-syntax-internal.ss")
-         "../persistent-struct-syntax.ss"
          "../test-base.ss"
          "../test-data.ss"
+         "../era/era.ss"
          (prefix-in sql: "sql-lang.ss")
          "sql-alias.ss"
+         "sql-struct.ss"
          "sql-syntax.ss")
 
 ; Helpers ----------------------------------------
@@ -40,11 +41,14 @@
     
     (test-case "dotted identifier"
       (let-alias ([p person])
-        (check-equal? (sql p.id) (sql p-id))))
+        (check-pred attribute-alias? (sql p.guid))))
     
     (test-case "default entity alias"
-      (check-equal? (sql person)      (sql:alias 'person entity:person))
-      (check-equal? (sql person.name) (sql:alias (sql:alias 'person entity:person) attr:person-name)))
+      (check-equal? (sql person)
+                    (sql:alias 'person person))
+      (check-equal? (sql person.name)
+                    (sql:alias (sql:alias 'person person)
+                               (attr person name))))
     
     (test-case "expression"
       (check-equal? (sql (= 1 2)) (sql:= 1 2))
@@ -64,9 +68,10 @@
     
     (test-case "columns (for use in #:what and #:group clauses)"
       (let-alias ([a     person]
-                  [expr1 (sql (+ a-id 1))])
-        (check-not-sql-exn (sql a-id))
-        (check-not-sql-exn (sql a-revision))
+                  [c     course]
+                  [expr1 (sql (+ c.value 1))])
+        (check-not-sql-exn (sql a.guid))
+        (check-not-sql-exn (sql a.revision))
         (check-not-sql-exn (sql expr1))))
     
     (test-case "sources (for use in #:from clauses)"
@@ -76,26 +81,26 @@
         (check-not-sql-exn (sql a))
         (check-not-sql-exn (sql q))
         (check-not-sql-exn (sql (outer a q)))
-        (check-not-sql-exn (sql (inner a q (= a-id b-id))))))
+        (check-not-sql-exn (sql (inner a q (= a.guid b.guid))))))
     
     (test-case "orders (for use in #:order clauses)"
       (let-alias ([a person])
         (let ([x 'asc])
-          (check-not-sql-exn (sql (asc a-id)))
-          (check-not-sql-exn (sql (desc a-id)))
-          (check-not-sql-exn (sql (order a-id 'asc)))
-          (check-not-sql-exn (sql (order a-id 'desc)))
-          (check-not-sql-exn (sql (order a-id ,x))))))
+          (check-not-sql-exn (sql (asc a.guid)))
+          (check-not-sql-exn (sql (desc a.guid)))
+          (check-not-sql-exn (sql (order a.guid 'asc)))
+          (check-not-sql-exn (sql (order a.guid 'desc)))
+          (check-not-sql-exn (sql (order a.guid ,x))))))
     
     (test-case "select : #:what clause"
       (let-alias ([a person])
-        (check-equal? (sql (select #:what (a-id a-name) #:from a))
-                      (sql:select #:what (list a-id a-name) #:from a))))
+        (check-equal? (sql (select #:what (a.guid a.name) #:from a))
+                      (sql:select #:what (list (sql a.guid) (sql a.name)) #:from a))))
     
     (test-case "select : #:order clause"
       (let-alias ([a person])
-        (check-equal? (sql (select #:from a #:order ((asc a-id))))
-                      (sql:select #:from a #:order (list (sql:asc a-id))))))
+        (check-equal? (sql (select #:from a #:order ((asc a.guid))))
+                      (sql:select #:from a #:order (list (sql:asc (sql a.guid)))))))
     
     (test-case "select : #:distinct clause"
       (let-alias ([a person])

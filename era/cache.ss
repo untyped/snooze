@@ -23,6 +23,9 @@
     ; (parameter frame)
     (field [current-frame (make-parameter (create-frame #f))])
     
+    ; (hashof (cons symbol natural) guid)
+    (field [guid-cache (make-hash)])
+    
     ; Constructor --------------------------------
     
     (super-new)
@@ -35,12 +38,12 @@
         (thunk)))
     
     ; guid [frame] [(U any (-> any))] -> snooze-struct
-    (define/public (cache-ref guid [frame (current-frame)] [default (cut error "cache-ref: struct not cached" guid)])
+    (define/public (cache-ref guid [default (cut error "cache-ref: struct not cached" guid)] [frame (current-frame)])
       (cond [(hash-ref (frame-data frame) guid #f)
              => (lambda (local) local)]
             [(frame-parent frame)
              => (lambda (parent)
-                  (let* ([remote (cache-ref guid parent)]
+                  (let* ([remote (cache-ref guid default parent)]
                          [local  (copy-snooze-struct remote)])
                     (cache-set! guid local frame)
                     local))]
@@ -55,9 +58,20 @@
 
     ; snooze-struct [frame] -> guid
     (define/public (cache-add! struct [frame (current-frame)])
-      (if (cache-ref (struct-guid struct) frame #f)
+      (if (cache-ref (struct-guid struct) #f frame)
           (error "cache-add!: struct already cached" struct)
           (cache-set! (struct-guid struct) struct frame)))
+    
+    ; entity natural -> guid
+    (define/public (get-interned-guid entity id)
+      (unless (entity? entity) (raise-type-error 'get-interned-guid "entity" entity))
+      (unless (number? id)     (raise-type-error 'get-interned-guid "number" id))
+      (hash-ref guid-cache
+                (cons (entity-name entity) id)
+                (lambda () 
+                  (let ([guid (entity-make-guid #:snooze this entity id)])
+                    (hash-set! guid-cache (cons (entity-name entity) id) guid)
+                    guid))))
     
         ; -> #s(snooze ...)
     (define/public (get-serializable-cache-address)

@@ -16,23 +16,23 @@ create-sql
 ; entity -> string
 drop-sql       
 
-; persistent-struct [boolean] -> string
+; snooze-struct [boolean] -> string
 ; 
-; Returns the SQL needed to insert a persistent-struct in the database.
+; Returns the SQL needed to insert a snooze-struct in the database.
 ; Allocates an ID and revision number automatically by default. The optional
 ; boolean argument can be set to #t to allocate the ID and revision already 
 ; present in the struct. This feature is used by the audit trail system.
 insert-sql
 
-; (listof persistent-struct) [boolean] -> (listof string)
+; (listof snooze-struct) [boolean] -> (listof string)
 ; 
-; Returns the SQL needed to insert a list of persistent-structs in the database.
+; Returns the SQL needed to insert a list of snooze-structs in the database.
 ; Allocates IDs and revision numbers automatically by default. The optional
 ; boolean argument can be set to #t to allocate the IDs and revisions already 
 ; present in the struct. This feature is used by the audit trail system.
 insert-multiple-sql
 
-; persistent-struct -> string
+; snooze-struct -> string
 update-sql
 
 ; guid -> string

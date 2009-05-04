@@ -45,14 +45,14 @@
       (with-snooze-reraise (sqlite:exn:sqlite? (format "Could not drop table for ~a" entity))
         (sqlite:exec/ignore (connection-back-end conn) (drop-sql entity))))
     
-    ; connection persistent-struct -> integer
+    ; connection snooze-struct -> guid
     ;
     ; Inserts a new database record for the struct and returns its ID.
     (define/public (insert-record conn struct)
       (with-snooze-reraise (sqlite:exn:sqlite? (format "Could not insert database record for ~a" struct))
         (sqlite:insert (connection-back-end conn) (insert-sql struct))))
     
-    ; connection persistent-struct -> void
+    ; connection snooze-struct -> void
     ;
     ; Inserts a new database record for the struct and returns its ID.
     (define/public (insert-record/id conn struct)
@@ -60,7 +60,7 @@
         (sqlite:insert (connection-back-end conn) (insert-sql struct #t))
         (void)))
     
-    ; connection persistent-struct -> void
+    ; connection snooze-struct -> void
     (define/public (update-record conn struct)
       (with-snooze-reraise (sqlite:exn:sqlite? (format "Could not update database record for ~a" struct))
         (sqlite:exec/ignore (connection-back-end conn) (update-sql struct))
@@ -72,11 +72,11 @@
         (sqlite:exec/ignore (connection-back-end conn) (delete-sql guid))
         (void)))
     
-    ; connection query -> result-generator
-    (define/public (g:find conn query)
+    ; snooze<%> connection query -> result-generator
+    (define/public (g:find snooze conn query)
       (with-snooze-reraise (sqlite:exn:sqlite? (format "Could not execute SELECT query: ~a" (query-sql query)))
         (let ([results (sqlite:select (connection-back-end conn) (query-sql query))])
-          (g:map (make-struct-extractor (query-extract-info query))
+          (g:map (make-struct-extractor (query-extract-info query) snooze)
                  (g:map (make-parser (map expression-type (query-what query)))
                         (g:list (remove-column-names results)))))))
     
@@ -126,7 +126,7 @@
     ; query output-port string -> query
     ;
     ; Prints an SQL string to stdout as a side effect.
-    (define/public (dump-sql query [output-port (current-output-port)] [format "~a"])
+    (define/public (debug-sql query [output-port (current-output-port)] [format "~a"])
       (fprintf output-port format (query-sql query))
       query)))
 

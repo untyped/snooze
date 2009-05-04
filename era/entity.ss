@@ -11,6 +11,7 @@
 ;   symbol
 ;   (listof symbol)
 ;   (listof type)
+;   (listof (snooze -> any))
 ;   (snooze-cache<%> (U natural #f) -> guid)
 ;   (any -> boolean)
 ;   [#:table-name   symbol]
@@ -26,12 +27,13 @@
 (define (create-entity name
                        attr-names
                        attr-types
+                       attr-defaults
                        guid-constructor
                        guid-predicate
                        #:table-name   [table-name   name]
                        #:column-names [column-names attr-names]
-                       #:on-save      [on-save      (lambda (continue struct) (continue struct))]
-                       #:on-delete    [on-delete    (lambda (continue struct) (continue struct))]
+                       #:on-save      [on-save      (lambda (continue conn struct) (continue conn struct))]
+                       #:on-delete    [on-delete    (lambda (continue conn struct) (continue conn struct))]
                        #:properties   [properties   null])
   
   ; integer
@@ -70,26 +72,32 @@
   (define guid-attribute
     (let* ([name             'guid]
            [col              'id]
-           [type             (make-guid-type #f (cut guid-constructor #f) entity)]
+           [type             (make-guid-type #f entity)]
+           [default-maker    (lambda (snooze) (make-guid #f #:snooze snooze))]
            [index            0])
-      (create-attribute name col type entity index struct-accessor struct-mutator)))
+      (create-attribute name col type entity index
+                        default-maker struct-accessor struct-mutator)))
   
   (define revision-attribute
     (let* ([name             'revision]
            [col              'revision]
-           [type             (make-integer-type #f (lambda () #f))]
+           [type             (make-integer-type #f)]
+           [default-maker    (lambda (snooze) #f)]
            [index            1])
-      (create-attribute name col type entity index struct-accessor struct-mutator)))
+      (create-attribute name col type entity index
+                        default-maker struct-accessor struct-mutator)))
   
   ; (listof attribute)
   (define attributes
     (list* guid-attribute
            revision-attribute
-           (for/list ([index (in-range 2 (+ num-attrs 2))]
-                      [name  (in-list attr-names)]
-                      [col   (in-list column-names)]
-                      [type  (in-list attr-types)])
-             (create-attribute name col type entity index struct-accessor struct-mutator))))
+           (for/list ([index         (in-range 2 (+ num-attrs 2))]
+                      [name          (in-list attr-names)]
+                      [col           (in-list column-names)]
+                      [type          (in-list attr-types)]
+                      [default-maker (in-list attr-defaults)])
+             (create-attribute name col type entity index
+                               default-maker struct-accessor struct-mutator))))
   
   ; any ... -> guid
   (define cached-constructor
@@ -113,19 +121,18 @@
   (set-entity-cached-predicate!    entity cached-predicate)
   (set-entity-attributes!          entity attributes)
   
-  #;(add-schema-entity! entity)
-  
   (values entity struct-type cached-constructor cached-predicate))
 
 ; Helpers ----------------------------------------
 
-; symbol symbol type entity integer (struct natural -> any) (struct natural any -> void) -> attribute 
-(define (create-attribute name col type entity index struct-accessor struct-mutator)
+; symbol symbol type entity integer (snooze -> any) (struct natural -> any) (struct natural any -> void) -> attribute 
+(define (create-attribute name col type entity index default-maker struct-accessor struct-mutator)
   (let* ([private-accessor (make-struct-field-accessor struct-accessor index name)]
          [private-mutator  (make-struct-field-mutator  struct-mutator  index name)]
          [cached-accessor  (make-cached-accessor private-accessor)]
          [cached-mutator   (make-cached-mutator  private-mutator)])
     (make-attribute name col type entity index
+                    default-maker
                     private-accessor
                     private-mutator
                     cached-accessor
@@ -156,6 +163,7 @@
          (->* (symbol?
                (listof symbol?)
                (listof type?)
+               (listof procedure?)
                (-> (is-a?/c snooze-cache<%>)
                    (or/c natural-number/c #f)
                    guid?)

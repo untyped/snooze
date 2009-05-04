@@ -4,7 +4,6 @@
          srfi/19
          "../test-base.ss"
          "../test-data.ss"
-         "../test-util.ss"
          "../era/era.ss"
          "sql-data-unit.ss")
 
@@ -27,10 +26,10 @@
   (test-suite "sql-data-unit.ss"
     
     (test-case "escape-value : guid"
-      (let ([t (make-guid-type #t #f entity:person)])
+      (let ([t (make-guid-type #t #f person)])
         (check-equal? (escape-value t #f) "NULL")
-        (check-equal? (escape-value t (make-guid entity:person 123)) "123")
-        (check-exn exn:fail:contract? (cut escape-value t (make-guid entity:course 123)))))
+        (check-equal? (escape-value t (make-guid person 123)) "123")
+        (check-exn exn:fail:contract? (cut escape-value t (make-guid course 123)))))
     
     (test-case "escape-value : boolean"
       (let ([t (make-boolean-type #t #f)])

@@ -10,14 +10,14 @@
 
 ; Procedures -------------------------------------
 
-; persistent-struct entity [boolean] -> (listof check-result)
+; snooze-struct entity [boolean] -> (listof check-result)
 (define (check-struct/entity struct entity [pretty-messages? #t])
   (apply check-all
          (for/list ([attr (entity-attributes entity)])
            (check/annotate ([ann:attrs (list attr)])
              (check-struct/attribute struct attr pretty-messages?)))))
 
-; persistent-struct attribute [boolean] -> (listof check-result)
+; snooze-struct attribute [boolean] -> (listof check-result)
 (define (check-struct/attribute struct attr [pretty-messages? #t])
   ; type
   (define type
@@ -46,5 +46,5 @@
 ; Provide statements -----------------------------
 
 (provide/contract
- [check-struct/entity    (->* (persistent-struct? entity?)    (boolean?) (listof check-result?))]
- [check-struct/attribute (->* (persistent-struct? attribute?) (boolean?) (listof check-result?))])
+ [check-struct/entity    (->* (snooze-struct? entity?)    (boolean?) (listof check-result?))]
+ [check-struct/attribute (->* (snooze-struct? attribute?) (boolean?) (listof check-result?))])

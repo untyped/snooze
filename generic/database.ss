@@ -27,24 +27,25 @@
     
     ; ***** NOTE *****
     ; The xxx-record functions are called from the main Snooze interface code.
-    ; The main Snooze functions in snooze-unit.ss handle the calling of
-    ; pipelines and the updating of the structures: these functions 
-    ; *DO NOT DO THESE THINGS*.
+    ; The main Snooze functions in snooze-unit.ss call hooks and update 
+    ; snooze-structs with new guids and revisions.
+    ; 
+    ; These functions do not do these things.
     ; ****************
     
-    ; connection persistent-struct -> integer
+    ; connection snooze-struct -> integer
     ;
     ; Inserts a new database record for the structure and returns the new id,
     ; but does not store the id in the struct.
     insert-record
     
-    ; connection persistent-struct -> void
+    ; connection snooze-struct -> void
     ;
     ; Inserts a new database record for the structure using the ID present in
     ; the structure.
     insert-record/id
     
-    ; connection persistent-struct -> void
+    ; connection snooze-struct -> void
     ;
     ; Updates the database record for the structure.
     update-record
@@ -57,7 +58,7 @@
     ; select -> (gen-> result)
     ;
     ; Queries the database and returns a generator that parses the results
-    ; and extracts persistent-structs as necessary before returning rows.
+    ; and extracts snooze-structs as necessary before returning rows.
     g:find
     
     ; conn -> boolean
@@ -82,7 +83,7 @@
     ;     format      : a format string with one "~a" or "~s" in it
     ; 
     ; Prints an SQL string to stdout as a side effect.
-    dump-sql
+    debug-sql
     
     ; -> (listof symbol)
     ;

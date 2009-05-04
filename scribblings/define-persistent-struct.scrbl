@@ -31,8 +31,7 @@ Creates a new persistent structure, and binds variables related to the new struc
   @item{@schemeidfont{set-}@scheme[id]@schemeidfont{-}@scheme[attr-id]@schemeidfont{!}, a set of @italic{mutator} procedures, including @schemeidfont{set-}@scheme[id]@schemeidfont{-id!} and @schemeidfont{set-}@scheme[id]@schemeidfont{-revision!}, that take a persistent structure and an arbitrary Scheme value as arguments, and mutate the structure to set the corresponding attribute to the supplied value;}
   @item{@extmore["http://pre.plt-scheme.org/docs/html/reference/structures.html#(part%20structinfo)"]{
     Structure type transformer bindings in the PLT Reference} @scheme[id], the transformer binding provided by @scheme[define-struct], used with PLT forms such as @scheme[shared] and @scheme[match];}
-  @item{@schemeidfont{entity:}@scheme[id], an alias for @scheme[id], is provided for backwards compatibility only (replaced by @scheme[id]);}
-  @item{@schemeidfont{attr:}@scheme[id]@schemeidfont{-}@scheme[attr-id], a set of @italic{attribute metadata} values, are provided for backwards compatibility only (replaced by the @scheme[attr] macro);}}
+  @item{@schemeidfont{entity:}@scheme[id], an alias for @scheme[id], is provided for backwards compatibility only (replaced by @scheme[id]);}}
 
 By default, persistent structures are stored in rows in a database table of the same name. The @scheme[#:table-name] entity option allows you to override the default table name and provide something more user-friendly: hyphen characters in table names must be escaped in most DBMSs. Similarly, the @scheme[#:column-name] attribute option allows you to override the default column name for each attribute. The column names for @schemeidfont{id} and @schemeidfont{revision} may not be changed.
 

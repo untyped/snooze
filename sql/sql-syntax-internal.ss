@@ -5,7 +5,7 @@
          srfi/26
          (planet untyped/unlib:3/syntax)
          "../base.ss"
-         "../persistent-struct-info.ss"
+         "../era/info.ss"
          (prefix-in sql: "sql-lang.ss")
          "sql-struct.ss"
          "sql-syntax-util.ss"
@@ -48,14 +48,15 @@
     [id (simple-dotted-identifier? #'id 2 2)
         (with-syntax ([(alias attr) (dotted-identifier-split #'id)])
           (cond [(sql-identifier? #'alias)
-                 #'(sql:attr alias 'attr)]
+                 (syntax/loc stx (sql:attr alias 'attr))]
                 [(entity-identifier? #'alias)
-                 #`(sql:attr #,(persistent-struct-info-default-alias-id (persistent-struct-info-ref #'alias)) 'attr)]
+                 (with-syntax ([entity (entity-info-default-alias-id (entity-info-ref #'alias))])
+                   (syntax/loc stx (sql:attr entity 'attr)))]
                 [else (raise-syntax-error 'expand-identifier "not an SQL identifier" stx #'id)]))]
     [id (identifier? #'id)
         (cond [(sql-identifier? #'id) #'id]
               [(entity-identifier? #'id)
-               (persistent-struct-info-default-alias-id (persistent-struct-info-ref #'id))]
+               (entity-info-default-alias-id (entity-info-ref #'id))]
               [else (raise-syntax-error 'expand-identifier "not an SQL identifier" stx #'id)])]))
 
 (define (expand-literal stx)
@@ -110,43 +111,59 @@
    expand-source
    expand-unquote))
 
+(define (expand-in-haystack stx)
+  (syntax-case* stx (select) symbolic-identifier=?
+    [(select arg ...) (expand-select stx)]
+    [(item ...)       #`(list #,@(expand-expression+unquote (syntax->list #'(item ...))))]))
+
+(define expand-in-haystack+unquote
+  ((or-expand "in-haystack+unquote")
+   expand-in-haystack
+   expand-unquote))
+
 (define (expand-function stx)
   (syntax-case* stx (and or not + - * / abs floor ceiling round = <> < <= > >=
                          like regexp-match regexp-match-ci regexp-replace regexp-replace* regexp-replace-ci regexp-replace*-ci 
-                         string-append string-replace null? coalesce ->string ->symbol in if) symbolic-identifier=?
-    [(and                arg ...)        #`(sql:and                #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
-    [(or                 arg ...)        #`(sql:or                 #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
-    [(not                arg)            #`(sql:not                #,@(map expand-expression+unquote (syntax->list #'(arg))))]
-    [(+                  arg ...)        #`(sql:+                  #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
-    [(-                  arg ...)        #`(sql:-                  #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
-    [(*                  arg ...)        #`(sql:*                  #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
-    [(/                  arg ...)        #`(sql:/                  #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
-    [(abs                arg)            #`(sql:abs                #,@(map expand-expression+unquote (syntax->list #'(arg))))]
-    [(floor              arg)            #`(sql:floor              #,@(map expand-expression+unquote (syntax->list #'(arg))))]
-    [(ceiling            arg)            #`(sql:ceiling            #,@(map expand-expression+unquote (syntax->list #'(arg))))]
-    [(round              arg)            #`(sql:round              #,@(map expand-expression+unquote (syntax->list #'(arg))))]
-    [(=                  arg1 arg2)      #`(sql:=                  #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
-    [(<>                 arg1 arg2)      #`(sql:<>                 #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
-    [(<                  arg1 arg2)      #`(sql:<                  #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
-    [(<=                 arg1 arg2)      #`(sql:<=                 #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
-    [(>                  arg1 arg2)      #`(sql:>                  #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
-    [(>=                 arg1 arg2)      #`(sql:>=                 #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
-    [(like               arg1 arg2)      #`(sql:like               #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
-    [(regexp-match       arg1 arg2)      #`(sql:regexp-match       #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
-    [(regexp-match-ci    arg1 arg2)      #`(sql:regexp-match-ci    #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
-    [(regexp-replace     arg1 arg2 arg3) #`(sql:regexp-replace     #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
-    [(regexp-replace*    arg1 arg2 arg3) #`(sql:regexp-replace*    #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
-    [(regexp-replace-ci  arg1 arg2 arg3) #`(sql:regexp-replace-ci  #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
-    [(regexp-replace*-ci arg1 arg2 arg3) #`(sql:regexp-replace*-ci #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
-    [(string-append      arg ...)        #`(sql:string-append      #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
-    [(string-replace     arg1 arg2 arg3) #`(sql:string-replace     #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
-    [(null?              arg)            #`(sql:null?              #,@(map expand-expression+unquote (syntax->list #'(arg))))]
-    [(coalesce           arg ...)        #`(sql:coalesce           #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
-    [(->string           arg1 arg2)      #`(sql:->string           #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
-    [(->symbol           arg1 arg2)      #`(sql:->symbol           #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
-    [(in                 arg1 arg2)      #`(sql:in                 #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
-    [(if                 arg1 arg2 arg3) #`(sql:if                 #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]))
-
+                         string-append string-replace null? coalesce ->string ->symbol in if cond else) symbolic-identifier=?
+    [(and                arg ...)            #`(sql:and                #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
+    [(or                 arg ...)            #`(sql:or                 #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
+    [(not                arg)                #`(sql:not                #,@(map expand-expression+unquote (syntax->list #'(arg))))]
+    [(+                  arg ...)            #`(sql:+                  #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
+    [(-                  arg ...)            #`(sql:-                  #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
+    [(*                  arg ...)            #`(sql:*                  #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
+    [(/                  arg ...)            #`(sql:/                  #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
+    [(abs                arg)                #`(sql:abs                #,@(map expand-expression+unquote (syntax->list #'(arg))))]
+    [(floor              arg)                #`(sql:floor              #,@(map expand-expression+unquote (syntax->list #'(arg))))]
+    [(ceiling            arg)                #`(sql:ceiling            #,@(map expand-expression+unquote (syntax->list #'(arg))))]
+    [(round              arg)                #`(sql:round              #,@(map expand-expression+unquote (syntax->list #'(arg))))]
+    [(=                  arg1 arg2)          #`(sql:=                  #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
+    [(<>                 arg1 arg2)          #`(sql:<>                 #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
+    [(<                  arg1 arg2)          #`(sql:<                  #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
+    [(<=                 arg1 arg2)          #`(sql:<=                 #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
+    [(>                  arg1 arg2)          #`(sql:>                  #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
+    [(>=                 arg1 arg2)          #`(sql:>=                 #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
+    [(like               arg1 arg2)          #`(sql:like               #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
+    [(regexp-match       arg1 arg2)          #`(sql:regexp-match       #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
+    [(regexp-match-ci    arg1 arg2)          #`(sql:regexp-match-ci    #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
+    [(regexp-replace     arg1 arg2 arg3)     #`(sql:regexp-replace     #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
+    [(regexp-replace*    arg1 arg2 arg3)     #`(sql:regexp-replace*    #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
+    [(regexp-replace-ci  arg1 arg2 arg3)     #`(sql:regexp-replace-ci  #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
+    [(regexp-replace*-ci arg1 arg2 arg3)     #`(sql:regexp-replace*-ci #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
+    [(string-append      arg ...)            #`(sql:string-append      #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
+    [(string-replace     arg1 arg2 arg3)     #`(sql:string-replace     #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
+    [(null?              arg)                #`(sql:null?              #,@(map expand-expression+unquote (syntax->list #'(arg))))]
+    [(coalesce           arg ...)            #`(sql:coalesce           #,@(map expand-expression+unquote (syntax->list #'(arg ...))))]
+    [(->string           arg1 arg2)          #`(sql:->string           #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
+    [(->symbol           arg1 arg2)          #`(sql:->symbol           #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2))))]
+    [(in                 arg1 arg2)          #`(sql:in                 #,(expand-expression+unquote #'arg1) #,(expand-in-haystack+unquote #'arg2))]
+    [(if                 arg1 arg2 arg3)     #`(sql:if                 #,@(map expand-expression+unquote (syntax->list #'(arg1 arg2 arg3))))]
+    [(cond [test expr] ... [else else-expr]) #`(sql:cond               #,@(map (lambda (test-stx expr-stx)
+                                                                                 #`[#,(expand-expression+unquote test-stx)
+                                                                                    #,(expand-expression+unquote expr-stx)])
+                                                                               (syntax->list #'(test ...))
+                                                                               (syntax->list #'(expr ...)))
+                                                                       [else #,(expand-expression+unquote #'else-expr)])]))
+                                             
 (define (expand-aggregate stx)
   (syntax-case* stx (count* count min max average) symbolic-identifier=?
     [(count*)           #`(sql:count*)]

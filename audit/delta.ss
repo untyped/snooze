@@ -8,7 +8,7 @@
          "attribute.ss"
          "cache.ss")
 
-(define-persistent-struct audit-delta
+(define-snooze-struct audit-delta
   ([transaction-id  (make-integer-type #f #f)   #:column-name 'transactionID]
    [type            (make-symbol-type #f #f 1)] ; (U 'I 'U 'D 'K)
    [entity-id       (make-integer-type #f #f)   #:column-name 'entityID]
@@ -104,14 +104,14 @@
                                        #f)]
             [(time-utc-type? type) (audit-delta-time-utc-value delta)]))
 
-    ; guid audit-delta (U persistent-struct #f) -> (U persistent-struct #f)
+    ; guid audit-delta (U snooze-struct #f) -> (U snooze-struct #f)
     (define/public (revert-delta! guid delta struct)
       (unless (equal? guid (audit-delta-guid delta))
         (raise-exn exn:fail:snooze
           (format "Delta does not apply to the correct GUID: ~s ~s" guid delta)))
       (if (eq? (audit-delta-type delta) 'I)
           (begin #f)
-          (let ([struct (if struct struct (make-persistent-struct/defaults (guid-entity guid)))]
+          (let ([struct (if struct struct (make-snooze-struct/defaults (guid-entity guid)))]
                 [attr   (id->attribute (audit-delta-attribute-id delta))])
             (unless (struct-id struct)
               (set-struct-id! struct (audit-delta-struct-id delta)))
@@ -158,6 +158,6 @@
     
 ; Provide statements -----------------------------
 
-(provide (persistent-struct-out audit-delta)
+(provide (snooze-struct-out audit-delta)
          delta-api<%>
          delta-api%)

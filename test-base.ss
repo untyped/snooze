@@ -4,15 +4,16 @@
 
 (require srfi/19
          (schemeunit-in test text-ui)
+         "snooze-class.ss"
          "era/cache.ss"
          "era/era.ss"
-         #;(prefix-in postgresql8: "postgresql8/postgresql8.ss")
-         #;(prefix-in sqlite3: "sqlite3/sqlite3.ss"))
+         (prefix-in postgresql8: "postgresql8/postgresql8.ss")
+         (prefix-in sqlite3: "sqlite3/sqlite3.ss"))
 
 ; test-suite -> any
 (define (run-tests/no-database tests)
   (parameterize ([current-snooze (new (snooze-cache-mixin object%))])
-    (run-tests tests)))
+    (run-tests tests 'verbose)))
 
 ;  [#:server   string]
 ;  [#:port     natural]
@@ -22,7 +23,7 @@
 ;  test-suite
 ; ->
 ;  any
-#;(define (run-tests/postgresql8 #:server   [server   "localhost"]
+(define (run-tests/postgresql8 #:server   [server   "localhost"]
                                #:port     [port     5432]
                                #:database [database "snoozetest"]
                                #:username [username "dave"]
@@ -34,12 +35,18 @@
                                                #:database database
                                                #:username username
                                                #:password password))])
-    (run-tests tests)))
+    (send (current-snooze) call-with-connection (cut run-tests tests))))
 
 ; (U string path ':memory: ':temp:) test-suite -> any
-#;(define (run-tests/sqlite3 location tests)
-  (parameterize ([current-snooze (make-snooze (sqlite3:make-database location))])
-    (run-tests tests)))
+(define (run-tests/sqlite3 location tests)
+  (let* ([file?     (or (path? location) (string? location))]
+         [existing? (and file? (file-exists? location))])
+    (when (and file? existing?)
+      (delete-file location))
+    (parameterize ([current-snooze (make-snooze (sqlite3:make-database location))])
+      (run-tests tests))
+    (when (and file? (not existing?))
+      (delete-file location))))
 
 ; string -> time-tai
 (define (string->time-tai str)
@@ -52,17 +59,18 @@
 ; Provide statements --------------------------- 
 
 (provide (all-from-out "base.ss")
-         (schemeunit-out test text-ui))
+         (except-out (schemeunit-out test text-ui)
+                     run-tests))
 
 (provide/contract
- [run-tests/no-database (-> test-suite? any)]
- #;[run-tests/postgresql8 (-> (test-suite?)
-                            (#:server string?
-                                      #:port     natural-number/c
-                                      #:database string?
-                                      #:username string?
-                                      #:password (or/c string? #f))
-                            any)]
- #;[run-tests/sqlite3     (-> (or/c string? path? ':memory: ':temp:) test-suite? any)]
+ [rename run-tests/no-database run-tests (-> test-suite? any)]
+ [run-tests/postgresql8 (->* (test-suite?)
+                             (#:server string?
+                                       #:port     natural-number/c
+                                       #:database string?
+                                       #:username string?
+                                       #:password (or/c string? #f))
+                             any)]
+ [run-tests/sqlite3     (-> (or/c string? path? ':memory: ':temp:) test-suite? any)]
  [string->time-tai      (-> string? time-tai?)]
  [string->time-utc      (-> string? time-utc?)])

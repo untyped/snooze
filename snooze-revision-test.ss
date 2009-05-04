@@ -1,14 +1,11 @@
 #lang scheme/base
 
-(require srfi/26/cut)
+(require srfi/26)
 
-(require "snooze-syntax.ss"
+(require "snooze-api.ss"
          "test-base.ss"
          "test-data.ss"
-         "test-util.ss"
          "era/era.ss")
-
-(provide make-snooze-revision-tests)
 
 ; Helpers ----------------------------------------
 
@@ -16,19 +13,17 @@
 
 ; Tests ------------------------------------------
 
-; snooze% -> test-suite
-(define (make-snooze-revision-tests snooze)
-  (define-snooze-interface snooze)
-  ; test-suite
+; test-suite
+(define snooze-revision-tests
   (test-suite "snooze-revision-tests"
     
     #:before
     (lambda ()
-      (create-table entity:course))
+      (create-table course))
     
     #:after
     (lambda ()
-      (drop-table entity:course))
+      (drop-table course))
     
     (test-case "revision is #f before struct is saved for the first time"
       (let ([course (make-course 'code "Name" 12345 1234.5 #t time-tai1)])
@@ -55,7 +50,7 @@
     (test-case "save! throws an exception when revision is incorrect"
       (let ([course1 (make-course 'code "Name" 12345 1234.5 #t time-tai1)])
         (save! course1)
-        (let ([course2 (find-by-id entity:course (struct-id course1))])
+        (let ([course2 (find-by-id course (struct-id course1))])
           (check-equal? (struct-revision course1) (struct-revision course2))
           (save! course1)
           (check-equal? (struct-revision course1) (add1 (struct-revision course2)))
@@ -66,11 +61,13 @@
     (test-case "delete! throws an exception when revision is incorrect"
       (let ([course1 (make-course 'code "Name" 12345 1234.5 #t time-tai1)])
         (save! course1)
-        (let ([course2 (find-by-id entity:course (struct-id course1))])
+        (let ([course2 (find-by-id course (struct-id course1))])
           (check-equal? (struct-revision course1) (struct-revision course2))
           (save! course1)
           (check-equal? (struct-revision course1) (add1 (struct-revision course2)))
           (check-exn exn:fail:snooze:revision? (cut delete! course2))
-          (check-not-exn (cut delete! course1)))))
-    
-    ))
+          (check-not-exn (cut delete! course1)))))))
+
+; Provide statements -----------------------------
+
+(provide snooze-revision-tests)

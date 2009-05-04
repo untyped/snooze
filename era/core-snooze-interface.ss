@@ -26,6 +26,9 @@
     ; Sets a guid/struct mapping in the current cache frame.
     cache-set!
     
+    ; entity integer -> guid
+    get-interned-guid
+    
     ; snooze-struct [frame] -> guid
     ;
     ; Adds a new struct to the current cache frame.
@@ -57,41 +60,39 @@
     ; Drops the supplied table (or table name). Does nothing if the table does not exist.
     drop-table
     
-    ; persistent-struct -> persistent-struct
+    ; snooze-struct -> snooze-struct
     ;
     ; Saves a struct to the database.
     ;
     ; If this is the first time the struct has been saved:
     ;   - the struct's revision is set to 0;
-    ;   - the save pipeline is run;
-    ;   - the insert pipeline is run;
+    ;   - the save hook is run;
     ;   - an ID is allocated;
     ;   - the struct is returned with the new ID and revision in place.
     ;
     ; If the struct is already in the database:
     ;   - the struct's revision is checked against the revision in the database;
     ;   - the revision is incremented;
-    ;   - the save pipeline is run;
-    ;   - the update pipeline is run;
+    ;   - the save hook is run;
     ;   - the struct is returned with the new revision in place.
     save!
     
-    ; persistent-struct -> persistent-struct
+    ; snooze-struct -> snooze-struct
     delete!
     
-    ; persistent-struct [(listof stage)] -> persistent-struct
+    ; snooze-struct [(listof stage)] -> snooze-struct
     ;
-    ; Used to specifically insert a persistent-struct with a particular ID and revision.
+    ; Used to specifically insert a snooze-struct with a particular ID and revision.
     ; Does not check or update the revision number of the record. Does not run the default
-    ; pipelines, although a pipeline may be specified as the optional second argument.
+    ; hooks, although a pipeline may be specified as the optional second argument.
     ; 
     ; Only use this method if you want to bypass the default behaviour of allocating and
     ; checking IDs and revision numbers.
     insert/id+revision!
     
-    ; persistent-struct [(listof stage)] -> persistent-struct
+    ; snooze-struct [(listof stage)] -> snooze-struct
     ;
-    ; Used to specifically update a persistent-struct with a particular ID and revision.
+    ; Used to specifically update a snooze-struct with a particular ID and revision.
     ; Does not check or update the revision number of the record. Does not run the default
     ; pipelines, although a pipeline may be specified as the optional second argument.
     ; 
@@ -99,9 +100,9 @@
     ; revision numbers.
     update/id+revision!
     
-    ; persistent-struct [(listof stage)] -> persistent-struct
+    ; snooze-struct [(listof stage)] -> snooze-struct
     ;
-    ; Used to specifically delete a persistent-struct with a particular ID and revision.
+    ; Used to specifically delete a snooze-struct with a particular ID and revision.
     ; Does not check or update the revision number of the record. Does not run the default
     ; pipelines, although a pipeline may be specified as the optional second argument.
     ; 
@@ -118,10 +119,10 @@
     ; select -> (gen-> result)
     g:find
     
-    ; entity (U integer #f) -> (U persistent-struct #f)
-    find-by-id
+    ; entity (U integer #f) -> (U snooze-struct #f)
+    ; find-by-id
     
-    ; guid -> (U persistent-struct #f)
+    ; guid -> (U snooze-struct #f)
     find-by-guid
     
     ; (-> ans) any ... -> ans
@@ -143,7 +144,7 @@
     ;  select
     ;
     ; Prints an SQL string to stdout as a side effect.
-    dump-sql
+    debug-sql
     
     ; -> (listof symbol)
     ;
