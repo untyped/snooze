@@ -1,13 +1,11 @@
 #lang scheme/base
 
+(require "base.ss")
+
 (require scheme/class
-         scheme/contract
-         mzlib/etc
-         mzlib/kw
-         srfi/26/cut
+         srfi/26
          (planet untyped/unlib:3/gen)
          (planet untyped/unlib:3/parameter)
-         "base.ss"
          "era/cache.ss"
          "era/era.ss"
          "generic/connection.ss"
@@ -23,7 +21,8 @@
     
     (inspect #f)
     
-    (inherit cache-ref)
+    (inherit cache-ref
+             intern-guid!)
     
     ; Constructor --------------------------------
     
@@ -44,13 +43,13 @@
     (define current-connection-cell
       (make-thread-cell #f))
     
-    ; (connection struct -> any) connection struct -> any
+    ; (connection guid -> any) connection guid -> any
     ;
     ; A transparent procedure that wraps the body of any
     ; call-with-transaction block. Must return the same value
     ; as the transaction body.
-    (define (transaction-hook continue conn struct)
-      (continue conn struct))
+    (define (transaction-hook continue conn guid)
+      (continue conn guid))
     
     ; Public interface ---------------------------
     
@@ -62,11 +61,11 @@
     (define/public (set-database! new-database)
       (set! database new-database))
     
-    ; -> ((connection struct -> any) connection struct -> any)
+    ; -> ((connection guid -> any) connection guid -> any)
     (define/public (get-transaction-hook)
       transaction-hook)
     
-    ; ((connection struct -> any) connection struct -> any) -> void
+    ; ((connection guid -> any) connection guid -> any) -> void
     (define/public (set-transaction-hook! hook)
       (set! transaction-hook hook))
     
@@ -110,90 +109,88 @@
       (auto-connect)
       (send database drop-table (current-connection) entity))
     
-    ; snooze-struct -> snooze-struct
-    (define/public (save! struct)
+    ; guid -> guid
+    (define/public (save! guid)
       (auto-connect)
-      (let* ([guid     (struct-guid struct)]
-             [revision (struct-revision struct)]
-             [entity   (struct-entity struct)])
+      (let ([revision (struct-revision guid)]
+            [entity   (struct-entity   guid)])
         (call-with-transaction
          (lambda ()
-           (if (struct-saved? struct)
-               (begin (if (and revision (record-exists-with-revision? entity guid revision))
-                          ; The audit trail package requires us to update the revision *before* calling the hook:
-                          (begin (set-struct-revision! struct (add1 revision))
-                                 ((entity-on-save entity)
-                                  (lambda (conn struct)
-                                    (send database update-record conn struct)
-                                    struct)
-                                  (current-connection)
-                                  struct))
-                          (raise-exn exn:fail:snooze:revision
-                            "Structure has been revised since it was loaded from the database." 
-                            struct)))
-               ; The audit trail package requires us to update the revision *before* calling the hook:
-               (begin (set-struct-revision! struct 0)
-                      ; Run the insert hook:
-                      ((entity-on-save entity)
-                       (lambda (conn struct)
-                         (set-guid-id!
-                          (struct-guid struct)
-                          (send database insert-record conn struct))
-                         struct)
-                       (current-connection)
-                       struct)))))))
+           (begin0
+             (if (struct-saved? guid)
+                 (begin (if (and revision (record-exists-with-revision? entity guid revision))
+                            ; The audit trail package requires us to update the revision *before* calling the hook:
+                            (begin (set-struct-revision! guid (add1 revision))
+                                   ((entity-on-save entity)
+                                    (lambda (conn guid)
+                                      (send database update-record conn guid)
+                                      guid)
+                                    (current-connection)
+                                    guid))
+                            (raise-exn exn:fail:snooze:revision "structure has been revised since it was loaded from the database" guid)))
+                 ; The audit trail package requires us to update the revision *before* calling the hook:
+                 (begin (set-struct-revision! guid 0)
+                        ; Run the insert hook:
+                        ((entity-on-save entity)
+                         (lambda (conn guid)
+                           (set-guid-id! guid (send database insert-record conn guid))
+                           guid)
+                         (current-connection)
+                         guid)))
+             (intern-guid! guid))))))
     
-    ; snooze-struct -> snooze-struct
-    (define/public (delete! struct)
-      ; entity
-      (define entity (struct-entity struct))
-      ; (U integer #f)
-      (define revision (struct-revision struct))
+    ; guid -> guid
+    (define/public (delete! guid)
       (auto-connect)
-      (if (struct-saved? struct)
-          (call-with-transaction
-           (lambda ()
-             (if (and revision
-                      (record-exists-with-revision?
-                       entity
-                       (struct-id struct)
-                       (struct-revision struct)))
-                 ((entity-on-delete entity)
-                  (lambda (conn struct)
-                    (send database delete-record conn (struct-guid struct))
-                    (set-guid-id! (struct-guid struct) #f)
-                    struct)
-                  (current-connection)
-                  struct)
-                 (raise-exn exn:fail:snooze:revision "database has been revised since structure was loaded" struct))))
-          (error "cannot delete: struct has not been saved" struct)))
+      (let ([entity   (struct-entity guid)]
+            [revision (struct-revision guid)])
+        (begin0
+          (if (struct-saved? guid)
+              (call-with-transaction
+               (lambda ()
+                 (if (and revision (record-exists-with-revision? entity guid revision))
+                     ((entity-on-delete entity)
+                      (lambda (conn guid)
+                        (send database delete-record conn guid)
+                        guid)
+                      (current-connection)
+                      guid)
+                     (raise-exn exn:fail:snooze:revision "database has been revised since structure was loaded" guid))))
+              (error "cannot delete: struct has not been saved" guid))
+          (intern-guid! guid))))
     
-    ; snooze-struct [((connection struct -> any) connection struct -> any)] -> snooze-struct
-    (define/public (insert/id+revision! struct [hook (lambda (continue conn struct) (continue conn struct))])
+    ; guid [((connection guid -> any) connection guid -> any)] -> guid
+    (define/public (insert/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])
       (auto-connect)
-      (hook (lambda (conn struct)
-              (send database insert-record/id conn struct)
-              struct)
-            (current-connection)
-            struct))
+      (begin0
+        (hook (lambda (conn guid)
+                (send database insert-record/id conn guid)
+                guid)
+              (current-connection)
+              guid)
+        (intern-guid! guid)))
     
-    ; snooze-struct [((connection struct -> any) connection struct -> any)] -> snooze-struct
-    (define/public (update/id+revision! struct [hook (lambda (continue conn struct) (continue conn struct))])
+    ; guid [((connection guid -> any) connection guid -> any)] -> guid
+    (define/public (update/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])
       (auto-connect)
-      (hook (lambda (conn struct)
-              (send database update-record conn struct)
-              struct)
-            (current-connection)
-            struct))
+      (begin0
+        (hook (lambda (conn guid)
+                (send database update-record conn guid)
+                guid)
+              (current-connection)
+              guid)
+        (intern-guid! guid)))
     
-    ; snooze-struct [((connection struct -> any) connection struct -> any)] -> snooze-struct
-    (define/public (delete/id+revision! struct [hook (lambda (continue conn struct) (continue conn struct))])
+    ; guid [((connection guid -> any) connection guid -> any)] -> guid
+    (define/public (delete/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])
       (auto-connect)
-      (hook (lambda (conn struct)
-              (send database delete-record conn (struct-guid struct))
-              struct)
-            (current-connection)
-            struct))
+      (begin0
+        (hook (lambda (conn guid)
+                (send database delete-record conn guid)
+                guid)
+              (current-connection)
+              guid)
+        (intern-guid! guid)))
     
     ; query -> (list-of result)
     (define/public (find-all query)
@@ -240,15 +237,7 @@
                             metadata-args))))
             (body))))
     
-    ; entity (U integer #f) -> (U snooze-struct #f)
-    ;(define/public (find-by-id entity id)
-    ;  (cond [(not id) #f]
-    ;        [(integer? id)
-    ;         (let-alias ([x entity])
-    ;           (find-one (sql (select #:from x #:where (= x.guid ,(make-guid id)))))]
-    ;        [else (raise-type-error 'find-by-id "(U integer #f)" id)]))
-    
-    ; guid -> persistent-struct
+    ; guid -> guid
     (define/public (find-by-guid guid)
       (cache-ref guid))
     
@@ -290,7 +279,8 @@
         (and (find-one (sql (select #:what x.guid
                                     #:from x
                                     #:where (and (= x.guid     ,guid)
-                                                 (= x.revision ,revision))))) #t)))))
+                                                 (= x.revision ,revision)))))
+             #t)))))
 
 ; Provide statements -----------------------------
 
@@ -315,18 +305,12 @@
 ;    [create-table              (-> entity? void?)]
 ;    [drop-table                (-> (or/c entity? symbol?) void?)]
 ;    
-;    [save!                     (-> snooze-struct? snooze-struct?)]
-;    [delete!                   (-> snooze-struct? snooze-struct?)]
+;    [save!                     (-> guid? guid?)]
+;    [delete!                   (-> guid? guid?)]
 ;    
-;    [insert/id+revision!       (->* (snooze-struct?) 
-;                                    ((listof procedure?))
-;                                    snooze-struct?)]
-;    [update/id+revision!       (->* (snooze-struct?) 
-;                                    ((listof procedure?))
-;                                    snooze-struct?)]
-;    [delete/id+revision!       (->* (snooze-struct?)
-;                                    ((listof procedure?))
-;                                    snooze-struct?)]
+;    [insert/id+revision!       (->* (guid?) ((listof procedure?)) guid?)]
+;    [update/id+revision!       (->* (guid?) ((listof procedure?)) guid?)]
+;    [delete/id+revision!       (->* (guid?) ((listof procedure?)) guid?)]
 ;    
 ;    [find-all                  (-> query? list?)]
 ;    [find-one                  (-> query? any)]
@@ -334,8 +318,8 @@
 ;    
 ;    [call-with-transaction     (->* (procedure?) ((or/c string? #f)) any)]
 ;    
-;    [find-by-id                (-> entity? (or/c integer? #f) (or/c snooze-struct? #f))]
-;    [find-by-guid              (-> guid? (or/c snooze-struct? #f))]
+;    [find-by-id                (-> entity? (or/c integer? #f) (or/c guid? #f))]
+;    [find-by-guid              (-> guid? (or/c guid? #f))]
 ;    
 ;    [table-names               (-> (listof symbol?))]
 ;    [table-exists?             (-> (or/c entity? symbol?) boolean?)]

@@ -47,9 +47,7 @@
                          [local  (copy-snooze-struct remote)])
                     (cache-set! guid local frame)
                     local))]
-            [else (if (procedure? default)
-                      (default)
-                      default)]))
+            [else (if (procedure? default) (default) default)]))
 
     ; guid snooze-struct [frame] -> guid
     (define/public (cache-set! guid struct [frame (current-frame)])
@@ -72,6 +70,12 @@
                   (let ([guid (entity-make-guid #:snooze this entity id)])
                     (hash-set! guid-cache (cons (entity-name entity) id) guid)
                     guid))))
+    
+    ; guid -> void
+    (define/public (intern-guid! guid)
+      (hash-set! guid-cache
+                 (cons (entity-name (guid-entity guid)) (guid-id guid))
+                 guid))
     
         ; -> #s(snooze ...)
     (define/public (get-serializable-cache-address)

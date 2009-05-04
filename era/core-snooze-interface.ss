@@ -29,6 +29,9 @@
     ; entity integer -> guid
     get-interned-guid
     
+    ; guid -> void
+    intern-guid!
+    
     ; snooze-struct [frame] -> guid
     ;
     ; Adds a new struct to the current cache frame.

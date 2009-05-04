@@ -93,16 +93,16 @@
     
     ; connection snooze-struct -> void
     ;
-    ; Inserts a new database record for the struct and returns its ID.
-    (define/public (insert-record/id conn struct)
-      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" struct))
-        (send (connection-back-end conn) exec (insert-sql struct #t))
+    ; Inserts a new database record for the struct and interns its guid.
+    (define/public (insert-record/id conn guid)
+      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" guid))
+        (send (connection-back-end conn) exec (insert-sql guid #t))
         (void)))
     
     ; connection snooze-struct -> void
-    (define/public (update-record conn struct)
-      (with-snooze-reraise (exn:fail? (format "Could not update database record for ~a" struct))
-        (send (connection-back-end conn) exec (update-sql struct))
+    (define/public (update-record conn guid)
+      (with-snooze-reraise (exn:fail? (format "Could not update database record for ~a" guid))
+        (send (connection-back-end conn) exec (update-sql guid))
         (void)))
     
     ; connection guid -> void

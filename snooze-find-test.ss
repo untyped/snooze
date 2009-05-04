@@ -64,7 +64,7 @@
                                                                  (= course.active #f))
                                                     #:order ((desc course.value))))))
                     null))
-    
+        
     (test-case "g:find in single-item mode"
       (check-equal? (g:collect (g:find (sql (select #:from  course
                                                     #:where (= course.active #t)
@@ -80,6 +80,15 @@
                                                     #:order ((desc course.value))))))
                     null))
     
+    (test-case "g:find: structs are eq? to cached originals"
+      (for ([index    (in-naturals)]
+            [actual   (in-list (g:collect (g:find (sql (select #:what  course
+                                                               #:from  course
+                                                               #:order ((asc course.value)))))))]
+            [expected (in-list (list c1 c2 c3 c4))])
+        (with-check-info (['index index])
+          (check-eq? actual expected))))
+
     (test-case "find-all"
       (check-equal? (find-all (sql (select #:from  course
                                            #:where (= course.active #t) 
@@ -149,11 +158,11 @@
       (check-equal? (find-all (sql (select #:from (outer course (outer course2 course3)))))
                     (find-all (sql (select #:from (outer (outer course course2) course3))))
                     "attributes")
-      (check-equal? (find-all (sql (select #:what (+ course.revision course2.revision course3.revision) #:from (outer course (outer course2 course3)))))
-                    (find-all (sql (select #:what (+ course.revision course2.revision course3.revision) #:from (outer (outer course course2) course3))))
-                    "expressions"))
-    
-    ))
+      (check-equal? (find-all (sql (select #:what (+ course.revision course2.revision course3.revision)
+                                           #:from (outer course (outer course2 course3)))))
+                    (find-all (sql (select #:what (+ course.revision course2.revision course3.revision)
+                                           #:from (outer (outer course course2) course3))))
+                    "expressions"))))
 
 ; Provide statements -----------------------------
 
