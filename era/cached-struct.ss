@@ -3,6 +3,7 @@
 (require "../base.ss")
 
 (require (unlib-in list parameter)
+         "attribute-keyword.ss"
          "core.ss"
          (prefix-in real: "snooze-struct.ss"))
 
@@ -93,11 +94,30 @@
 
 ; entity <attr any> ... -> guid
 (define (make-snooze-struct/defaults entity . args)
-  (struct-cache-add! (apply real:make-snooze-struct/defaults entity args)))
+  (struct-cache-add!
+   (apply real:make-snooze-struct/defaults
+          entity
+          args)))
 
 ; guid <attr any> ... -> guid
 (define (copy-snooze-struct original . args)
-  (struct-cache-add! (apply real:copy-snooze-struct (guid-cache-ref original) args)))
+  (struct-cache-add!
+   (let*-values ([(entity)             (struct-entity original)]
+                [(arg-attrs arg-vals) (check-attribute-keywords entity args)]
+                [(attrs)              (entity-attributes entity)]
+                [(existing)           (snooze-struct-ref* original)])
+    (apply (entity-private-constructor entity)
+           (for/list ([attr     (in-list attrs)]
+                      [existing (in-list existing)])
+             (attribute-keyword-get
+              entity
+              attr
+              arg-attrs
+              arg-vals
+              (lambda (attr)
+                (if (entity-guid-attribute? entity attr)
+                    (entity-make-guid #:snooze (guid-snooze existing) entity (guid-id existing))
+                    existing))))))))
 
 ; guid guid -> void
 (define (update-snooze-struct-from-copy! guid copy)
@@ -128,6 +148,6 @@
  [snooze-struct-ref*              (->* (guid?) (#:copy-guid? boolean?) list?)]
  [snooze-struct-set!              (-> guid? (or/c attribute? symbol?) any/c void?)]
  [snooze-struct-set*!             (-> guid? list? void?)]
- [make-snooze-struct/defaults     (->* (entity?) () #:rest real:attr/value-list? guid?)]
- [copy-snooze-struct              (->* (guid?) () #:rest real:attr/value-list? guid?)]
+ [make-snooze-struct/defaults     (->* (entity?) () #:rest attr/value-list? guid?)]
+ [copy-snooze-struct              (->* (guid?) () #:rest attr/value-list? guid?)]
  [update-snooze-struct-from-copy! (-> guid? guid? void?)])

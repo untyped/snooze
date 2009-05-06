@@ -14,18 +14,20 @@
 
 ; (struct snooze-cache<%> integer)
 (define-serializable-struct guid
-  (snooze [id #:mutable])
+  (snooze [id #:mutable] serial)
   #:transparent
   #:property
   prop:custom-write
   (lambda (guid out write?)
     (define show (if write? write display))
-    (display "#(guid " out)
+    (display "#(" out)
+    (show (guid-serial guid) out)
+    (display " ")
     (show (guid-id guid) out)
     (display ")" out)))
 
 (define (create-guid #:snooze [snooze (current-snooze)] id)
-  (make-guid snooze id))
+  (make-guid snooze id (gensym 'guid)))
 
 ; property
 ; guid -> boolean
@@ -37,7 +39,7 @@
 (define-syntax (define-guid-type stx)
   (syntax-case stx ()
     [(_ id)
-     (with-syntax ([print-prefix (format "#(~a " (syntax->datum #'id))])
+     (with-syntax ([print-prefix "#(" #;(format "#(~a " (syntax->datum #'id))])
        #'(define-serializable-struct (id guid)
            ()
            #:transparent
@@ -47,15 +49,19 @@
            #:property
            prop:custom-write
            (lambda (guid out write?)
-             (let ([show   (if write? write display)]
-                   [struct (guid-cache-ref guid #f)])
-               (display print-prefix out)
-               (show (guid-id guid) out)
-               (when struct
-                 (for ([val (in-vector (struct->vector struct) 2)])
-                   (display " " out)
-                   (show val out)))
-               (display ")" out)))
+             (parameterize ([in-cache-code? #t])
+               (let ([show   (if write? write display)]
+                     [struct (and (not (in-cache-code?))
+                                  (guid-cache-ref guid))])
+                 (display print-prefix out)
+                 (show (guid-serial guid) out)
+                 (display " " out)
+                 (show (guid-id guid) out)
+                 (when struct
+                   (for ([val (in-vector (struct->vector struct) 2)])
+                     (display " " out)
+                     (show val out)))
+                 (display ")" out))))
            #:property
            prop:equal+hash
            (list (lambda (guid1 guid2 same?)
@@ -73,8 +79,9 @@
   (unbox (guid-entity-box guid)))
 
 ; guid -> snooze-struct
-(define (guid-cache-ref guid [default (cut error "guid-cache-ref: struct not cached" guid)])
-  (send (guid-snooze guid) cache-ref guid default))
+(define (guid-cache-ref guid)
+  (or (send (guid-snooze guid) cache-ref guid)
+      (raise-exn exn:fail:snooze:cache (format "guid not cached: ~s" guid))))
 
 ; [(U natural #f)] -> guid
 (define (guid-copy guid [id (guid-id guid)] #:snooze [snooze (guid-snooze guid)])
@@ -222,11 +229,7 @@
 
 ; entity [#:snooze snooze] [(U natural #f)] -> guid
 (define (entity-make-guid #:snooze [snooze (current-snooze)] entity [id #f])
-  ((entity-guid-constructor entity) snooze id))
-
-; entity [#:snooze snooze] [(U natural #f)] -> guid
-(define (entity-make-guid/interned #:snooze [snooze (current-snooze)] entity [id #f])
-  (send snooze get-interned-guid entity id))
+  ((entity-guid-constructor entity) snooze id (gensym (entity-name entity))))
 
 ; entity any -> boolean
 (define (entity-guid? entity guid)
@@ -311,6 +314,13 @@
   (and (struct? struct)
        (prop:entity-set? struct)))
 
+; Helpers ----------------------------------------
+
+; guid -> void
+(define (raise-cache-ref-error guid)
+  (raise-exn exn:fail:snooze:cache
+    (format "cache-ref: struct not found in cache: ~s" guid)))
+
 ; Provide statements -----------------------------
 
 (provide (all-from-out "core-snooze-interface.ss")
@@ -329,7 +339,7 @@
  [set-guid-id!                    (-> guid? (or/c natural-number/c #f) void?)]
  [guid-entity-box                 (-> struct-type? box?)]
  [guid-entity                     (-> guid? entity?)]
- [guid-cache-ref                  (->* (guid?) (any/c) snooze-struct?)]
+ [guid-cache-ref                  (-> guid? snooze-struct?)]
  [guid-copy                       (->* (guid?)
                                        ((or/c natural-number/c #f)
                                         #:snooze (is-a?/c snooze-cache<%>))
@@ -378,7 +388,6 @@
                                       procedure?
                                       entity?)]
  [entity-make-guid                (->* (entity?) (#:snooze (is-a?/c snooze-cache<%>) (or/c natural-number/c #f)) guid?)]
- [entity-make-guid/interned       (->* (entity?) (#:snooze (is-a?/c snooze-cache<%>) (or/c natural-number/c #f)) guid?)]
  [entity-guid?                    (-> entity? any/c boolean?)]
  [entity-has-attribute?           (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-guid-attribute?          (-> entity? (or/c symbol? attribute?) boolean?)]

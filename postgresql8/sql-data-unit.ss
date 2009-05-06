@@ -23,7 +23,7 @@
                                                                                                     (entity-name (guid-entity value))
                                                                                                     (entity-name (guid-type-entity type))))]
                                                                                     [(guid-id value) => number->string]
-                                                                                    [else "NULL"])]
+                                                                                    [else (error "reference to unsaved struct" value)])]
         [(integer-type? type)  (guard type value integer?  "(U integer #f)")  (number->string value)]
         [(real-type? type)     (guard type value real?     "(U real #f)")     (number->string value)]
         [(string-type? type)   (guard type value string?   "(U string #f)")   (string-append "'" (regexp-replace* #rx"'" value "''") "'")]
@@ -35,7 +35,7 @@
 ; snooze-cache<%> type (U string sql-null) -> any
 (define (parse-value snooze type value)
   (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
-    (cond [(guid-type? type)     (entity-make-guid/interned #:snooze snooze (guid-type-entity type) (inexact->exact value))]
+    (cond [(guid-type? type)     (send (send snooze get-guid-cache) get-interned-guid (guid-type-entity type) (inexact->exact value))]
           [(sql-null? value)     #f]
           [(boolean-type? type)  value]
                 [(integer-type? type)  (inexact->exact value)]

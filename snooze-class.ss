@@ -6,7 +6,8 @@
          srfi/26
          (planet untyped/unlib:3/gen)
          (planet untyped/unlib:3/parameter)
-         "era/cache.ss"
+         "cache.ss"
+         "guid-cache.ss"
          "era/era.ss"
          "generic/connection.ss"
          "generic/database.ss"
@@ -17,12 +18,33 @@
   (new snooze% [database database] [auto-connect? auto-connect?]))
 
 (define snooze%
-  (class* (snooze-cache-mixin object%) (snooze<%>)
+  (class* object% (snooze<%>)
     
     (inspect #f)
+        
+    ; Fields -------------------------------------
     
-    (inherit cache-ref
-             intern-guid!)
+    ; (thread-cell (U connection #f))
+    ;
+    ; A thread-cell to store the current connection. 
+    ; See the current-connection method below for more information.
+    (field [current-connection-cell
+            (make-thread-cell #f)])
+    
+    ; (connection guid -> any) connection guid -> any
+    ;
+    ; A transparent procedure that wraps the body of any
+    ; call-with-transaction block. Must return the same value
+    ; as the transaction body.
+    (field [transaction-hook
+            (lambda (continue conn guid)
+              (continue conn guid))])
+    
+    ; guid-cache%
+    (field [guid-cache (new guid-cache%)])
+    
+    ; (parameter snooze-cache%)
+    (field [current-cache (make-parameter (new snooze-cache% [guid-cache guid-cache]))])
     
     ; Constructor --------------------------------
     
@@ -34,24 +56,51 @@
     
     (super-new)
     
-    ; Fields -------------------------------------
-    
-    ; current-connection-cell : (thread-cell (U connection #f))
-    ;
-    ; A thread-cell to store the current connection. 
-    ; See the current-connection method below for more information.
-    (define current-connection-cell
-      (make-thread-cell #f))
-    
-    ; (connection guid -> any) connection guid -> any
-    ;
-    ; A transparent procedure that wraps the body of any
-    ; call-with-transaction block. Must return the same value
-    ; as the transaction body.
-    (define (transaction-hook continue conn guid)
-      (continue conn guid))
-    
     ; Public interface ---------------------------
+    
+    ; (-> any) -> any
+    (define/public (call-with-cache thunk)
+      (parameterize ([current-cache
+                      (new snooze-cache%
+                           [parent (current-cache)]
+                           [guid-cache guid-cache])])
+        (thunk)))
+    
+    ; -> snooze-cache%
+    (define/public (get-current-cache)
+      (current-cache))
+    
+    ; -> guid-cache%
+    (define/public (get-guid-cache)
+      guid-cache)
+    
+    ; guid -> (U snooze-struct #f)
+    (define/public (cache-ref guid)
+      (parameterize ([in-cache-code? #t])
+        (pretty-print (list 'snooze.cache-ref guid))
+        (or (send (current-cache) cache-ref guid)
+            (if (guid-id guid)
+                (let-alias ([x (guid-entity guid)])
+                  (let*/debug ([gen (send database g:find
+                                          this
+                                          (current-connection)
+                                          (sql (select #:from x #:where (= x.guid ,guid))))]
+                               [ans (gen)])
+                              (and (not (g:end? ans)) ans)))
+                (raise-exn exn:fail:snooze:cache
+                  (format "unsaved guid not cached: ~s" guid))))))
+    
+    ; snooze-struct -> void
+    (define/public (cache-add! struct)
+      (parameterize ([in-cache-code? #t])
+        (pretty-print (list 'snooze.cache-add! struct))
+        (send (current-cache) cache-add! struct)))
+    
+    ; snooze-struct -> void
+    (define/public (deep-cache-add! struct)
+      (parameterize ([in-cache-code? #t])
+        (pretty-print (list 'snooze.deep-cache-add! struct))
+        (send (current-cache) deep-cache-add! struct)))
     
     ; -> database<%>
     (define/public (get-database)
@@ -137,12 +186,13 @@
                            guid)
                          (current-connection)
                          guid)))
-             (intern-guid! guid))))))
+             (send (current-cache) save! guid))))))
     
     ; guid -> guid
     (define/public (delete! guid)
       (auto-connect)
       (let ([entity   (struct-entity guid)]
+            [id       (struct-id guid)]
             [revision (struct-revision guid)])
         (begin0
           (if (struct-saved? guid)
@@ -152,12 +202,13 @@
                      ((entity-on-delete entity)
                       (lambda (conn guid)
                         (send database delete-record conn guid)
+                        (set-guid-id! guid #f)
                         guid)
                       (current-connection)
                       guid)
                      (raise-exn exn:fail:snooze:revision "database has been revised since structure was loaded" guid))))
               (error "cannot delete: struct has not been saved" guid))
-          (intern-guid! guid))))
+          (send (current-cache) delete! guid))))
     
     ; guid [((connection guid -> any) connection guid -> any)] -> guid
     (define/public (insert/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])
@@ -168,7 +219,7 @@
                 guid)
               (current-connection)
               guid)
-        (intern-guid! guid)))
+        (send guid-cache intern-guid! guid)))
     
     ; guid [((connection guid -> any) connection guid -> any)] -> guid
     (define/public (update/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])
@@ -179,7 +230,7 @@
                 guid)
               (current-connection)
               guid)
-        (intern-guid! guid)))
+        (send guid-cache intern-guid! guid)))
     
     ; guid [((connection guid -> any) connection guid -> any)] -> guid
     (define/public (delete/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])
@@ -190,7 +241,7 @@
                 guid)
               (current-connection)
               guid)
-        (intern-guid! guid)))
+        (send guid-cache intern-guid! guid)))
     
     ; query -> (list-of result)
     (define/public (find-all query)
@@ -276,10 +327,9 @@
       ; attribute-alias
       (let-alias ([x entity])
         ; boolean
-        (and (find-one (sql (select #:what x.guid
-                                    #:from x
-                                    #:where (and (= x.guid     ,guid)
-                                                 (= x.revision ,revision)))))
+        (and (find-one (sql (select #:what  x.guid
+                                    #:from  x
+                                    #:where (and (= x.guid ,guid) (= x.revision ,revision)))))
              #t)))))
 
 ; Provide statements -----------------------------

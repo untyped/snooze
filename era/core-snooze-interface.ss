@@ -2,29 +2,12 @@
 
 (require "../base.ss")
 
-(define snooze-cache<%>
+; (parameter boolean)
+(define in-cache-code?
+  (make-parameter #f))
+
+(define guid-cache<%>
   (interface ()
-    
-    ; -> #s(snooze ...)
-    get-serializable-cache-address
-    
-    ; thunk -> any
-    ;
-    ; Pushes a new frame onto the cache stack and calls thunk in
-    ; the context of that frame.
-    call-with-cache-frame
-    
-    ; guid [frame] -> snooze-struct
-    ;
-    ; Retrieves a struct from the current cache frame.
-    ; If the struct is not found, parent cache frames and the database
-    ; are queried and values are copied into the relevant frames.
-    cache-ref
-    
-    ; guid snooze-struct [frame] -> guid
-    ;
-    ; Sets a guid/struct mapping in the current cache frame.
-    cache-set!
     
     ; entity integer -> guid
     get-interned-guid
@@ -32,11 +15,45 @@
     ; guid -> void
     intern-guid!
     
-    ; snooze-struct [frame] -> guid
+    ; entity integer -> void
+    unintern-guid!))
+
+(define snooze-cache<%>
+  (interface ()
+    
+    ; guid -> snooze-struct
     ;
-    ; Adds a new struct to the current cache frame.
-    ; Raises exn:fail if the guid is already in the frame.
-    cache-add!))
+    ; Retrieves a struct from the cache. Implementations:
+    ;   - database - load by ID;
+    ;   - cache    - if hit, return;
+    ;              - if miss, propagate to parent, clone, store, intern entity/id and return.
+    cache-ref
+    
+    ; snooze-struct -> guid
+    ;
+    ; Adds a new struct to the cache. Implementations:
+    ;   - database - do nothing;
+    ;   - cache    - store.
+    cache-add!
+    
+    ; snooze-struct -> guid
+    ;
+    ; Like cache-add! but propagates to parent caches.
+    deep-cache-add!
+    
+    ; guid -> guid
+    ;
+    ; Saves a struct to the database. Implementations:
+    ;   - database - do revision check, run hook, perform update/insert, mutate guid with new ID;
+    ;   - cache    - already stored locally - add a clone to parent, propagate, reintern entity/id.
+    save!
+    
+    ; guid -> guid
+    ;
+    ; Deletes a struct from the database. Implementations:
+    ;   - database - do revision check, run hook, perform delete, mutate guid with #f ID;
+    ;   - cache    - propagate, unintern entity/id.
+    delete!))
 
 (define snooze<%>
   (interface (snooze-cache<%>)
@@ -62,27 +79,7 @@
     ;
     ; Drops the supplied table (or table name). Does nothing if the table does not exist.
     drop-table
-    
-    ; snooze-struct -> snooze-struct
-    ;
-    ; Saves a struct to the database.
-    ;
-    ; If this is the first time the struct has been saved:
-    ;   - the struct's revision is set to 0;
-    ;   - the save hook is run;
-    ;   - an ID is allocated;
-    ;   - the struct is returned with the new ID and revision in place.
-    ;
-    ; If the struct is already in the database:
-    ;   - the struct's revision is checked against the revision in the database;
-    ;   - the revision is incremented;
-    ;   - the save hook is run;
-    ;   - the struct is returned with the new revision in place.
-    save!
-    
-    ; snooze-struct -> snooze-struct
-    delete!
-    
+
     ; snooze-struct [(listof stage)] -> snooze-struct
     ;
     ; Used to specifically insert a snooze-struct with a particular ID and revision.
@@ -162,5 +159,7 @@
 ; Provide statements -----------------------------
 
 (provide/contract
+ [in-cache-code?  (parameter/c boolean?)]
+ [guid-cache<%>   interface?]
  [snooze-cache<%> interface?]
  [snooze<%>       interface?])

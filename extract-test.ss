@@ -13,11 +13,13 @@
 
 ; integer integer string -> person
 (define (test-person id revision name)
-  (make-person #:guid (entity-make-guid person id) #:revision revision name))
+  (make-person #:guid     (entity-make-guid person id)
+               #:revision revision name))
 
 ; integer integer string boolean -> person
 (define (test-pet id revision owner-id name)
-  (make-pet #:guid (entity-make-guid pet id) #:revision revision owner-id name))
+  (make-pet #:guid     (entity-make-guid pet id)
+            #:revision revision owner-id name))
 
 ; Tests ----------------------------------------
 
@@ -26,13 +28,17 @@
     
     (test-case "struct-extractor: single item mode"
       (let* ([input    (list 1)]
-             [extract  (make-struct-extractor #f (current-snooze))]
+             [extract  (make-struct-extractor type:integer
+                                              (current-snooze))]
              [expected 1])
         (check-equal? (extract input) expected)))
     
     (test-case "struct-extractor: multi-item mode"
       (let* ([input    (list 1 2 3 "Dave" 4)]
-             [extract  (make-struct-extractor (list #f person #f) (current-snooze))]
+             [extract  (make-struct-extractor (list type:integer
+                                                    person
+                                                    type:integer)
+                                              (current-snooze))]
              [expected (list 1 (test-person 2 3 "Dave") 4)])
         (check-equal? (extract input) expected)))
     
@@ -52,7 +58,9 @@
       (let* ([input   (list (list 1 2 "Dave" 3)
                             (list 4 5 "Noel" 6)
                             (list 7 8 "Matt" 9))]
-             [extract (make-struct-extractor (list person #f) (current-snooze))]
+             [extract (make-struct-extractor (list person
+ type:integer)
+                                             (current-snooze))]
              [do-row  (g:map extract (g:list input))])
         (check-equal? (do-row) (list (test-person 1 2 "Dave") 3))
         (check-equal? (do-row) (list (test-person 4 5 "Noel") 6))
@@ -66,7 +74,8 @@
                               (list 3 4 "Noel" 5)
                               (list #f #f #f 6)
                               (list 7 8 "Matt" 9))]
-             [extract (make-struct-extractor (list person #f) (current-snooze))]
+             [extract (make-struct-extractor (list person type:integer)
+                                             (current-snooze))]
              [do-row  (g:map extract (g:list input))])
         (check-equal? (do-row) (list (test-person 1 2 "Dave") 3))
         (check-equal? (do-row) (list #f #f))
@@ -82,7 +91,8 @@
         (define input   (list (list 1 2 "Dave" #f #f #f #f)
                               (list 3 4 "Noel" 5 6 3 "William")
                               (list 3 4 "Noel" 7 8 3 "Henry")))
-        (define extract (make-struct-extractor (list person pet) (current-snooze)))
+        (define extract (make-struct-extractor (list person pet)
+                                               (current-snooze)))
         (define do-row  (g:map extract (g:list input)))
         
         (check-equal? (do-row) (list (test-person 1 2 "Dave") #f))
@@ -101,8 +111,10 @@
                                (list 5 6 "Noel" 29)
                                (list 9 0 "Matt" 30)))
         
-        (define extract1 (make-struct-extractor person (current-snooze)))
-        (define extract2 (make-struct-extractor (list person) (current-snooze)))
+        (define extract1 (make-struct-extractor person
+                                                (current-snooze)))
+        (define extract2 (make-struct-extractor (list person)
+                                                (current-snooze)))
         
         (define do-row1 (g:map extract1 (g:list input)))
         (define do-row2 (g:map extract2 (g:list input)))

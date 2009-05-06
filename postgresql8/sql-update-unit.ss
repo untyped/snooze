@@ -81,10 +81,10 @@
            (define col-values
              (string-join (map (lambda (struct)
                                  ; string ; cddr skips id and revision
-                                 (string-append "(" (string-join (if preserve-guids?
-                                                                     (column-values struct)
-                                                                     (cddr (column-values struct)))
-                                                                 ", ") ")"))
+                                 (string-append
+                                  "(" (string-join (column-values struct preserve-guids?)
+                                                   ", ")
+                                  ")"))
                                structs)
                           ", "))
            
@@ -142,20 +142,24 @@
          (escape-name (attribute-column-name attr)))
        (entity-attributes entity)))
 
-; snooze-struct -> string
-(define (column-values struct)
+; snooze-struct boolean -> string
+(define (column-values struct include-guid+revision?)
   (define entity (struct-entity struct))
   (map (lambda (attr value)
          (escape-value (attribute-type attr) value))
-       (entity-attributes entity)
-       (snooze-struct-ref* struct)))
+       (if include-guid+revision?
+           (entity-attributes entity)
+           (cddr (entity-attributes entity)))
+       (if include-guid+revision?
+           (snooze-struct-ref* struct)
+           (cddr (snooze-struct-ref* struct)))))
 
 ; attribute -> string
 (define (attribute-definition-sql attr)
   (let ([type (attribute-type attr)]
         [name (attribute-column-name attr)])
     (string-join (append (list (escape-name name)
-                               (cond [(guid-type? type)     (format "INTEGER REFERENCES ~a.~a" 
+                               (cond [(guid-type? type)     (format "INTEGER REFERENCES ~a(~a)"
                                                                     (escape-name (entity-name (guid-type-entity type)))
                                                                     (escape-name 'id))]
                                      [(boolean-type? type)  "BOOLEAN"]

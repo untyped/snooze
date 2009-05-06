@@ -50,7 +50,7 @@
 (define-alias count-p1      (sql (count* p1)))
 (define-alias count-p1-guid (sql (count p1.guid)))
 (define-alias count-p2-guid (sql (count p2.guid)))
-(define-alias sum-ids       (sql (+ p1.guid p2.guid)))
+(define-alias sum-revisions (sql (+ p1.revision p2.revision)))
 
 ; Tests ----------------------------------------
 
@@ -90,7 +90,7 @@ ENDSQL
                                     count-p1
                                     count-p1-guid
                                     count-p2-guid
-                                    sum-ids)
+                                    sum-revisions)
                               (list count-p2-guid))
                     #<<ENDSQL
 count(*) AS [count-star], count([p1].*) AS [count-p1], count([p1].[guid]) AS [count-p1-guid], [count-p2-guid], ([p1].[guid] + [p2].[guid]) AS [sum-ids]
@@ -147,9 +147,9 @@ ENDSQL
       
       (check-equal? (group-sql (list count-p1-guid
                                      count-p2-guid
-                                     sum-ids)
+                                     sum-revisions)
                                (list count-p1-guid
-                                     sum-ids
+                                     sum-revisions
                                      count-p2-guid))
                     #<<ENDSQL
 [count-p1-guid], [count-p2-guid], [sum-ids]
@@ -168,10 +168,10 @@ ENDSQL
       
       (check-equal? (order-sql (list (sql (asc   count-p1-guid))
                                      (sql (desc  count-p2-guid))
-                                     (sql (order sum-ids 'asc)))
+                                     (sql (order sum-revisions 'asc)))
                                (list count-p1-guid
                                      count-p2-guid
-                                     sum-ids))
+                                     sum-revisions))
                     #<<ENDSQL
 [count-p1-guid] ASC, [count-p2-guid] DESC, [sum-ids] ASC
 ENDSQL

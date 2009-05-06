@@ -45,11 +45,11 @@
 (define-alias p2 person)
 
 ; expression-alias
-(define count-star (sql:alias 'count-star (sql:count*)))
-(define count-p1 (sql:alias 'count-p1 (sql:count* p1)))
-(define count-p1-id (sql:alias 'count-p1-id (sql:count (sql p1.guid))))
-(define count-p2-id (sql:alias 'count-p2-id (sql:count (sql p2.guid))))
-(define sum-ids (sql:alias 'sum-ids (sql:+ (sql p1.guid) (sql p2.guid))))
+(define count-star    (sql:alias 'count-star (sql:count*)))
+(define count-p1      (sql:alias 'count-p1 (sql:count* p1)))
+(define count-p1-id   (sql:alias 'count-p1-id (sql:count (sql p1.guid))))
+(define count-p2-id   (sql:alias 'count-p2-id (sql:count (sql p2.guid))))
+(define sum-revisions (sql:alias 'sum-revisions (sql:+ (sql p1.revision) (sql p2.revision))))
 
 ; Tests ----------------------------------------
 
@@ -63,58 +63,58 @@
                     "no expressions")
       (check-equal? (distinct-sql (list (sql:= (sql p1.guid) 123)) (list (sql p1.guid)))
                     #<<ENDSQL
-DISTINCT ON ("p1-id" = 123) 
+DISTINCT ON ("p1-guid" = 123) 
 ENDSQL
                     "single expression")
       (check-equal? (distinct-sql (list (sql:= (sql p1.guid) 123) (sql:= (sql p1.revision) 123)) (list (sql p1.guid)))
                     #<<ENDSQL
-DISTINCT ON ("p1-id" = 123), ("p1"."revision" = 123) 
+DISTINCT ON ("p1-guid" = 123), ("p1"."revision" = 123) 
 ENDSQL
                     "multiple expressions"))
     
     (test-case "display-what"
       (check-equal? (what-sql (list (sql p1.guid) (sql p1.revision) (sql p1.name)) (list (sql p1.name)))
                     #<<ENDSQL
-"p1"."id" AS "p1-id", "p1"."revision" AS "p1-revision", "p1-name"
+"p1"."id" AS "p1-guid", "p1"."revision" AS "p1-revision", "p1-name"
 ENDSQL
                     "attribute aliases")
       
-      (check-equal? (what-sql (list count-star count-p1 count-p1-id count-p2-id sum-ids) (list count-p2-id))
+      (check-equal? (what-sql (list count-star count-p1 count-p1-id count-p2-id sum-revisions) (list count-p2-id))
                     #<<ENDSQL
-count(*) AS "count-star", count("p1".*) AS "count-p1", count("p1"."id") AS "count-p1-id", "count-p2-id", ("p1"."id" + "p2"."id") AS "sum-ids"
+count(*) AS "count-star", count("p1".*) AS "count-p1", count("p1"."id") AS "count-p1-id", "count-p2-id", ("p1"."revision" + "p2"."revision") AS "sum-revisions"
 ENDSQL
                     "expression aliases"))
     
     (test-case "display-from"
       (check-equal? (from-sql p1 null)
                     #<<ENDSQL
-"Person" AS "p1"
+"people" AS "p1"
 ENDSQL
                     "entity")
       
       (check-equal? (from-sql (sql:alias 'subq (sql:select #:from p1)) null)
                     #<<ENDSQL
-(SELECT "p1"."id" AS "p1-id", "p1"."revision" AS "p1-revision", "p1"."name" AS "p1-name" FROM "Person" AS "p1") AS "subq"
+(SELECT "p1"."id" AS "p1-guid", "p1"."revision" AS "p1-revision", "p1"."name" AS "p1-name" FROM "people" AS "p1") AS "subq"
 ENDSQL
                     "subquery")
       
       (check-equal? (from-sql (sql:inner p1 (sql:alias 'subq (sql:select #:from p2)) (sql:= (sql p1.guid) (sql p2.guid)))
                               (list (sql p2.guid) (sql p2.revision) (sql p2.name)))
                     #<<ENDSQL
-("Person" AS "p1" INNER JOIN (SELECT "p2"."id" AS "p2-id", "p2"."revision" AS "p2-revision", "p2"."name" AS "p2-name" FROM "Person" AS "p2") AS "subq" ON ("p1"."id" = "p2-id"))
+("people" AS "p1" INNER JOIN (SELECT "p2"."id" AS "p2-guid", "p2"."revision" AS "p2-revision", "p2"."name" AS "p2-name" FROM "people" AS "p2") AS "subq" ON ("p1"."id" = "p2-guid"))
 ENDSQL
                     "inner join"))
     
     (test-case "display-group"
       (check-equal? (group-sql (list (sql p1.guid) (sql p1.revision) (sql p1.name)) (list (sql p1.guid) (sql p1.revision) (sql p1.name)))
                     #<<ENDSQL
-"p1-id", "p1-revision", "p1-name"
+"p1-guid", "p1-revision", "p1-name"
 ENDSQL
                     "attribute aliases")
       
-      (check-equal? (group-sql (list count-p1-id count-p2-id sum-ids) (list count-p1-id sum-ids count-p2-id))
+      (check-equal? (group-sql (list count-p1-id count-p2-id sum-revisions) (list count-p1-id sum-revisions count-p2-id))
                     #<<ENDSQL
-"count-p1-id", "count-p2-id", "sum-ids"
+"count-p1-id", "count-p2-id", "sum-revisions"
 ENDSQL
                     "expression aliases"))
     
@@ -125,15 +125,15 @@ ENDSQL
 ENDSQL
                     "attribute aliases")
       
-      (check-equal? (order-sql (list (sql:asc count-p1-id) (sql:desc count-p2-id) (sql:order sum-ids 'asc)) (list count-p1-id count-p2-id sum-ids))
+      (check-equal? (order-sql (list (sql:asc count-p1-id) (sql:desc count-p2-id) (sql:order sum-revisions 'asc)) (list count-p1-id count-p2-id sum-revisions))
                     #<<ENDSQL
-"count-p1-id" ASC, "count-p2-id" DESC, "sum-ids" ASC
+"count-p1-id" ASC, "count-p2-id" DESC, "sum-revisions" ASC
 ENDSQL
                     "expression aliases")
       
-      (check-equal? (order-sql (list (sql:asc (sql:+ (sql p1.guid) (sql p2.guid)))) null)
+      (check-equal? (order-sql (list (sql:asc (sql:+ (sql p1.revision) (sql p2.revision)))) null)
                     #<<ENDSQL
-("p1"."id" + "p2"."id") ASC
+("p1"."revision" + "p2"."revision") ASC
 ENDSQL
                     "expressions"))
     
@@ -149,7 +149,7 @@ ENDSQL
       (check-equal? (expression-sql (sql:*) null) "1" "argumentless *")
       (check-equal? (expression-sql (sql:-) null) "0" "argumentless -")
       (check-equal? (expression-sql (sql:in (sql p1.guid) (sql:select #:what (sql p1.guid) #:from p1)) null)
-                    "(\"p1\".\"id\" IN (SELECT \"p1\".\"id\" AS \"p1-id\" FROM \"Person\" AS \"p1\"))"
+                    "(\"p1\".\"id\" IN (SELECT \"p1\".\"id\" AS \"p1-guid\" FROM \"people\" AS \"p1\"))"
                     "sql:in")
       (check-equal? (expression-sql (sql:regexp-replace     "a" "b" "c") null)    "(regexp_replace('a', 'b', 'c'))"       "sql:regexp-replace")
       (check-equal? (expression-sql (sql:regexp-replace-ci  "a" "b" "c") null)    "(regexp_replace('a', 'b', 'c', 'i'))"  "sql:regexp-replace-ci")
@@ -190,19 +190,19 @@ ENDSQL
         
         (define sql1
           #<<ENDSQL
-SELECT "a"."id" AS "a-id", "a"."revision" AS "a-revision", "a"."name" AS "a-name", "b"."id" AS "b-id", "b"."revision" AS "b-revision", "b"."ownerID" AS "b-owner-id", "b"."name" AS "b-name" FROM ("Person" AS "a" INNER JOIN "Pet" AS "b" ON ("a"."id" = "b"."ownerID")) WHERE ("a"."name" = 'Jon Arbuckle') ORDER BY "a-name" ASC, "b-name" ASC LIMIT 10 OFFSET 20
+SELECT "a"."id" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", "b"."id" AS "b-guid", "b"."revision" AS "b-revision", "b"."ownerID" AS "b-owner-id", "b"."name" AS "b-name" FROM ("people" AS "a" INNER JOIN "pets" AS "b" ON ("a"."id" = "b"."ownerID")) WHERE ("a"."name" = 'Jon Arbuckle') ORDER BY "a-name" ASC, "b-name" ASC LIMIT 10 OFFSET 20
 ENDSQL
           )
         
         (define sql2
           #<<ENDSQL
-SELECT "a-id", "a-revision", "a-name", "b"."id" AS "b-id", "b"."revision" AS "b-revision", "b"."ownerID" AS "b-owner-id", "b"."name" AS "b-name" FROM ((SELECT "a"."id" AS "a-id", "a"."revision" AS "a-revision", "a"."name" AS "a-name" FROM "Person" AS "a") AS "subq" INNER JOIN "Pet" AS "b" ON ("a-id" = "b"."ownerID")) WHERE ("a-name" = "b"."name") ORDER BY "a-name" ASC, "b-name" ASC
+SELECT "a-guid", "a-revision", "a-name", "b"."id" AS "b-guid", "b"."revision" AS "b-revision", "b"."ownerID" AS "b-owner-id", "b"."name" AS "b-name" FROM ((SELECT "a"."id" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name" FROM "people" AS "a") AS "subq" INNER JOIN "pets" AS "b" ON ("a-guid" = "b"."ownerID")) WHERE ("a-name" = "b"."name") ORDER BY "a-name" ASC, "b-name" ASC
 ENDSQL
           )
         
         (define sql3
           #<<ENDSQL
-SELECT "a"."id" AS "a-id", "a"."revision" AS "a-revision", "a"."name" AS "a-name", count("b".*) AS "expr" FROM ("Person" AS "a" INNER JOIN "Pet" AS "b" ON ("a"."id" = "b"."ownerID")) GROUP BY "a-id", "a-revision", "a-name"
+SELECT "a"."id" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", count("b".*) AS "expr" FROM ("people" AS "a" INNER JOIN "pets" AS "b" ON ("a"."id" = "b"."ownerID")) GROUP BY "a-guid", "a-revision", "a-name"
 ENDSQL
           )
         

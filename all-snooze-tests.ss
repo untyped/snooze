@@ -28,11 +28,7 @@
   (test-suite "snooze"
     
     #:before
-    ; Make sure the database is empty:
-    (lambda ()
-      (for-each (lambda (name)
-                  (drop-table name))
-                (table-names)))
+    drop-all-tables
     
     ; Tests that can be run without a database connection:
     all-era-tests

@@ -14,11 +14,11 @@
 (define snooze-create-tests
   (test-suite "snooze-create-tests"
     
+    #:before
+    drop-all-tables
+    
     #:after
-    (lambda ()
-      (drop-table person)
-      (drop-table pet)
-      (drop-table course))
+    drop-all-tables
     
     (test-case "create-table, drop-table and table-exists?, entity arguments"
       (check-false (table-exists? person))
@@ -28,21 +28,21 @@
       (check-false (table-exists? person)))
     
     (test-case "drop-table and table-exists?, symbol arguments"
-      (check-false (table-exists? 'Person))
+      (check-false (table-exists? 'people))
       (create-table person)
-      (check-pred table-exists? 'Person)
-      (drop-table 'Person)
-      (check-false (table-exists? 'Person)))
+      (check-pred table-exists? 'people)
+      (drop-table 'people)
+      (check-false (table-exists? 'people)))
     
     (test-case "table-names"
       (check-equal? (table-names) null)
       (create-table person)
       (create-table pet)
       (create-table course)
-      (check-equal? (table-names) (list 'Course 'Person 'Pet))
-      (drop-table 'Person)
-      (drop-table 'Pet)
-      (drop-table 'Course)
+      (check-equal? (table-names) (list 'courses 'people 'pets))
+      (drop-table 'people)
+      (drop-table 'pets)
+      (drop-table 'courses)
       (check-equal? (table-names) (list)))))
 
 ; Provide statements -----------------------------

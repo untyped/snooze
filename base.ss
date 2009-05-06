@@ -26,6 +26,9 @@
 ; Raised when Snooze tries to roll back a non-existant transaction.
 (define-struct (exn:fail:snooze:transaction exn:fail:snooze) () #:transparent)
 
+; Raised when Snooze cannot retrieve data from the cache.
+(define-struct (exn:fail:snooze:cache exn:fail:snooze) () #:transparent)
+
 ; Provide statements --------------------------- 
 
 (provide (all-from-out scheme/class

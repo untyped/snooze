@@ -34,12 +34,12 @@
 
 ; Hey! It's a test entity:
 (define-entity hooked
-  ([value type:integer])
-  #:on-save   (create-hook 'save   saved    1)
-  #:on-delete (create-hook 'delete deleted  4))
+  ([value integer])
+  #:on-save   (create-hook 'save   saved   1)
+  #:on-delete (create-hook 'delete deleted 4))
 
 ; ...and a persistent struct, too:
-(define test-hooked (make-hooked 0))
+(define test-hooked #f)
 
 ; Tests ------------------------------------------
 
@@ -55,12 +55,14 @@
     ; create table for entity:hooked
     #:before
     (lambda ()
-      (create-table hooked))
+      (drop-all-tables)
+      (unless (table-exists? hooked)
+        (create-table hooked))
+      (set! test-hooked (make-hooked 0)))
     
     ; drop table for entity:hooked
     #:after
-    (lambda ()
-      (drop-table hooked))
+    drop-all-tables
     
     (test-case "on-save is called when saving a new struct"
       (set-hooked-value! test-hooked 0)
@@ -80,10 +82,10 @@
     
     (test-case "saving is aborted when on-save throws an exception"
       (set-hooked-value! test-hooked 1)
-      (check-exn exn:unhooked? 
-        (lambda ()
-          (save! test-hooked)))
-      (check-false (struct-id test-hooked))
+      (debug "test-hooked" test-hooked)
+      (check-false (struct-saved? test-hooked))
+      (check-exn exn:unhooked? (lambda () (save! test-hooked)))
+      (check-false (struct-saved? test-hooked))
       (check-pred null? (find-all (sql (select #:from hooked))))
       ; Check which hooks were run successfully:
       (check-eq? (unbox saved)    #f)
@@ -94,10 +96,12 @@
       (save! test-hooked)
       (clear-boxes)
       (check-exn exn:unhooked? (lambda () (delete! test-hooked)))
-      (check-equal? (hooked-value
-                     (find-one (sql (select #:from  hooked
-                                            #:where (= hooked.id ,(struct-id test-hooked))))))
-                    4)
+      (check-equal?
+       (hooked-value
+        (find-one
+         (sql (select #:from  hooked
+                      #:where (= hooked.guid ,test-hooked)))))
+       4)
       ; Check which hooks were run successfully:
       (check-eq? (unbox saved)    #f)
       (check-eq? (unbox deleted)  #f)

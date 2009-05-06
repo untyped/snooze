@@ -4,7 +4,6 @@
 
 (provide database<%>)
 
-; DBMS-specific parts of Snooze.
 (define database<%>
   (interface ()
     ; -> connection

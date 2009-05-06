@@ -18,14 +18,16 @@
   (match-lambda*
     [(list)
      (lambda (stx)
-       (raise-exn exn:fail:snooze
-         (format "Expanding ~s: no match for rule ~s~n~a"
+       (raise-syntax-error
+        #f 
+        (format "Expanding ~s: no match for rule ~s~n~a"
                  (syntax->datum stx)
                  message
                  (string-join (filter (lambda (item)
                                         (not (regexp-match #rx": bad syntax" item)))
                                       backtrace)
-                              "\n"))))]
+                              "\n"))
+        stx))]
     [(list-rest expand rest)
      (lambda (stx)
        (with-handlers

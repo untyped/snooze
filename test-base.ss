@@ -4,15 +4,16 @@
 
 (require srfi/19
          (schemeunit-in test text-ui)
+         "cache.ss"
+         "guid-cache.ss"
          "snooze-class.ss"
-         "era/cache.ss"
          "era/era.ss"
          (prefix-in postgresql8: "postgresql8/postgresql8.ss")
          (prefix-in sqlite3: "sqlite3/sqlite3.ss"))
 
 ; test-suite -> any
 (define (run-tests/no-database tests)
-  (parameterize ([current-snooze (new (snooze-cache-mixin object%))])
+  (parameterize ([current-snooze (new snooze-cache% [guid-cache (new guid-cache%)])])
     (run-tests tests 'verbose)))
 
 ;  [#:server   string]

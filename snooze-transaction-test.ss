@@ -37,16 +37,13 @@
     ; create test data for transaction tests
     #:before
     (lambda ()
-      (create-table course)
-      (create-table person)
+      (recreate-test-tables)
       (set! c1 (save! (make-course 'code "Name" 12345 1234.5 #t time-tai1)))
       (set! c1-revision (struct-revision c1)))
     
     ; delete test data from transaction tests
     #:after
-    (lambda ()
-      (drop-table person)
-      (drop-table course))
+    drop-all-tables
     
     (test-case "call-with-transaction: transaction committed"
       (check-not-false (find-course-by-value 12345) "Precondition failed.")

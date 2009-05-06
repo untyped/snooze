@@ -77,22 +77,13 @@
     
     #:before
     (lambda ()
-      (drop-table audit-attribute)
-      (drop-table audit-transaction)
-      (drop-table audit-metadata)
-      (drop-table audit-delta)
+      (drop-all-tables)
       (send trail init!)
       (create-table audit-metadata)
       (for-each create-table (list course person pet)))
     
     #:after
-    (lambda ()
-      (drop-table audit-attribute)
-      (drop-table audit-transaction)
-      (drop-table audit-metadata)
-      (drop-table audit-delta)
-      (drop-table course)
-      (drop-table person))
+    drop-all-tables
     
     ; Initialising -------------------------------
     

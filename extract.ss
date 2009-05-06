@@ -83,11 +83,13 @@
      ; If id is #f, struct is null:
      (and guid
           ; If struct is cached return that:
-          (or (and (send snooze cache-ref guid #f) guid)
+          (or (and (send (send snooze get-current-cache) cache-ref guid)
+                   guid)
               ; Else parse the data in the row:
-              (send snooze cache-add! (apply (entity-private-constructor entity)
-                                             guid
-                                             (cdr (take row num-attrs))))))
+              (send snooze deep-cache-add!
+                    (apply (entity-private-constructor entity)
+                           guid
+                           (cdr (take row num-attrs))))))
      (drop row num-attrs))))
 
 ; Provide statements -----------------------------

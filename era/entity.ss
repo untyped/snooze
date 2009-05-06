@@ -164,9 +164,7 @@
                (listof symbol?)
                (listof type?)
                (listof procedure?)
-               (-> (is-a?/c snooze-cache<%>)
-                   (or/c natural-number/c #f)
-                   guid?)
+               procedure?
                (-> any/c boolean?))
               (#:table-name symbol?
                             #:column-names (listof symbol?)

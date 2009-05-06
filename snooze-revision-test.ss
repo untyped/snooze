@@ -18,12 +18,10 @@
   (test-suite "snooze-revision-tests"
     
     #:before
-    (lambda ()
-      (create-table course))
+    recreate-test-tables
     
     #:after
-    (lambda ()
-      (drop-table course))
+    drop-all-tables
     
     (test-case "revision is #f before struct is saved for the first time"
       (let ([course (make-course 'code "Name" 12345 1234.5 #t time-tai1)])
@@ -50,7 +48,7 @@
     (test-case "save! throws an exception when revision is incorrect"
       (let ([course1 (make-course 'code "Name" 12345 1234.5 #t time-tai1)])
         (save! course1)
-        (let ([course2 (find-by-id course (struct-id course1))])
+        (let ([course2 (copy-course course1)])
           (check-equal? (struct-revision course1) (struct-revision course2))
           (save! course1)
           (check-equal? (struct-revision course1) (add1 (struct-revision course2)))
@@ -61,7 +59,7 @@
     (test-case "delete! throws an exception when revision is incorrect"
       (let ([course1 (make-course 'code "Name" 12345 1234.5 #t time-tai1)])
         (save! course1)
-        (let ([course2 (find-by-id course (struct-id course1))])
+        (let ([course2 (copy-course course1)])
           (check-equal? (struct-revision course1) (struct-revision course2))
           (save! course1)
           (check-equal? (struct-revision course1) (add1 (struct-revision course2)))
