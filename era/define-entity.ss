@@ -14,6 +14,7 @@
          "cached-struct.ss"
          "entity.ss"
          "info.ss"
+         "pretty.ss"
          (prefix-in sql: "../sql/sql-lang.ss"))
 
 ; Syntax -----------------------------------------
@@ -45,9 +46,11 @@
   (define attr-type-stxs null)            ; ((make-symbol-type #t) (make-integer-type #f) ...)
   (define attr-default-stxs null)         ; (#t 123 ...)
   (define attr-kw-stxs null)              ; (#:person-gender #:person-age #:person-name #:person-revision #:person-guid)
-  (define column-stxs null)               ; ('gender 'age 'name)
-  (define accessor-stxs null)             ; (person-gender person-age person-name person-revision person-guid)
-  (define mutator-stxs null)              ; (set-person-gender! set-person-age! set-person-name! set-person-revision! set-person-guid!)
+  (define attr-column-stxs null)          ; ('gender 'age 'name)
+  (define attr-accessor-stxs null)        ; (person-gender person-age person-name person-revision person-guid)
+  (define attr-mutator-stxs null)         ; (set-person-gender! set-person-age! set-person-name! set-person-revision! set-person-guid!)
+  (define attr-pretty-stxs null)
+  (define attr-pretty-plural-stxs null)
   
   ; Parsing entity information:
   
@@ -75,16 +78,18 @@
               (parse-entity-kws #'(entity-kw ...)))]))
   
   (define (parse-attr stx)
-    (define my-name-stx        #f)
-    (define my-private-stx     #f)
-    (define my-allows-null-stx #'#t)
-    (define my-max-length-stx  #'#f)
-    (define my-default-stx     #'(lambda (snooze) #f))
-    (define my-type-stx        #f)
-    (define my-kw-stx          #f)
-    (define my-accessor-stx    #f)
-    (define my-mutator-stx     #f)
-    (define my-column-stx      #f)
+    (define my-name-stx          #f)
+    (define my-private-stx       #f)
+    (define my-allows-null-stx   #'#t)
+    (define my-max-length-stx    #'#f)
+    (define my-default-stx       #'(lambda (snooze) #f))
+    (define my-type-stx          #f)
+    (define my-kw-stx            #f)
+    (define my-accessor-stx      #f)
+    (define my-mutator-stx       #f)
+    (define my-column-stx        #f)
+    (define my-pretty-stx        #'name->pretty-name)
+    (define my-pretty-plural-stx #'pluralize-pretty-name)
     
     (define (parse-attr-type stx)
       (with-syntax ([allows-null? my-allows-null-stx])
@@ -93,9 +98,9 @@
           [integer  (set! my-type-stx #'(make-integer-type allows-null?))]
           [real     (set! my-type-stx #'(make-real-type allows-null?))]
           [symbol   (set! my-type-stx (with-syntax ([max-length my-max-length-stx])
-                                           #'(make-symbol-type allows-null? max-length)))]
+                                        #'(make-symbol-type allows-null? max-length)))]
           [string   (set! my-type-stx (with-syntax ([max-length my-max-length-stx])
-                                           #`(make-string-type allows-null? max-length)))]
+                                        #`(make-string-type allows-null? max-length)))]
           [time-tai (set! my-type-stx #'(make-time-tai-type allows-null?))]
           [time-utc (set! my-type-stx #'(make-time-utc-type allows-null?))]
           [entity   (set! my-type-stx #'(make-guid-type allows-null? entity))])))
@@ -114,30 +119,38 @@
         [(#:column-name val other ...)
          (begin (set! my-column-stx #'val)
                 (parse-attr-kws #'(other ...)))]
+        [(#:pretty-name val other ...)
+         (begin (set! my-pretty-stx #'(lambda _ val))
+                (parse-attr-kws #'(other ...)))]
+        [(#:pretty-name-plural val other ...)
+         (begin (set! my-pretty-plural-stx #'(lambda _ val))
+                (parse-attr-kws #'(other ...)))]
         [(kw other ...)
          (raise-syntax-error #f "unrecognised attribute keyword" complete-stx #'kw)]
         [() (finish-attr)]))
     
     (define (finish-attr)
-      (set! attr-stxs         (cons my-name-stx     attr-stxs))
-      (set! attr-private-stxs (cons my-private-stx  attr-private-stxs))
-      (set! attr-type-stxs    (cons my-type-stx     attr-type-stxs))
-      (set! attr-default-stxs (cons my-default-stx  attr-default-stxs))
-      (set! attr-kw-stxs      (cons my-kw-stx       attr-kw-stxs))
-      (set! accessor-stxs     (cons my-accessor-stx accessor-stxs))
-      (set! mutator-stxs      (cons my-mutator-stx  mutator-stxs))
-      (set! column-stxs       (cons my-column-stx   column-stxs)))
+      (set! attr-stxs               (cons my-name-stx          attr-stxs))
+      (set! attr-private-stxs       (cons my-private-stx       attr-private-stxs))
+      (set! attr-type-stxs          (cons my-type-stx          attr-type-stxs))
+      (set! attr-default-stxs       (cons my-default-stx       attr-default-stxs))
+      (set! attr-kw-stxs            (cons my-kw-stx            attr-kw-stxs))
+      (set! attr-accessor-stxs      (cons my-accessor-stx      attr-accessor-stxs))
+      (set! attr-mutator-stxs       (cons my-mutator-stx       attr-mutator-stxs))
+      (set! attr-column-stxs        (cons my-column-stx        attr-column-stxs))
+      (set! attr-pretty-stxs        (cons my-pretty-stx        attr-pretty-stxs))
+      (set! attr-pretty-plural-stxs (cons my-pretty-plural-stx attr-pretty-plural-stxs)))
     
     (syntax-case stx ()
       [(name type arg ...)
        (and (identifier? #'name)
             (identifier? #'type))
-       (begin (set! my-name-stx     #'name)
-              (set! my-private-stx  (make-id #f 'attr: entity-stx '- #'name))
-              (set! my-kw-stx       (datum->syntax #f (string->keyword (symbol->string (syntax->datum #'name)))))
-              (set! my-accessor-stx (make-id entity-stx entity-stx '- #'name))
-              (set! my-mutator-stx  (make-id entity-stx 'set- entity-stx '- #'name '!))
-              (set! my-column-stx   #''name)
+       (begin (set! my-name-stx          #'name)
+              (set! my-private-stx       (make-id #f 'attr: entity-stx '- #'name))
+              (set! my-kw-stx            (datum->syntax #f (string->keyword (symbol->string (syntax->datum #'name)))))
+              (set! my-accessor-stx      (make-id entity-stx entity-stx '- #'name))
+              (set! my-mutator-stx       (make-id entity-stx 'set- entity-stx '- #'name '!))
+              (set! my-column-stx        #''name)
               (parse-attr-type #'type)
               (parse-attr-kws #'(arg ...)))]))
   
@@ -186,37 +199,48 @@
                                                                            (reverse attr-kw-stxs))]
                   [(attr-type ...)                                  (reverse attr-type-stxs)]
                   [(attr-default ...)                               (reverse attr-default-stxs)]
+                  [(attr-pretty ...)                                (reverse attr-pretty-stxs)]
+                  [(attr-pretty-plural ...)                         (reverse attr-pretty-plural-stxs)]
                   [(guid-accessor revision-accessor accessor ...)   (list* (make-id entity-stx entity-stx '-guid)
                                                                            (make-id entity-stx entity-stx '-revision)
-                                                                           (reverse accessor-stxs))]
+                                                                           (reverse attr-accessor-stxs))]
                   [(revision-mutator mutator ...)                   (list* (make-id entity-stx 'set- entity-stx '-revision!)
-                                                                           (reverse mutator-stxs))]
+                                                                           (reverse attr-mutator-stxs))]
                   [(guid-column revision-column column ...)         (list* #''id
                                                                            #''revision
-                                                                           (reverse column-stxs))])
+                                                                           (reverse attr-column-stxs))])
       (quasisyntax/loc entity-stx
         (begin (define-guid-type entity-guid)
                
                (define-values (entity-private struct-type constructor predicate)
-                 (make-entity 'entity
-                              (lambda (entity) (list 'attr ...))
-                              (lambda (entity) (list attr-type ...))
-                              (lambda (entity) (list attr-default ...))
-                              entity-guid-constructor
-                              entity-guid-predicate
-                              #:column-names
-                              (lambda (entity) (list column ...))
-                              #:properties   
-                              #,(if (eq? (syntax-local-context) 'module)
-                                    #'(list (cons prop:serializable
-                                                  (make-serialize-info
-                                                   (lambda (struct) (list->vector (snooze-struct-ref* struct)))
-                                                   (quote-syntax deserialize-info)
-                                                   #t
-                                                   (or (current-load-relative-directory) (current-directory))))
-                                            property ...)
-                                    #'(list property ...))
-                              entity-kw ...))
+                 (let* ([attr-names               (list 'attr ...)]
+                        [attr-pretty-names        (map (lambda (proc arg) (proc arg))
+                                                       (list attr-pretty ...)
+                                                       attr-names)]
+                        [attr-pretty-names-plural (map (lambda (proc arg) (proc arg))
+                                                       (list attr-pretty-plural ...)
+                                                       attr-pretty-names)]
+                        [make-attr-types          (lambda (entity) (list attr-type ...))])
+                   (make-entity 'entity
+                                attr-names
+                                make-attr-types
+                                (list attr-default ...)
+                                entity-guid-constructor
+                                entity-guid-predicate
+                                #:attr-column-names        (list column ...)
+                                #:attr-pretty-names        attr-pretty-names
+                                #:attr-pretty-names-plural attr-pretty-names-plural
+                                #:properties   
+                                #,(if (eq? (syntax-local-context) 'module)
+                                      #'(list (cons prop:serializable
+                                                    (make-serialize-info
+                                                     (lambda (struct) (list->vector (snooze-struct-ref* struct)))
+                                                     (quote-syntax deserialize-info)
+                                                     #t
+                                                     (or (current-load-relative-directory) (current-directory))))
+                                              property ...)
+                                      #'(list property ...))
+                                entity-kw ...)))
                
                (set-box! (guid-entity-box entity-guid-struct-type) entity-private)
                

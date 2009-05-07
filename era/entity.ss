@@ -6,60 +6,66 @@
          (unlib-in symbol)
          "../generic/connection.ss"
          "cached-struct.ss"
-         "core.ss")
+         "core.ss"
+         "pretty.ss")
 
 ;   symbol
-;   (entity -> (listof symbol))
+;   (listof symbol)
 ;   (entity -> (listof type))
-;   (entity -> (listof (snooze -> any)))
+;   (listof (snooze -> any))
 ;   (snooze-cache<%> (U natural #f) -> guid)
 ;   (any -> boolean)
-;   [#:table-name   symbol]
-;   [#:column-names (entity -> (listof symbol))]
-;   [#:on-save      ((struct -> struct) struct -> struct)]
-;   [#:on-delete    ((struct -> struct) struct -> struct)]
-;   [#:properties   (alistof property any)]
+;   [#:table-name               symbol]
+;   [#:pretty-name              string]
+;   [#:pretty-name-plural       string]
+;   [#:attr-column-names        (listof symbol)]
+;   [#:attr-pretty-names        (listof string)]
+;   [#:attr-pretty-names-plural (listof string)]
+;   [#:on-save                  ((struct -> struct) struct -> struct)]
+;   [#:on-delete                ((struct -> struct) struct -> struct)]
+;   [#:properties               (alistof property any)]
 ; -> 
 ;   entity
 ;   struct-type
 ;   (any ... -> snooze-struct)
 ;   (any -> boolean)
 (define (create-entity name
-                       make-attr-names
+                       attr-names
                        make-attr-types
-                       make-attr-defaults
+                       attr-defaults
                        guid-constructor
                        guid-predicate
-                       #:table-name   [table-name        name]
-                       #:column-names [make-column-names make-attr-names]
-                       #:on-save      [on-save           (lambda (continue conn struct) (continue conn struct))]
-                       #:on-delete    [on-delete         (lambda (continue conn struct) (continue conn struct))]
-                       #:properties   [properties        null])
+                       #:table-name               [table-name               name]
+                       #:pretty-name              [pretty-name              (name->pretty-name name)]
+                       #:pretty-name-plural       [pretty-name-plural       (pluralize-pretty-name pretty-name)]
+                       #:attr-column-names        [attr-column-names        attr-names]
+                       #:attr-pretty-names        [attr-pretty-names        (map name->pretty-name attr-names)]
+                       #:attr-pretty-names-plural [attr-pretty-names-plural (map pluralize-pretty-name attr-pretty-names)]
+                       #:on-save                  [on-save                  (lambda (continue conn struct) (continue conn struct))]
+                       #:on-delete                [on-delete                (lambda (continue conn struct) (continue conn struct))]
+                       #:properties               [properties               null])
     
   ; entity
   (define entity
-    (make-vanilla-entity name table-name guid-constructor guid-predicate on-save on-delete))
+    (make-vanilla-entity name table-name pretty-name pretty-name-plural guid-constructor guid-predicate on-save on-delete))
   
-  ; (listof symbol)
   ; (listof type)
-  ; (listof (snooze -> any))
-  ; (listof symbol)
-  (define-values (attr-names attr-types attr-defaults column-names)
-    (values (make-attr-names    entity)
-            (make-attr-types    entity)
-            (make-attr-defaults entity)
-            (make-column-names  entity)))
+  (define attr-types (make-attr-types entity))
   
   ; integer
   ;
-  ; Make sure attr-names, attr-types and column-names are all the same length,
+  ; Make sure attr-names, attr-types, and other attr-foo lists are all the same length,
   ; and bind that length to a variable.
   (define num-attrs
     (let ([num-args (length attr-names)])
       (cond [(not (= num-args (length attr-types)))
              (raise-type-error 'make-entity (format "~a attribute types" num-attrs) attr-types)]
-            [(not (= num-args (length column-names)))
-             (raise-type-error 'make-entity (format "~a column names" num-attrs) column-names)]
+            [(not (= num-args (length attr-column-names)))
+             (raise-type-error 'make-entity (format "~a column names" num-attrs) attr-column-names)]
+            [(not (= num-args (length attr-pretty-names)))
+             (raise-type-error 'make-entity (format "~a pretty names" num-attrs) attr-pretty-names)]
+            [(not (= num-args (length attr-pretty-names-plural)))
+             (raise-type-error 'make-entity (format "~a plural pretty names" num-attrs) attr-pretty-names-plural)]
             [else (+ num-args 2)])))
 
   ; struct-type-descriptor
@@ -85,7 +91,8 @@
            [type             (make-guid-type #f entity)]
            [default-maker    (lambda (snooze) (make-guid #f #:snooze snooze))]
            [index            0])
-      (create-attribute name col type entity index
+      (create-attribute name col "unique identifier" "unique identifiers"
+                        type entity index
                         default-maker struct-accessor struct-mutator)))
   
   (define revision-attribute
@@ -94,7 +101,8 @@
            [type             (make-integer-type #f)]
            [default-maker    (lambda (snooze) #f)]
            [index            1])
-      (create-attribute name col type entity index
+      (create-attribute name col "revision" "revisions"
+                        type entity index
                         default-maker struct-accessor struct-mutator)))
   
   ; (listof attribute)
@@ -103,10 +111,13 @@
            revision-attribute
            (for/list ([index         (in-range 2 (+ num-attrs 2))]
                       [name          (in-list attr-names)]
-                      [col           (in-list column-names)]
+                      [col           (in-list attr-column-names)]
+                      [pretty        (in-list attr-pretty-names)]
+                      [pretty-plural (in-list attr-pretty-names-plural)]
                       [type          (in-list attr-types)]
                       [default-maker (in-list attr-defaults)])
-             (create-attribute name col type entity index
+             (create-attribute name col pretty pretty-plural
+                               type entity index
                                default-maker struct-accessor struct-mutator))))
   
   ; any ... -> guid
@@ -135,13 +146,20 @@
 
 ; Helpers ----------------------------------------
 
-; symbol symbol type entity integer (snooze -> any) (struct natural -> any) (struct natural any -> void) -> attribute 
-(define (create-attribute name col type entity index default-maker struct-accessor struct-mutator)
+;  symbol symbol string string
+;  type entity integer
+;  (snooze -> any) (struct natural -> any) (struct natural any -> void)
+; ->
+;  attribute 
+(define (create-attribute name col pretty pretty-plural
+                          type entity index
+                          default-maker struct-accessor struct-mutator)
   (let* ([private-accessor (make-struct-field-accessor struct-accessor index name)]
          [private-mutator  (make-struct-field-mutator  struct-mutator  index name)]
          [cached-accessor  (make-cached-accessor private-accessor)]
          [cached-mutator   (make-cached-mutator  private-mutator)])
-    (make-attribute name col type entity index
+    (make-attribute name col pretty pretty-plural
+                    type entity index
                     default-maker
                     private-accessor
                     private-mutator
@@ -171,20 +189,24 @@
  [rename create-entity
          make-entity
          (->* (symbol?
-               (-> entity? (listof symbol?))
+               (listof symbol?)
                (-> entity? (listof type?))
-               (-> entity? (listof procedure?))
+               (listof procedure?)
                procedure?
                (-> any/c boolean?))
               (#:table-name symbol?
-                            #:column-names (-> entity? (listof symbol?))
-                            #:on-save      procedure?
-                            #:on-delete    procedure?
-                            #:properties   (listof (cons/c
-                                                    (and/c struct-type-property?
-                                                           (not/c (cut eq? <> prop:entity))
-                                                           (not/c (cut eq? <> prop:equal+hash)))
-                                                    any/c)))
+                            #:pretty-name              string?
+                            #:pretty-name-plural       string?
+                            #:attr-column-names        (listof symbol?)
+                            #:attr-pretty-names        (listof string?)
+                            #:attr-pretty-names-plural (listof string?)
+                            #:on-save                  procedure?
+                            #:on-delete                procedure?
+                            #:properties               (listof (cons/c
+                                                                (and/c struct-type-property?
+                                                                       (not/c (cut eq? <> prop:entity))
+                                                                       (not/c (cut eq? <> prop:equal+hash)))
+                                                                any/c)))
               (values entity?
                       struct-type?
                       procedure?

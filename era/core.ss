@@ -171,6 +171,8 @@
 
 ; (struct symbol 
 ;         symbol
+;         string
+;         string
 ;         struct-type
 ;         (any ... -> snooze-struct)
 ;         ((U snooze-struct any) -> boolean)
@@ -186,6 +188,8 @@
 (define-struct entity 
   (name
    table-name
+   pretty-name
+   pretty-name-plural
    struct-type
    private-constructor
    private-predicate
@@ -207,6 +211,8 @@
 
 ;  symbol
 ;  symbol
+;  string
+;  string
 ;  ((U natural #f) -> guid)
 ;  ((U guid any) -> boolean)
 ;  ((struct -> struct) struct -> struct)
@@ -218,14 +224,15 @@
 ; We can't mutate struct types, so we have to create them first and then patch
 ; the entity. This procedure gets around the field contracts on entity during
 ; the creation process.
-(define (make-vanilla-entity name table-name guid-constructor guid-predicate on-save on-delete)
-  (make-entity name table-name #f ; struct type
-               #f #f #f #f #f #f  ; constructors and predicates
-               guid-constructor   ; guid constructor
-               guid-predicate     ; guid predicate
-               null               ; attributes
-               on-save            ; hooks
-               on-delete))        ;
+(define (make-vanilla-entity name table-name pretty-name pretty-name-plural guid-constructor guid-predicate on-save on-delete)
+  (make-entity name table-name pretty-name pretty-name-plural
+               #f                       ; struct type
+               #f #f #f #f #f #f        ; constructors and predicates
+               guid-constructor         ; guid constructor
+               guid-predicate           ; guid predicate
+               null                     ; attributes
+               on-save                  ; hooks
+               on-delete))              ;
 
 ; entity [#:snooze snooze] [(U natural #f)] -> guid
 (define (entity-make-guid #:snooze [snooze (current-snooze)] entity [id #f])
@@ -268,6 +275,8 @@
 
 ; (struct symbol
 ;         symbol
+;         string
+;         string
 ;         type
 ;         entity
 ;         integer
@@ -279,6 +288,8 @@
 (define-struct attribute 
   (name
    column-name
+   pretty-name
+   pretty-name-plural
    type
    entity
    index
@@ -366,6 +377,8 @@
  [type:time-utc                   time-utc-type?]
  [struct entity                   ([name                symbol?]
                                    [table-name          symbol?]
+                                   [pretty-name         string?]
+                                   [pretty-name-plural  string?]
                                    [struct-type         struct-type?]
                                    [private-constructor procedure?]
                                    [private-predicate   procedure?]
@@ -382,6 +395,8 @@
                                    [on-delete           (-> (-> connection? guid? guid?) connection? guid? guid?)])]
  [make-vanilla-entity             (-> symbol?
                                       symbol?
+                                      string?
+                                      string?
                                       procedure?
                                       procedure?
                                       procedure?
@@ -394,6 +409,8 @@
  [entity-attribute                (-> entity? (or/c symbol? attribute?) attribute?)]
  [struct attribute                ([name                symbol?]
                                    [column-name         symbol?]
+                                   [pretty-name         string?]
+                                   [pretty-name-plural  string?]
                                    [type                type?]
                                    [entity              entity?]
                                    [index               integer?]

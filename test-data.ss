@@ -6,7 +6,8 @@
 
 (define-entity person
   ([name     string])
-  #:table-name 'people)
+  #:table-name         'people
+  #:pretty-name-plural "people")
 
 (define-entity pet
   ([owner    person]
@@ -18,7 +19,9 @@
    [name     string]
    [value    integer]
    [rating   real]
-   [active   boolean]
+   [active?  boolean
+             #:column-name 'active
+             #:pretty-name "active flag"]
    [start    time-tai])
   #:table-name 'courses)
 
