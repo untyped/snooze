@@ -1,9 +1,10 @@
 #lang scheme/base
 
+(require "base.ss")
+
 (require scheme/unit
-         (planet untyped/unlib:3/gen)
+         (unlib-in gen)
          "annotation.ss"
-         "base.ss"
          "quick-find.ss"
          "snooze-api.ss"
          "snooze-class.ss"
@@ -12,11 +13,15 @@
 
 ; Provide statements -----------------------------
 
-(provide (all-from-out (planet untyped/unlib:3/gen)
-                       "annotation.ss"
-                       "base.ss"
+(provide (unlib-out gen)
+         (all-from-out "annotation.ss"
                        "snooze-api.ss"
                        "snooze-class.ss"
                        "quick-find.ss"
                        "era/era.ss"
-                       "sql/sql.ss"))
+                       "sql/sql.ss")
+         (struct-out exn:fail:snooze)
+         (struct-out exn:fail:snooze:query)
+         (struct-out exn:fail:snooze:revision)
+         (struct-out exn:fail:snooze:transaction)
+         (struct-out exn:fail:snooze:cache))

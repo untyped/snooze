@@ -160,8 +160,8 @@
         [name (attribute-column-name attr)])
     (string-join (append (list (escape-name name)
                                (cond [(guid-type? type)     (format "INTEGER REFERENCES ~a(~a)"
-                                                                    (escape-name (entity-name (guid-type-entity type)))
-                                                                    (escape-name 'id))]
+                                                                    (escape-name (entity-table-name (guid-type-entity type)))
+                                                                    (escape-name (attribute-column-name (car (entity-attributes (guid-type-entity type))))))]
                                      [(boolean-type? type)  "BOOLEAN"]
                                      [(integer-type? type)  "INTEGER"]
                                      [(real-type? type)     "REAL"]

@@ -77,7 +77,7 @@
     ; guid -> (U snooze-struct #f)
     (define/public (cache-ref guid)
       (parameterize ([in-cache-code? #t])
-        (pretty-print (list 'snooze.cache-ref guid))
+        (log-cache "snooze.cache-ref" guid)
         (or (send (current-cache) cache-ref guid)
             (if (guid-id guid)
                 (let-alias ([x (guid-entity guid)])
@@ -86,20 +86,21 @@
                                           (current-connection)
                                           (sql (select #:from x #:where (= x.guid ,guid))))]
                                [ans (gen)])
-                              (and (not (g:end? ans)) ans)))
+                              (and (not (g:end? ans)) 
+                                   (send (current-cache) cache-ref ans))))
                 (raise-exn exn:fail:snooze:cache
                   (format "unsaved guid not cached: ~s" guid))))))
     
     ; snooze-struct -> void
     (define/public (cache-add! struct)
       (parameterize ([in-cache-code? #t])
-        (pretty-print (list 'snooze.cache-add! struct))
+        (log-cache "snooze.cache-add!" struct)
         (send (current-cache) cache-add! struct)))
     
     ; snooze-struct -> void
     (define/public (deep-cache-add! struct)
       (parameterize ([in-cache-code? #t])
-        (pretty-print (list 'snooze.deep-cache-add! struct))
+        (log-cache "snooze.deep-cache-add!" struct)
         (send (current-cache) deep-cache-add! struct)))
     
     ; -> database<%>
@@ -151,12 +152,12 @@
     ; entity -> void
     (define/public (create-table entity)
       (auto-connect)
-      (send database create-table (current-connection) entity))
+      (call-with-transaction (cut send database create-table (current-connection) entity)))
     
     ; entity -> void
     (define/public (drop-table entity)
       (auto-connect)
-      (send database drop-table (current-connection) entity))
+      (call-with-transaction (cut send database drop-table (current-connection) entity)))
     
     ; guid -> guid
     (define/public (save! guid)

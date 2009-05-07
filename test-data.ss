@@ -5,21 +5,21 @@
 (require "main.ss")
 
 (define-entity person
-  ([name string])
+  ([name     string])
   #:table-name 'people)
 
 (define-entity pet
-  ([owner-id integer #:column-name 'ownerID]
+  ([owner    person]
    [name     string])
   #:table-name 'pets)
 
 (define-entity course
-  ([code   symbol]
-   [name   string]
-   [value  integer]
-   [rating real]
-   [active boolean]
-   [start  time-tai])
+  ([code     symbol]
+   [name     string]
+   [value    integer]
+   [rating   real]
+   [active   boolean]
+   [start    time-tai])
   #:table-name 'courses)
 
 ; Procedures -------------------------------------
@@ -33,12 +33,12 @@
 
 ; -> void
 (define (recreate-test-tables)
-  (if (table-exists? pet)
-      (for-each delete! (find-all (sql (select #:from pet))))
-      (create-table pet))
   (if (table-exists? person)
       (for-each delete! (find-all (sql (select #:from person))))
       (create-table person))
+  (if (table-exists? pet)
+      (for-each delete! (find-all (sql (select #:from pet))))
+      (create-table pet))
   (if (table-exists? course)
       (for-each delete! (find-all (sql (select #:from course))))
       (create-table course)))

@@ -13,6 +13,16 @@
          srfi/26
          (unlib-in debug exn time))
 
+; Logging --------------------------------------
+
+; logger
+(define cache-logger
+  (make-logger 'cache (current-logger)))
+
+; string [any] [log-level-symbol] -> void
+(define (log-cache message [data (void)] [level 'info])
+  (log-message cache-logger level message data))
+
 ; Exception types ------------------------------
 
 (define-struct (exn:fail:snooze exn:fail) () #:transparent)
