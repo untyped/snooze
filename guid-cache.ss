@@ -27,6 +27,7 @@
     ; entity natural -> guid
     (define/public (get-interned-guid entity id)
       (parameterize ([in-cache-code? #t])
+        (log-cache "guid-cache.get-interned-guid" (list entity id))
         (unless (entity? entity) (raise-type-error 'get-interned-guid "entity" entity))
         (unless (number? id)     (raise-type-error 'get-interned-guid "number" id))
         (hash-ref guids
@@ -39,15 +40,13 @@
     ; guid -> void
     (define/public (intern-guid! guid)
       (parameterize ([in-cache-code? #t])
-        (debug "interning" (list guid guids))
-        (hash-set! guids (cons (entity-name (guid-entity guid)) (guid-id guid)) guid)
-        (debug "interned" (list guid guids))))
+        (log-cache "guid-cache.intern-guid!" guid)
+        (hash-set! guids (cons (entity-name (guid-entity guid)) (guid-id guid)) guid)))
     
     ; guid -> void
     (define/public (unintern-guid! entity id)
       (parameterize ([in-cache-code? #t])
-        (debug "uninterning" (list entity id guids))
-        (hash-remove! guids (cons (entity-name entity) id))
-        (debug "uninterned" (list entity id guids))))))
+        (log-cache "guid-cache.unintern-guid!" (list entity id))
+        (hash-remove! guids (cons (entity-name entity) id))))))
 
 (provide guid-cache%)

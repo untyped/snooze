@@ -21,7 +21,7 @@
   (class* object% (snooze<%>)
     
     (inspect #f)
-        
+    
     ; Fields -------------------------------------
     
     ; (thread-cell (U connection #f))
@@ -81,13 +81,13 @@
         (or (send (current-cache) cache-ref guid)
             (if (guid-id guid)
                 (let-alias ([x (guid-entity guid)])
-                  (let*/debug ([gen (send database g:find
-                                          this
-                                          (current-connection)
-                                          (sql (select #:from x #:where (= x.guid ,guid))))]
-                               [ans (gen)])
-                              (and (not (g:end? ans)) 
-                                   (send (current-cache) cache-ref ans))))
+                  (let* ([gen (send database g:find
+                                    this
+                                    (current-connection)
+                                    (sql (select #:from x #:where (= x.guid ,guid))))]
+                         [ans (gen)])
+                    (and (not (g:end? ans)) 
+                         (send (current-cache) cache-ref ans))))
                 (raise-exn exn:fail:snooze:cache
                   (format "unsaved guid not cached: ~s" guid))))))
     

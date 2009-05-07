@@ -75,14 +75,12 @@
     (define/public (save! guid)
       (parameterize ([in-cache-code? #t])
         (log-cache "cache.save!" guid)
-        (let/debug ([struct (hash-ref structs guid (cut raise-cache-ref-error guid))]
-                    [entity (guid-entity guid)]
-                    [id     (guid-id guid)])
+        (let ([struct (hash-ref structs guid (cut raise-cache-ref-error guid))]
+              [entity (guid-entity guid)]
+              [id     (guid-id guid)])
           (when parent
-            (printf "going to parent...~n")
             (send parent cache-add! (copy-snooze-struct struct))
             (send parent save! guid))
-          (printf "uninterning...~n")
           (send guid-cache unintern-guid! entity id)
           (send guid-cache intern-guid! guid)
           guid)))

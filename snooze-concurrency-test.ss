@@ -76,10 +76,6 @@
       (check-cache-size (list 0))
       (let ([guid1 (make-person "Dave")]
             [guid2 (make-person "Dave")])
-        (debug "param" (get-field current-cache (current-snooze)))
-        (debug "cache" ((get-field current-cache (current-snooze))))
-        (debug "hash"  (get-field structs ((get-field current-cache (current-snooze)))))
-        (debug "stored" (cache-alist))
         (check-cache-size (list 2))
         (check-equal? (person-name guid1) "Dave")
         (check-equal? (person-name guid2) "Dave")
@@ -146,7 +142,7 @@
         (check-cache-size (list 1))
         (check-not-eq? (send (current-snooze) cache-ref guid1) struct1)))
     
-    (test-case "inter-struct reference"
+    (test-case "inter-struct reference: make, clear, load, traverse ref"
       (cache-clear!)
       (check-cache-size (list 0))
       (let* ([person1    (make-person "Jon")]
