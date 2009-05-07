@@ -199,13 +199,13 @@
                
                (define-values (entity-private struct-type constructor predicate)
                  (make-entity 'entity
-                              (list 'attr ...)
-                              (list attr-type ...)
-                              (list attr-default ...)
+                              (lambda (entity) (list 'attr ...))
+                              (lambda (entity) (list attr-type ...))
+                              (lambda (entity) (list attr-default ...))
                               entity-guid-constructor
                               entity-guid-predicate
                               #:column-names
-                              (list column ...)
+                              (lambda (entity) (list column ...))
                               #:properties   
                               #,(if (eq? (syntax-local-context) 'module)
                                     #'(list (cons prop:serializable

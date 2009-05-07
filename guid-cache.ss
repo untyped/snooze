@@ -21,7 +21,8 @@
     ; Methods ------------------------------------
     
     ; -> hash
-    (define (get-guids) guids)
+    (define/public (get-guids)
+      guids)
     
     ; entity natural -> guid
     (define/public (get-interned-guid entity id)
@@ -38,11 +39,15 @@
     ; guid -> void
     (define/public (intern-guid! guid)
       (parameterize ([in-cache-code? #t])
-        (hash-set! guids (cons (entity-name (guid-entity guid)) (guid-id guid)) guid)))
+        (debug "interning" (list guid guids))
+        (hash-set! guids (cons (entity-name (guid-entity guid)) (guid-id guid)) guid)
+        (debug "interned" (list guid guids))))
     
     ; guid -> void
     (define/public (unintern-guid! entity id)
       (parameterize ([in-cache-code? #t])
-        (hash-remove! guids (cons (entity-name entity) id))))))
+        (debug "uninterning" (list entity id guids))
+        (hash-remove! guids (cons (entity-name entity) id))
+        (debug "uninterned" (list entity id guids))))))
 
 (provide guid-cache%)

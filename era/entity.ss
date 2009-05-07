@@ -9,13 +9,13 @@
          "core.ss")
 
 ;   symbol
-;   (listof symbol)
-;   (listof type)
-;   (listof (snooze -> any))
+;   (entity -> (listof symbol))
+;   (entity -> (listof type))
+;   (entity -> (listof (snooze -> any)))
 ;   (snooze-cache<%> (U natural #f) -> guid)
 ;   (any -> boolean)
 ;   [#:table-name   symbol]
-;   [#:column-names (listof symbol)]
+;   [#:column-names (entity -> (listof symbol))]
 ;   [#:on-save      ((struct -> struct) struct -> struct)]
 ;   [#:on-delete    ((struct -> struct) struct -> struct)]
 ;   [#:properties   (alistof property any)]
@@ -25,16 +25,30 @@
 ;   (any ... -> snooze-struct)
 ;   (any -> boolean)
 (define (create-entity name
-                       attr-names
-                       attr-types
-                       attr-defaults
+                       make-attr-names
+                       make-attr-types
+                       make-attr-defaults
                        guid-constructor
                        guid-predicate
-                       #:table-name   [table-name   name]
-                       #:column-names [column-names attr-names]
-                       #:on-save      [on-save      (lambda (continue conn struct) (continue conn struct))]
-                       #:on-delete    [on-delete    (lambda (continue conn struct) (continue conn struct))]
-                       #:properties   [properties   null])
+                       #:table-name   [table-name        name]
+                       #:column-names [make-column-names make-attr-names]
+                       #:on-save      [on-save           (lambda (continue conn struct) (continue conn struct))]
+                       #:on-delete    [on-delete         (lambda (continue conn struct) (continue conn struct))]
+                       #:properties   [properties        null])
+    
+  ; entity
+  (define entity
+    (make-vanilla-entity name table-name guid-constructor guid-predicate on-save on-delete))
+  
+  ; (listof symbol)
+  ; (listof type)
+  ; (listof (snooze -> any))
+  ; (listof symbol)
+  (define-values (attr-names attr-types attr-defaults column-names)
+    (values (make-attr-names    entity)
+            (make-attr-types    entity)
+            (make-attr-defaults entity)
+            (make-column-names  entity)))
   
   ; integer
   ;
@@ -47,11 +61,7 @@
             [(not (= num-args (length column-names)))
              (raise-type-error 'make-entity (format "~a column names" num-attrs) column-names)]
             [else (+ num-args 2)])))
-  
-  ; entity
-  (define entity
-    (make-vanilla-entity name table-name guid-constructor guid-predicate on-save on-delete))
-  
+
   ; struct-type-descriptor
   ; any ... -> struct
   ; struct -> boolean
@@ -161,13 +171,13 @@
  [rename create-entity
          make-entity
          (->* (symbol?
-               (listof symbol?)
-               (listof type?)
-               (listof procedure?)
+               (-> entity? (listof symbol?))
+               (-> entity? (listof type?))
+               (-> entity? (listof procedure?))
                procedure?
                (-> any/c boolean?))
               (#:table-name symbol?
-                            #:column-names (listof symbol?)
+                            #:column-names (-> entity? (listof symbol?))
                             #:on-save      procedure?
                             #:on-delete    procedure?
                             #:properties   (listof (cons/c

@@ -27,6 +27,9 @@
   (send cache get-parent))
 
 (define (cache-clear! [cache (cache)])
+  (let ([guid-hash (send (send (current-snooze) get-guid-cache) get-guids)])
+    (for ([key (in-list (hash-keys guid-hash))])
+      (hash-remove! guid-hash key)))
   (when (cache-parent cache)
     (cache-clear! (cache-parent cache)))
   (let ([hash (cache-hash cache)])
@@ -154,16 +157,12 @@
         (check-cache-size (list 2))
         (save! person1)
         (save! pet1)
-        (debug "CACHE1" (cache-alist))
         (cache-clear!)
         (check-cache-size (list 0))
-        (debug "CACHE2" (cache-alist))
         (set! pet1 (select-one #:from pet))
         (check-cache-size (list 1))
-        (debug "CACHE3" (cache-alist))
         (check-equal? (person-name (pet-owner pet1)) "Jon")
-        (check-cache-size (list 2))
-        (debug "CACHE4" (cache-alist))))))
+        (check-cache-size (list 2))))))
 
 ; Provide statements -----------------------------
 

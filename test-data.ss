@@ -22,6 +22,11 @@
    [start    time-tai])
   #:table-name 'courses)
 
+(define-entity tree-node
+  ([parent tree-node]
+   [value  string])
+  #:table-name 'treenode)
+
 ; Procedures -------------------------------------
 
 ; -> void
