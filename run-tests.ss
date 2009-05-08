@@ -33,8 +33,7 @@
   (when pre-existing-file?
     (delete-file filename))
   (run-snooze-tests
-   (make-snooze #:auto-connect? #t
-                 (sqlite3:make-database (string->path filename)))
+   (make-snooze (sqlite3:make-database (string->path filename)))
    sqlite3:all-sqlite3-tests)
   (unless pre-existing-file?
     (delete-file filename)))

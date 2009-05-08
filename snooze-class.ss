@@ -15,9 +15,9 @@
          "generic/database.ss"
          "sql/sql.ss")
 
-; database<%> [#:auto-connect? boolean] -> snooze<%>
-(define (make-snooze database #:auto-connect? [auto-connect? #f])
-  (new snooze% [database database] [auto-connect? auto-connect?]))
+; database<%> -> snooze<%>
+(define (make-snooze database)
+  (new snooze% [database database]))
 
 (define snooze%
   (class* object% (snooze<%>)
@@ -26,9 +26,6 @@
     
     ; database<%>
     (init-field [database #f])
-    
-    ; boolean
-    (init-field [auto-connect? #f])
     
     (super-new)
     
@@ -65,7 +62,7 @@
     
     ; (-> any) -> any
     (define/public (call-with-connection thunk)
-      (dynamic-wind (cut connect)
+      (dynamic-wind void
                     (cut thunk)
                     (cut disconnect)))
     
@@ -82,8 +79,7 @@
     
     ; -> void
     (define (auto-connect)
-      (when (and auto-connect? (not (thread-cell-ref current-connection-cell)))
-        (connect)))
+      (connect))
     
     ; -> connection
     ;
@@ -328,7 +324,6 @@
   (object-contract
     
     [field database            (is-a?/c database<%>)]
-    [field auto-connect?       boolean?]
     
     [get-database              (-> (is-a?/c database<%>))]
     [set-database!             (-> (is-a?/c database<%>) void?)]
@@ -375,6 +370,4 @@
 (provide/contract
  [snooze%     class?]
  [snooze%/c   contract?]
- [make-snooze (->* ((is-a?/c database<%>))
-                   (#:auto-connect? boolean?)
-                   snooze%/c)])
+ [make-snooze (-> (is-a?/c database<%>) snooze%/c)])
