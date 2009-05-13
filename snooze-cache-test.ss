@@ -11,6 +11,23 @@
 
 ; Tests -------------------------------------------
 
+(define-syntax-rule (check-equality a b eq guid= equal)
+  (begin
+    (with-check-info (['actual a] ['expected b] ['comparison 'eq?])
+      (if eq
+          (check-true (eq? a b))
+          (check-false (eq? a b))))
+    
+    (with-check-info (['actual a] ['expected b] ['comparison 'guid=?])
+      (if guid=
+          (check-true (guid=? a b))
+          (check-false (guid=? a b))))
+    
+    (with-check-info (['actual a] ['expected b] ['comparison 'equal?])
+      (if equal
+          (check-true (equal? a b))
+          (check-false (equal? a b))))))
+
 ; test-suite
 (define snooze-cache-tests
   (test-suite "snooze-cache-tests"
@@ -29,9 +46,7 @@
         (let ([per1 (make-person "Dave")]
               [per2 (make-person "Dave")])
           (check-cache-size (list 2))
-          (check-not-eq? per1 per2)
-          (check-false (guid=? per1 per2))
-          (check-equal?  per1 per2)
+          (check-equality per1 per2 #f #f #t)
           (check-equal? (person-name per1) "Dave")
           (check-equal? (person-name per2) "Dave")))
       
@@ -42,9 +57,7 @@
         (let ([per1 (select-one #:from person)]
               [per2 (select-one #:from person)])
           (check-cache-size (list 1))
-          (check-not-eq? per1 per2)
-          (check-true (guid=? per1 per2))
-          (check-equal? per1 per2)
+          (check-equality per1 per2 #f #t #t)
           (check-equal? (person-name per1) "Dave")
           (check-equal? (person-name per2) "Dave")))
       
@@ -54,9 +67,7 @@
         (let ([per1 (make-person "Dave")]
               [per2 (person-set (make-person "Dave"))])
           (check-cache-size (list 3))
-          (check-not-eq? per1 per2)
-          (check-false (guid=? per1 per2))
-          (check-equal? per1 per2)
+          (check-equality per1 per2 #f #f #t)
           (check-equal? (person-name per1) "Dave")
           (check-equal? (person-name per2) "Dave")))
       
@@ -67,9 +78,7 @@
         (let ([per1 (select-one #:from person)]
               [per2 (person-set (select-one #:from person))])
           (check-cache-size (list 2))
-          (check-not-eq? per1 per2)
-          (check-false (guid=? per1 per2))
-          (check-equal? per1 per2)
+          (check-equality per1 per2 #f #f #t)
           (check-equal? (person-name per1) "Dave")
           (check-equal? (person-name per2) "Dave")))
       
@@ -79,9 +88,7 @@
         (let* ([per1 (make-person "Dave")]
                [per2 (person-set per1 #:name "David")])
           (check-cache-size (list 2))
-          (check-not-eq? per1 per2)
-          (check-false (guid=? per1 per2))
-          (check-not-equal? per1 per2)
+          (check-equality per1 per2 #f #f #f)
           (check-equal? (person-name per1) "Dave")
           (check-equal? (person-name per2) "David")))
       
@@ -92,9 +99,7 @@
         (let* ([per1 (select-one #:from person)]
                [per2 (person-set per1 #:name "David")])
           (check-cache-size (list 2))
-          (check-not-eq? per1 per2)
-          (check-false (guid=? per1 per2))
-          (check-not-equal? per1 per2)
+          (check-equality per1 per2 #f #f #f)
           (check-equal? (person-name per1) "Dave")
           (check-equal? (person-name per2) "David")))
       
@@ -105,12 +110,8 @@
                [per2 (person-set per1 #:name "David")]
                [per3 (save! per2)])
           (check-cache-size (list 2))
-          (check-not-eq? per1 per3)
-          (check-false (guid=? per1 per3))
-          (check-not-equal? per1 per3)
-          (check-eq? per2 per3)
-          (check-true (guid=? per2 per3))
-          (check-equal? per2 per3)
+          (check-equality per1 per3 #f #f #f)
+          (check-equality per2 per3 #t #t #t)
           (check-equal? (person-name per1) "Dave")
           (check-equal? (person-name per2) "David")
           (check-equal? (person-name per3) "David")))
@@ -122,17 +123,9 @@
         (let* ([per1 (select-one #:from person)]
                [per2 (person-set per1 #:name "David")]
                [per3 (save! per2)])
-          (check-equal? (equal-hash-code per1)
-                        (equal-hash-code per3))
-          (check-equal? (equal-hash-code per2)
-                        (equal-hash-code per3))
           (check-cache-size (list 1))
-          (check-not-eq? per1 per3)
-          (check-true (guid=? per1 per3))
-          (check-equal? per1 per3)
-          (check-eq? per2 per3)
-          (check-true (guid=? per2 per3))
-          (check-equal? per2 per3)
+          (check-equality per1 per3 #f #t #t)
+          (check-equality per2 per3 #t #t #t)
           (check-equal? (person-name per1) "David")
           (check-equal? (person-name per2) "David")
           (check-equal? (person-name per3) "David"))))
@@ -145,12 +138,10 @@
         (let* ([per1 (make-person "Jon")]
                [pet1 (make-pet per1 "Garfield")])
           (check-cache-size (list 2))
-          (check-not-eq? per1 pet1)
-          (check-false (guid=? per1 pet1))
-          (check-not-equal? per1 pet1)
+          (check-equality per1 pet1 #f #f #f)
+          (check-equality (pet-owner pet1) per1 #t #t #t)
           (check-equal? (person-name per1) "Jon")
-          (check-equal? (pet-name pet1) "Garfield")
-          (check-eq? (pet-owner pet1) per1)))
+          (check-equal? (pet-name pet1) "Garfield")))
       
       (test-case "load both"
         (recreate-test-tables)
@@ -160,14 +151,10 @@
         (let* ([per1 (select-one #:from person)]
                [pet1 (select-one #:from pet)])
           (check-cache-size (list 2))
-          (check-not-eq? per1 pet1)
-          (check-false (guid=? per1 pet1))
-          (check-not-equal? per1 pet1)
+          (check-equality per1 pet1 #f #f #f)
+          (check-equality (pet-owner pet1) per1 #f #t #t)
           (check-equal? (person-name per1) "Jon")
-          (check-equal? (pet-name pet1) "Garfield")
-          (check-not-eq? (pet-owner pet1) per1)
-          (check guid=? (pet-owner pet1) per1)
-          (check-equal? (pet-owner pet1) per1)))
+          (check-equal? (pet-name pet1) "Garfield")))
       
       (test-case "load one, implicitly load other"
         (recreate-test-tables)
@@ -177,16 +164,12 @@
         (let* ([pet1 (select-one #:from pet)]
                [per1 (pet-owner pet1)])
           (check-cache-size (list 1))
-          (check-not-eq? per1 pet1)
-          (check-false (guid=? per1 pet1))
-          (check-not-equal? per1 pet1)
+          (check-equality per1 pet1 #f #f #f)
+          (check-equality (pet-owner pet1) per1 #t #t #t)
           (check-cache-size (list 1))
           (check-equal? (person-name per1) "Jon")
           (check-cache-size (list 2))
-          (check-equal? (pet-name pet1) "Garfield")
-          (check-eq? (pet-owner pet1) per1)
-          (check guid=? (pet-owner pet1) per1)
-          (check-equal? (pet-owner pet1) per1)))
+          (check-equal? (pet-name pet1) "Garfield")))
       
       (test-case "create both, copy one"
         (recreate-test-tables)
@@ -195,15 +178,12 @@
                [pet1 (make-pet per1 "Garfield")]
                [per2 (person-set per1)])
           (check-cache-size (list 3))
-          (check-not-eq? per1 per2)
-          (check-false (guid=? per1 per2))
-          (check-equal? per1 per2)
-          (check-eq? (pet-owner pet1) per1)
-          (check guid=? (pet-owner pet1) per1)
-          (check-equal? (pet-owner pet1) per1)
-          (check-not-eq? (pet-owner pet1) per2)
-          (check-false (guid=? (pet-owner pet1) per2))
-          (check-equal? (pet-owner pet1) per2)))
+          (check-equality per1 per2 #f #f #t)
+          (check-equality (pet-owner pet1) per1 #t #t #t)
+          (check-equality (pet-owner pet1) per2 #f #f #t)
+          (check-equal? (person-name per1) "Jon")
+          (check-equal? (person-name per2) "Jon")
+          (check-equal? (pet-name pet1) "Garfield")))
       
       (test-case "create both, modify one"
         (recreate-test-tables)
@@ -212,15 +192,12 @@
                [pet1 (make-pet per1 "Odie")]
                [per2 (person-set per1 #:name "Jon")])
           (check-cache-size (list 3))
-          (check-not-eq? per1 per2)
-          (check-false (guid=? per1 per2))
-          (check-not-equal? per1 per2)
-          (check-eq? (pet-owner pet1) per1)
-          (check guid=? (pet-owner pet1) per1)
-          (check-equal? (pet-owner pet1) per1)
-          (check-not-eq? (pet-owner pet1) per2)
-          (check-false (guid=? (pet-owner pet1) per2))
-          (check-not-equal? (pet-owner pet1) per2)))
+          (check-equality per1 per2 #f #f #f)
+          (check-equality (pet-owner pet1) per1 #t #t #t)
+          (check-equality (pet-owner pet1) per2 #f #f #f)
+          (check-equal? (person-name per1) "Lyman")
+          (check-equal? (person-name per2) "Jon")
+          (check-equal? (pet-name pet1) "Odie")))
       
       (test-case "load, copy one"
         (recreate-test-tables)
@@ -231,15 +208,11 @@
                [per1 (pet-owner pet1)]
                [per2 (person-set per1)])
           (check-cache-size (list 3))
-          (check-not-eq? per1 per2)
-          (check-false (guid=? per1 per2))
-          (check-equal? per1 per2)
-          (check-eq? (pet-owner pet1) per1)
-          (check guid=? (pet-owner pet1) per1)
-          (check-equal? (pet-owner pet1) per1)
-          (check-not-eq? (pet-owner pet1) per2)
-          (check-false (guid=? (pet-owner pet1) per2))
-          (check-equal? (pet-owner pet1) per2)))
+          (check-equality per1 per2 #f #f #t)
+          (check-equality (pet-owner pet1) per1 #t #t #t)
+          (check-equality (pet-owner pet1) per2 #f #f #t)
+          (check-equal? (person-name per1) "Jon")
+          (check-equal? (pet-name pet1) "Garfield")))
       
       (test-case "load, modify one"
         (recreate-test-tables)
@@ -250,15 +223,12 @@
                [per1 (pet-owner pet1)]
                [per2 (person-set per1 #:name "Jon")])
           (check-cache-size (list 3))
-          (check-not-eq? per1 per2)
-          (check-false (guid=? per1 per2))
-          (check-not-equal? per1 per2)
-          (check-eq? (pet-owner pet1) per1)
-          (check guid=? (pet-owner pet1) per1)
-          (check-equal? (pet-owner pet1) per1)
-          (check-not-eq? (pet-owner pet1) per2)
-          (check-false (guid=? (pet-owner pet1) per2))
-          (check-not-equal? (pet-owner pet1) per2)))
+          (check-equality per1 per2 #f #f #f)
+          (check-equality (pet-owner pet1) per1 #t #t #t)
+          (check-equality (pet-owner pet1) per2 #f #f #f)
+          (check-equal? (person-name per1) "Lyman")
+          (check-equal? (person-name per2) "Jon")
+          (check-equal? (pet-name pet1) "Odie")))
       
       (test-case "create both, copy one, save both"
         (recreate-test-tables)
@@ -277,16 +247,62 @@
           ; be allocated for each.
           (for-each save! (list per2 per1 pet1))
           (check-cache-size (list 3))
-          (check-not-eq? per1 per2)
-          (check-false (guid=? per1 per2))
-          (check-not-equal? per1 per2)
-          (check-eq? (pet-owner pet1) per1)
-          (check guid=? (pet-owner pet1) per1)
-          (check-equal? (pet-owner pet1) per1)
-          (check-not-eq? (pet-owner pet1) per2)
-          (check-false (guid=? (pet-owner pet1) per2))
-          (check-not-equal? (pet-owner pet1) per2)))
+          (check-equality per1 per2 #f #f #f)
+          (check-equality (pet-owner pet1) per1 #t #t #t)
+          (check-equality (pet-owner pet1) per2 #f #f #f)
+          (check-equal? (person-name per1) "Jon")
+          (check-equal? (pet-name pet1) "Garfield")))
 
+      (test-case "create both, modify one, save both"
+        (recreate-test-tables)
+        (cache-clear!)
+        (let* ([per1 (make-person "Lyman")]
+               [pet1 (make-pet per1 "Odie")]
+               [per2 (person-set per1 #:name "Jon")])
+          (for-each save! (list per2 per1 pet1))
+          (check-cache-size (list 3))
+          (check-equality per1 per2 #f #f #f)
+          (check-equality (pet-owner pet1) per1 #t #t #t)
+          (check-equality (pet-owner pet1) per2 #f #f #f)
+          (check-equal? (person-name per1) "Lyman")
+          (check-equal? (person-name per2) "Jon")
+          (check-equal? (pet-name pet1) "Odie")))
+      
+      (test-case "load both, copy one, save both"
+        (recreate-test-tables)
+        (let ([per1 (save! (make-person "Jon"))])
+          (save! (make-pet per1 "Garfield")))
+        (cache-clear!)
+        (let* ([pet1 (select-one #:from pet)]
+               [per1 (pet-owner pet1)]
+               [per2 (person-set per1)])
+          (check-cache-size (list 3))
+          (for-each save! (list per2 pet1))
+          (check-cache-size (list 2))
+          (check-equality per1 per2 #f #t #t)
+          (check-equality (pet-owner pet1) per1 #t #t #t)
+          (check-equality (pet-owner pet1) per2 #f #t #t)
+          (check-equal? (person-name per1) "Jon")
+          (check-equal? (pet-name pet1) "Garfield")))
+
+      (test-case "load both, modify one, save both"
+        (recreate-test-tables)
+        (let ([per1 (save! (make-person "Lyman"))])
+          (save! (make-pet per1 "Odie")))
+        (cache-clear!)
+        (let* ([pet1 (select-one #:from pet)]
+               [per1 (pet-owner pet1)]
+               [per2 (person-set per1 #:name "Jon")])
+          (check-cache-size (list 3))
+          (for-each save! (list per2 pet1))
+          (check-cache-size (list 2))
+          (check-equality per1 per2 #f #t #t)
+          (check-equality (pet-owner pet1) per1 #t #t #t)
+          (check-equality (pet-owner pet1) per2 #f #t #t)
+          (check-equal? (person-name per1) "Jon")
+          (check-equal? (person-name per2) "Jon")
+          (check-equal? (pet-name pet1) "Odie")))
+      
       )))
 
 ; Provide statements -----------------------------
