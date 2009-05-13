@@ -11,23 +11,6 @@
 
 ; Tests -------------------------------------------
 
-(define-syntax-rule (check-equality a b eq guid= equal)
-  (begin
-    (with-check-info (['actual a] ['expected b] ['comparison 'eq?])
-      (if eq
-          (check-true (eq? a b))
-          (check-false (eq? a b))))
-    
-    (with-check-info (['actual a] ['expected b] ['comparison 'guid=?])
-      (if guid=
-          (check-true (guid=? a b))
-          (check-false (guid=? a b))))
-    
-    (with-check-info (['actual a] ['expected b] ['comparison 'equal?])
-      (if equal
-          (check-true (equal? a b))
-          (check-false (equal? a b))))))
-
 ; test-suite
 (define snooze-cache-tests
   (test-suite "snooze-cache-tests"
@@ -301,9 +284,7 @@
           (check-equality (pet-owner pet1) per2 #f #t #t)
           (check-equal? (person-name per1) "Jon")
           (check-equal? (person-name per2) "Jon")
-          (check-equal? (pet-name pet1) "Odie")))
-      
-      )))
+          (check-equal? (pet-name pet1) "Odie"))))))
 
 ; Provide statements -----------------------------
 
