@@ -3,7 +3,7 @@
 (require scheme/class)
 
 (require (planet untyped/unlib:3/gen)
-         (prefix-in sqlite: (planet jaymccarthy/sqlite:3:4/sqlite))
+         (prefix-in sqlite: (planet jaymccarthy/sqlite:4:1/sqlite))
          "../base.ss"
          "../extract.ss"
          "../era/era.ss"

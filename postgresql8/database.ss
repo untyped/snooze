@@ -86,10 +86,8 @@
         ; sequence "entity_seq". Returns the new value of the ID sequence (and thus the ID of the 
         ; just-inserted element):
         (send (connection-back-end conn) exec (insert-sql struct))
-        (parse-value #f
-                     type:integer
-                     (send (connection-back-end conn) query-value 
-                           (string-append "SELECT currval('" (escape-name sequence-name) "');")))))
+        (parse-value #f type:integer (send (connection-back-end conn) query-value 
+                                           (string-append "SELECT currval('" (escape-name sequence-name) "');")))))
     
     ; connection snooze-struct -> void
     ;

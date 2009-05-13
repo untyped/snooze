@@ -31,11 +31,10 @@
         [(time-utc-type? type) (guard type value time-utc? "(U time-utc #f)") (escape-time time-utc value)]
         [else                  (raise-type-error #f "unrecognised type" type)]))
 
-; type string -> any
-(define (parse-value type value)
+; snooze type string -> any
+(define (parse-value snooze type value)
   (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
-    (cond [(guid-type? type)     (let ([id (inexact->exact (string->number value))])
-                                   (and id (make-guid (guid-type-entity type) id)))]
+    (cond [(guid-type? type)     (send (send snooze get-guid-cache) get-interned-guid (guid-type-entity type) (inexact->exact value))]
           [(boolean-type? type)  (equal? value "1")]
           [(not value)           #f]
           [(integer-type? type)  (inexact->exact (string->number value))]
@@ -46,19 +45,11 @@
           [(time-utc-type? type) (parse-time time-utc value)]
           [else                  (raise-exn exn:fail:contract (format "Unrecognised type: ~s" type))])))
 
-; (listof type) -> ((U (vectorof database-value) #f) -> (U (vectorof scheme-value) #f))
-(define (make-parser type-list)
-  ; (vectorof type)
-  (define type-vector
-    (list->vector type-list))
-  ; (U (vectorof database-value) #f) -> (U (vectorof scheme-value) #f)
-  (lambda (value-vector)
-    (if value-vector
-        (vector-map (lambda (index type val)
-                      (parse-value type val))
-                    type-vector
-                    value-vector)
-        #f)))
+; snooze (listof type) -> ((U (listof database-value) #f) -> (U (listof scheme-value) #f))
+(define (make-parser snooze types)
+  (let ([parse/snooze (cut parse-value snooze <> <>)])
+    (lambda (vals)
+      (and vals (map parse/snooze types vals)))))
 
 ; Helpers --------------------------------------
 

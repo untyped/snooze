@@ -35,7 +35,7 @@
 ; snooze-cache<%> type (U string sql-null) -> any
 (define (parse-value snooze type value)
   (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
-    (cond [(guid-type? type)     (send (send snooze get-guid-cache) get-interned-guid (guid-type-entity type) (inexact->exact value))]
+    (cond [(guid-type? type)     (entity-make-guid #:snooze snooze (guid-type-entity type) (inexact->exact value) #f)]
           [(sql-null? value)     #f]
           [(boolean-type? type)  value]
                 [(integer-type? type)  (inexact->exact value)]
@@ -46,7 +46,7 @@
                 [(time-utc-type? type) (date->time-utc (sql-datetime->srfi-date value))]
                 [else                  (error "unrecognised type" type)])))
 
-; (listof type) -> ((U (listof database-value) #f) -> (U (listof scheme-value) #f))
+; snooze (listof type) -> ((U (listof database-value) #f) -> (U (listof scheme-value) #f))
 (define (make-parser snooze types)
   (let ([parse/snooze (cut parse-value snooze <> <>)])
     (lambda (vals)

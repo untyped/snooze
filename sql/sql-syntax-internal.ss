@@ -5,7 +5,7 @@
          srfi/26
          (planet untyped/unlib:3/syntax)
          "../base.ss"
-         "../era/info.ss"
+         "../era/syntax-info.ss"
          (prefix-in sql: "sql-lang.ss")
          "sql-struct.ss"
          "sql-syntax-util.ss"

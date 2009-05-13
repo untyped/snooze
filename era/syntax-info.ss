@@ -2,7 +2,7 @@
 
 (require scheme/contract
          syntax/boundmap
-         "info-internal.ss")
+         "syntax-info-internal.ss")
 
 ; Variables --------------------------------------
 
@@ -12,8 +12,8 @@
    struct-type-id
    constructor-id
    predicate-id
-   constructor/defaults-id
-   copy-struct-id
+   defaults-constructor-id
+   copy-constructor-id
    guid-id
    guid-constructor-id
    guid-predicate-id
@@ -22,10 +22,7 @@
   private-id)
 
 (define-struct attribute-info
-  (id
-   private-id
-   accessor-id
-   mutator-id)
+  (id private-id accessor-id mutator-id)
   #:transparent)
 
 (define info-cache (make-module-identifier-mapping))

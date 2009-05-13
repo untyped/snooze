@@ -40,13 +40,11 @@
       (check-equal? (make-person/defaults #:guid (entity-make-guid person 123) #:name "Dave")
                     (make-person #:guid (entity-make-guid person 123) "Dave"))
       (check-equal? (make-person/defaults #:guid (entity-make-guid person 123) #:name "Dave")
-                    (let ([person (make-person "Dave")])
-                      (set-struct-id! person 123)
-                      person)))
+                    (person-set (make-person "Dave") #:guid (entity-make-guid person 123))))
     
     (test-case "copy constructor"
       (check-equal? (make-person/defaults #:guid (entity-make-guid person 123) #:name "Dave")
-                    (copy-person (make-person "Dave") #:guid (entity-make-guid person 123))))))
+                    (person-set (make-person "Dave") #:guid (entity-make-guid person 123))))))
 
 ; Provide statements -----------------------------
 

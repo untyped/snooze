@@ -13,6 +13,9 @@
          srfi/26
          (unlib-in debug exn time))
 
+; (parameter boolean)
+(define in-cache-code? (make-parameter #f))
+
 ; Logging --------------------------------------
 
 ; logger
@@ -21,7 +24,8 @@
 
 ; string [any] [log-level-symbol] -> void
 (define (log-cache message [data (void)] [level 'info])
-  (log-message cache-logger level message data))
+  #;(printf "log-cache ~a: ~a~n" level message)
+  (void))
 
 ; Exception types ------------------------------
 

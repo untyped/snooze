@@ -18,7 +18,10 @@
                   [val  (car args)])
               (if (attribute? val)
                   (raise-type-error 'check-attribute-keywords "no value for attribute" (car attrs-accum))
-                  (loop (not even?) (cdr args) attrs-accum (cons val vals-accum)))))
+                  (loop (not even?)
+                        (cdr args)
+                        attrs-accum
+                        (cons val vals-accum)))))
         ; Attribute:
         (if (null? args)
             (values (reverse attrs-accum)
@@ -26,25 +29,22 @@
             (let* ([attr+name (car args)]
                    [attr      (cond [(attribute? attr+name) (entity-attribute entity attr+name)]
                                     [(symbol? attr+name)    (entity-attribute entity attr+name)]
-                                    [else                   (raise-type-error
-                                                             'check-attribute-keywords
-                                                             (if (null? attrs-accum)
-                                                                 "no attribute for value"
-                                                                 "multiple values for attribute")
-                                                             (if (null? attrs-accum)
-                                                                 attr+name
-                                                                 (car attrs-accum)))])])
+                                    [else                   (raise-type-error 'check-attribute-keywords
+                                                                              (if (null? attrs-accum)
+                                                                                  "no attribute for value"
+                                                                                  "multiple values for attribute")
+                                                                              (if (null? attrs-accum)
+                                                                                  attr+name
+                                                                                  (car attrs-accum)))])])
               (if (for/or ([attr* (in-list attrs-accum)])
                     (and (attribute-name-equal? attr attr*) attr*))
                   (raise-type-error 'check-attribute-keywords "attribute specified more than once" attr)
-                  (loop (not even?) (cdr args) (cons attr attrs-accum) vals-accum)))))))
+                  (loop (not even?)
+                        (cdr args)
+                        (cons attr attrs-accum)
+                        vals-accum)))))))
 
 ; entity attribute (listof attribute) (listof any) (attribute -> any) -> any
-;
-; We search for attributes by name so we don't have to worry that, for example,
-; attr:struct-guid and attr:person-guid are not equal. Note that we are reliant on
-; check-attribute-keywords to chuck out attributes from other entities, otherwise
-; we might get confused between, for example, attr:person-name and attr:pet-name.
 (define (attribute-keyword-get entity needle attrs vals default-ref)
   (let ([guid? (entity-guid-attribute? entity needle)])
     (let/ec return

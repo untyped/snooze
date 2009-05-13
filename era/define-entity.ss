@@ -8,12 +8,12 @@
                      scheme/struct-info
                      (only-in srfi/1 append-map)
                      (unlib-in syntax)
-                     "info.ss")
+                     "syntax-info.ss")
          scheme/serialize
          (except-in "core.ss" make-entity)
          "cached-struct.ss"
          "entity.ss"
-         "info.ss"
+         "syntax-info.ss"
          "pretty.ss"
          (prefix-in sql: "../sql/sql-lang.ss"))
 
@@ -34,8 +34,8 @@
   (define entity-guid-struct-type-stx #f) ; struct:guid:person
   (define entity-guid-constructor-stx #f) ; make-guid:person
   (define entity-guid-predicate-stx #f)   ; guid:person?
-  (define constructor/defaults-stx #f)    ; make-person/defaults
-  (define copy-struct-stx #f)             ; copy-person
+  (define defaults-constructor-stx #f)    ; make-person/defaults
+  (define copy-constructor-stx #f)        ; person-set
   (define deserialize-info-stx #f)        ; deserialize-info:person
   (define property-stxs null)             ; (... (cons prop:bar bar) (cons prop:foo foo))
   (define entity-kw-stxs null)            ; #:table-name 'Person ...
@@ -66,8 +66,8 @@
               (set! entity-guid-struct-type-stx (make-id #'name 'struct:guid: #'name))
               (set! entity-guid-constructor-stx (make-id #'name 'make-guid: #'name))
               (set! entity-guid-predicate-stx   (make-id #'name 'guid: #'name '?))
-              (set! constructor/defaults-stx    (make-id #'name 'make- #'name '/defaults))
-              (set! copy-struct-stx             (make-id #'name 'copy- #'name))
+              (set! defaults-constructor-stx    (make-id #'name 'make- #'name '/defaults))
+              (set! copy-constructor-stx        (make-id #'name #'name '-set))
               (set! deserialize-info-stx        (make-id #'name 'deserialize-info: #'name '-v0))
               (parse-attrs #'(other ...)))]))
   
@@ -182,8 +182,8 @@
                   [entity-guid-struct-type  entity-guid-struct-type-stx]
                   [entity-guid-constructor  entity-guid-constructor-stx]
                   [entity-guid-predicate    entity-guid-predicate-stx]
-                  [constructor/defaults     constructor/defaults-stx]
-                  [copy-struct              copy-struct-stx]
+                  [defaults-constructor     defaults-constructor-stx]
+                  [copy-constructor         copy-constructor-stx]
                   [deserialize-info         deserialize-info-stx]
                   [(property ...)           (reverse property-stxs)]
                   [(entity-kw ...)          (reverse entity-kw-stxs)]
@@ -253,26 +253,27 @@
                (define-values (revision-mutator mutator ...)
                  (apply values (map attribute-cached-mutator (cdr (entity-attributes entity-private)))))
                
-               (define (constructor/defaults
-                        #:snooze   [snooze   (current-snooze)]
-                        #:guid     [guid     (entity-make-guid #:snooze snooze entity-private #f)]
-                        #:revision [revision #f]
-                        #,@(append-map (lambda (kw attr name)
-                                         (list kw #`[#,name (attribute-default #:snooze snooze #,attr)]))
-                                       (syntax->list #'(attr-kw ...))
-                                       (syntax->list #'(attr-private ...))
-                                       (syntax->list #'(attr ...))))
+               (define (defaults-constructor
+                         #:snooze   [snooze   (current-snooze)]
+                         #:guid     [guid     (entity-make-guid #:snooze snooze entity-private #f)]
+                         #:revision [revision #f]
+                         #,@(append-map (lambda (kw attr name)
+                                          (list kw #`[#,name (attribute-default #:snooze snooze #,attr)]))
+                                        (syntax->list #'(attr-kw ...))
+                                        (syntax->list #'(attr-private ...))
+                                        (syntax->list #'(attr ...))))
                  ((entity-cached-constructor entity-private) #:snooze snooze #:guid guid #:revision revision attr ...))
                
-               (define (copy-struct original
-                                    #:snooze   [snooze   (guid-snooze original)]
-                                    #:guid     [guid     (entity-make-guid #:snooze snooze (guid-entity original) (guid-id original))]
-                                    #:revision [revision (struct-revision original)]
-                                    #,@(append-map (lambda (kw accessor name)
-                                                     (list kw #`[#,name (#,accessor original)]))
-                                                   (syntax->list #'(attr-kw ...))
-                                                   (syntax->list #'(accessor ...))
-                                                   (syntax->list #'(attr ...))))
+               (define (copy-constructor
+                        original
+                        #:snooze   [snooze   (guid-snooze original)]
+                        #:guid     [guid     (entity-make-guid #:snooze snooze (guid-entity original) (guid-id original))]
+                        #:revision [revision (struct-revision original)]
+                        #,@(append-map (lambda (kw accessor name)
+                                         (list kw #`[#,name (#,accessor original)]))
+                                       (syntax->list #'(attr-kw ...))
+                                       (syntax->list #'(accessor ...))
+                                       (syntax->list #'(attr ...))))
                  ((entity-cached-constructor entity-private) #:snooze snooze #:guid guid #:revision revision attr ...))
                
                #,(if (eq? (syntax-local-context) 'module)
@@ -285,7 +286,7 @@
                                      struct))
                                  ; cycle-maker
                                  (lambda ()
-                                   (values constructor/defaults copy-struct))))
+                                   (values defaults-constructor copy-constructor))))
                               (provide deserialize-info))
                      #'(begin))
                
@@ -307,16 +308,15 @@
                                             (certify #'revision-accessor)
                                             (certify #'guid-accessor)))
                              (reverse (list (certify #'mutator) ...
-                                            (certify #'revision-mutator)
-                                            #f))
+                                            (certify #'revision-mutator)))
                              #t))
                      (certify #'entity)
                      (certify #'entity-private)
                      (certify #'struct-type)
                      (certify #'constructor)
                      (certify #'predicate)
-                     (certify #'constructor/defaults)
-                     (certify #'copy-struct)
+                     (certify #'defaults-constructor)
+                     (certify #'copy-constructor)
                      (certify #'entity-guid)
                      (certify #'entity-guid-constructor)
                      (certify #'entity-guid-predicate)
@@ -380,8 +380,8 @@
      (syntax-case stx ()
        [(_ id)
         (let ([info (entity-info-ref #'id)])
-          (map create-export (list (entity-info-constructor/defaults-id info)
-                                   (entity-info-copy-struct-id          info))))]))))
+          (map create-export (list (entity-info-defaults-constructor-id info)
+                                   (entity-info-copy-constructor-id     info))))]))))
 
 ; (listof (cons property any)) -> boolean
 (define (reserved-properties? prop-alist)

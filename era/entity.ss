@@ -24,6 +24,7 @@
 ;   [#:on-save                  ((struct -> struct) struct -> struct)]
 ;   [#:on-delete                ((struct -> struct) struct -> struct)]
 ;   [#:properties               (alistof property any)]
+;   [#:pretty-formatter         (guid any ... -> string)]
 ; -> 
 ;   entity
 ;   struct-type
@@ -38,6 +39,7 @@
                        #:table-name               [table-name               name]
                        #:pretty-name              [pretty-name              (name->pretty-name name)]
                        #:pretty-name-plural       [pretty-name-plural       (pluralize-pretty-name pretty-name)]
+                       #:pretty-formatter         [pretty-formatter         display]
                        #:attr-column-names        [attr-column-names        attr-names]
                        #:attr-pretty-names        [attr-pretty-names        (map name->pretty-name attr-names)]
                        #:attr-pretty-names-plural [attr-pretty-names-plural (map pluralize-pretty-name attr-pretty-names)]
@@ -47,7 +49,7 @@
     
   ; entity
   (define entity
-    (make-vanilla-entity name table-name pretty-name pretty-name-plural guid-constructor guid-predicate on-save on-delete))
+    (make-vanilla-entity name table-name pretty-name pretty-name-plural pretty-formatter guid-constructor guid-predicate on-save on-delete))
   
   ; (listof type)
   (define attr-types (make-attr-types entity))
@@ -89,11 +91,9 @@
     (let* ([name             'guid]
            [col              'id]
            [type             (make-guid-type #f entity)]
-           [default-maker    (lambda (snooze) (make-guid #f #:snooze snooze))]
+           [default-maker    (cut entity-make-guid #:snooze <> entity #f)]
            [index            0])
-      (create-attribute name col "unique identifier" "unique identifiers"
-                        type entity index
-                        default-maker struct-accessor struct-mutator)))
+      (create-attribute name col "unique ID" "unique IDs" type entity index default-maker struct-accessor struct-mutator)))
   
   (define revision-attribute
     (let* ([name             'revision]
@@ -101,9 +101,7 @@
            [type             (make-integer-type #f)]
            [default-maker    (lambda (snooze) #f)]
            [index            1])
-      (create-attribute name col "revision" "revisions"
-                        type entity index
-                        default-maker struct-accessor struct-mutator)))
+      (create-attribute name col "revision" "revisions" type entity index default-maker struct-accessor struct-mutator)))
   
   ; (listof attribute)
   (define attributes
@@ -116,9 +114,7 @@
                       [pretty-plural (in-list attr-pretty-names-plural)]
                       [type          (in-list attr-types)]
                       [default-maker (in-list attr-defaults)])
-             (create-attribute name col pretty pretty-plural
-                               type entity index
-                               default-maker struct-accessor struct-mutator))))
+             (create-attribute name col pretty pretty-plural type entity index default-maker struct-accessor struct-mutator))))
   
   ; any ... -> guid
   (define cached-constructor
@@ -148,14 +144,12 @@
 
 ;  symbol symbol string string
 ;  type entity integer
-;  (snooze -> any) (struct natural -> any) (struct natural any -> void)
+;  (snooze -> any) (struct natural -> any)
 ; ->
 ;  attribute 
-(define (create-attribute name col pretty pretty-plural
-                          type entity index
-                          default-maker struct-accessor struct-mutator)
+(define (create-attribute name col pretty pretty-plural type entity index default-maker struct-accessor struct-mutator)
   (let* ([private-accessor (make-struct-field-accessor struct-accessor index name)]
-         [private-mutator  (make-struct-field-mutator  struct-mutator  index name)]
+         [private-mutator  (make-struct-field-mutator  struct-mutator index name)]
          [cached-accessor  (make-cached-accessor private-accessor)]
          [cached-mutator   (make-cached-mutator  private-mutator)])
     (make-attribute name col pretty pretty-plural
@@ -206,7 +200,8 @@
                                                                 (and/c struct-type-property?
                                                                        (not/c (cut eq? <> prop:entity))
                                                                        (not/c (cut eq? <> prop:equal+hash)))
-                                                                any/c)))
+                                                                any/c))
+                            #:pretty-formatter         procedure?)
               (values entity?
                       struct-type?
                       procedure?

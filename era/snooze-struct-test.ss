@@ -14,126 +14,106 @@
 
 (define-struct normal (a b c) #:transparent)
 
-; string -> person
-(define make-person*
-  (compose (cut send (current-snooze) cache-ref <>)
-           make-person))
-
-; string integer -> pet
-(define make-pet*
-  (compose (cut send (current-snooze) cache-ref <>)
-           make-pet))
+(define test-normal (make-normal 1 2 3))
+(define test-person #f)
+(define test-pet    #f)
 
 ; Tests ------------------------------------------
 
 (define snooze-struct-tests
   (test-suite "snooze-struct.ss"
     
+    #:before
+    (lambda ()
+      (set! test-person (make-snooze-struct person
+                                            (entity-make-guid person #f)
+                                            #f
+                                            "Jon"))
+      (set! test-pet    (make-snooze-struct pet
+                                            (entity-make-guid pet #f)
+                                            #f
+                                            (struct-guid test-person)
+                                            "Garfield")))
+    
     (test-case "struct-entity"
-      (check-eq? (struct-entity (make-person* "Dave")) person)
-      (check-exn exn:fail? (cut struct-entity (make-normal 1 2 3))))
+      (check-eq? (struct-entity test-person) person)
+      (check-exn exn:fail? (cut struct-entity test-normal)))
     
     (test-case "struct-guid"
-      (let ([struct (make-person* "Dave")])
-        (check-equal? (struct-guid struct)
-                      (struct-guid (make-person* "Dave")))))
+      (check-pred guid? (struct-guid test-person))
+      (check-equal? (guid-entity (struct-guid test-person)) person))
     
     (test-case "struct-saved?"
-      (let ([struct (make-person* "Dave")])
-        (check-false (struct-saved? struct))
-        (set-guid-id! (struct-guid struct) 1)
-        (check-true (struct-saved? struct))))
+      (check-false (struct-saved? test-person))
+      (check-true (struct-saved? (snooze-struct-set
+                                  test-person
+                                  (attr person guid)
+                                  (entity-make-guid person 1)))))
     
-    (test-case "struct-id and set-struct-id!"
-      (let ([struct (make-person* "Dave")])
-        (check-equal? (struct-id struct) #f)
-        (set-struct-id! struct 1000)
-        (check-equal? (struct-id struct) 1000)))
+    (test-case "struct-id"
+      (check-equal? (struct-id test-person) #f)
+      (check-equal? (struct-id (snooze-struct-set
+                                test-person
+                                (attr person guid)
+                                (entity-make-guid person 1))) 1))
     
-    (test-case "struct-revision and set-struct-revision!"
+    (test-case "struct-revision"
+      (check-equal? (struct-revision test-person) #f)
+      (check-equal? (struct-revision (snooze-struct-set test-person (attr person revision) 1)) 1))
+    
+    (test-case "set-struct-revision!"
       (let ([struct (make-person* "Dave")])
         (check-equal? (struct-revision struct) #f)
         (set-struct-revision! struct 1000)
         (check-equal? (struct-revision struct) 1000)))
     
     (test-case "snooze-struct-ref"
-      (let* ([struct (send (current-snooze)
-                           cache-ref
-                           (make-pet 3 "Garfield"))]
-             [guid1  (copy-snooze-struct
-                      struct 
-                      (attr pet guid)     (entity-make-guid pet 1)
-                      (attr pet revision) 2)])
-        (set-struct-id! struct 1)
-        (set-struct-revision! struct 2)
-        
-        ;(check-equal? (snooze-struct-ref struct 'guid) guid1)
-        ;(check-equal? (snooze-struct-ref struct (attr pet guid)) guid1)
-        (check-equal? (snooze-struct-ref struct 'revision) 2)
-        (check-equal? (snooze-struct-ref struct (attr pet revision)) 2)
-        (check-equal? (snooze-struct-ref struct 'owner-id) 3)
-        (check-equal? (snooze-struct-ref struct (attr pet owner-id)) 3)
-        (check-equal? (snooze-struct-ref struct 'name) "Garfield")
-        (check-equal? (snooze-struct-ref struct (attr pet name)) "Garfield")
-        
-        (check-exn exn:fail? (cut snooze-struct-ref (make-normal 1 2 3) 'guid))))
+      (check-equal? (guid-entity (snooze-struct-ref test-pet 'guid)) pet)
+      (check-equal? (guid-entity (snooze-struct-ref test-pet (attr pet guid))) pet)
+      (check-equal? (snooze-struct-ref test-pet 'revision) #f)
+      (check-equal? (snooze-struct-ref test-pet (attr pet revision)) #f)
+      (check-equal? (guid-entity (snooze-struct-ref test-pet 'owner)) person)
+      (check-equal? (guid-entity (snooze-struct-ref test-pet (attr pet owner))) person)
+      (check-equal? (snooze-struct-ref test-pet 'name) "Garfield")
+      (check-equal? (snooze-struct-ref test-pet (attr pet name)) "Garfield")
+      (check-exn exn:fail? (cut snooze-struct-ref test-normal 'guid)))
     
     (test-case "snooze-struct-ref*"
-      (let ([struct (make-pet* 3 "Garfield")])
-        (set-struct-id! struct 1)
-        (set-struct-revision! struct 2)
-        
-        (check-equal? (snooze-struct-ref* struct)
-                      (list (struct-guid struct) 2 3 "Garfield"))
-        
-        (check-exn exn:fail? (cut snooze-struct-ref* (make-normal 1 2 3)))))
+      (parameterize ([in-cache-code? #t])
+        (map (lambda (x y)
+               (if (or (guid? x) (guid? y))
+                   (check guid=? x y)
+                   (check-equal? x y)))
+             (snooze-struct-ref* test-pet)
+             (list (struct-guid test-pet)
+                   #f
+                   (struct-guid test-person)
+                   "Garfield"))
+        (check-exn exn:fail? (cut snooze-struct-ref* test-normal))))
     
-    (test-case "snooze-struct-set!"
-      
-      (define-check (check-attribute struct attr+name expected)
-        (check-false (equal? (snooze-struct-ref struct attr+name) expected))
-        (snooze-struct-set! struct attr+name expected)
-        (check-equal? (snooze-struct-ref struct attr+name) expected))
-      
-      ; Guids:
-      (let ([struct (make-pet* 3 "Garfield")]
-            [guid   (entity-make-guid pet 100)])
-        (check-equal? (struct-id struct) #f)
-        (snooze-struct-set! struct 'guid guid)
-        (check-equal? (struct-id struct) 100)
-        (check-not-eq? (struct-guid struct) guid)
-        (check-exn exn:fail:contract?
-          (cut snooze-struct-set! struct 'guid 100))
-        (check-exn exn:fail:contract?
-          (cut snooze-struct-set! struct (attr pet guid) 100)))
-      
-      ; Other attributes:
-      (let ([struct (make-pet* 3 "Garfield")])
-        (check-attribute struct 'revision 100)
-        (check-attribute struct (attr pet revision) 300)
-        (check-attribute struct 'owner-id 100)
-        (check-attribute struct (attr pet owner-id) 200)
-        (check-attribute struct 'name "Odie")
-        (check-attribute struct (attr pet name) "Nermal")))
+    (test-case "snooze-struct-set"
+      (let ([test-person2 (snooze-struct-set test-person)]
+            [test-person3 (snooze-struct-set
+                           test-person
+                           (attr person guid)
+                           (entity-make-guid person 123))])
+        (check-equal?     test-person test-person2)
+        (check-not-eq?    test-person test-person2)
+        (check-not-equal? test-person test-person3)
+        (check-equal?     (cdr (snooze-struct-ref* test-person))
+                          (cdr (snooze-struct-ref* test-person3)))))
     
     (test-case "make-snooze-struct/defaults"
-      (check-equal? (make-snooze-struct/defaults person)
-                    (send (current-snooze) cache-ref (make-person #f)))
-      (check-equal? (make-snooze-struct/defaults person (attr person name) "Dave")
-                    (send (current-snooze) cache-ref (make-person "Dave")))
-      
-      ; Guid (in)equality:
-      (let ([struct1 (make-snooze-struct/defaults
-                      person
-                      (attr person guid)
-                      (entity-make-guid person 123))]
-            [struct2 (make-snooze-struct/defaults
-                      person
-                      (attr person guid)
-                      (entity-make-guid person 123))])
-        (check-equal? (struct-id   struct1) 123)
-        (check-equal? struct1 struct2)
-        (check-false  (eq? (struct-guid struct1) (struct-guid struct2))))
+      (parameterize ([in-cache-code? #t])
+        (check-equal? (struct-entity (make-snooze-struct/defaults person)) person)
+        (let ([test-person2 (make-snooze-struct/defaults person)]
+              [test-person3 (make-snooze-struct/defaults
+                             person
+                             (attr person guid)
+                             (entity-make-guid person 123))])
+          (check-false  (struct-id test-person))
+          (check-false  (struct-id test-person2))
+          (check-equal? (struct-id test-person3) 123)))
       
       ; Bad attribute/value arguments:
       (check-exn exn:fail:contract?
@@ -145,55 +125,10 @@
       (check-exn exn:fail:contract?
         (cut make-snooze-struct/defaults person (attr pet name) 123)))
     
-    (test-case "copy-snooze-struct"
-      (let   ([struct1 (send (current-snooze)
-                             cache-ref
-                             (make-person/defaults #:name "Dave"))])
-        (let ([struct2 (copy-snooze-struct struct1)])
-          
-          ; Struct equality:
-          (check-true  (equal? struct2 struct1))
-          (check-false (eq? struct2 struct1))
-          
-          ; Attributes:
-          (check-equal? (struct-id struct2)               (struct-id struct1))
-          (check-equal? (struct-revision struct2)         (struct-revision struct1))
-          (check-equal? (snooze-struct-ref struct2 'name) (snooze-struct-ref struct1 'name)))
-        
-        (let ([struct2 (copy-snooze-struct struct1 (attr person name) "Noel")])
-          (check-equal? (struct-id struct2)        (struct-id struct1))
-          (check-equal? (struct-revision struct2)  (struct-revision struct1))
-          (check-not-equal? (snooze-struct-ref struct2 'name)
-                            (snooze-struct-ref struct1 'name)))
-        
-        (let* ([guid    (entity-make-guid person 123)]
-               [struct2 (copy-snooze-struct struct1 (attr person guid) guid)])
-          (check-eq? guid (struct-guid struct2)))))
-    
-    (test-case "update-snooze-struct-from-copy!"
-      (let* ([guid    (entity-make-guid pet 20)]
-             [struct1 (make-snooze-struct/defaults
-                       pet
-                       (attr pet owner-id) 1000
-                       (attr pet name)     "Garfield")]
-             [struct2 (make-snooze-struct/defaults
-                       pet
-                       (attr pet guid)     guid
-                       (attr pet revision) 200
-                       (attr pet owner-id) 2000
-                       (attr pet name)     "Heathcliff")])
-        
-        (update-snooze-struct-from-copy! struct1 struct2)
-        
-        (check-not-eq? (struct-guid struct2) (struct-guid struct1))
-        (check-eq?     (struct-guid struct2) guid)
-        
-        (check-equal?  (struct-id struct2)       20)
-        (check-equal?  (struct-revision struct1) 200)
-        (check-equal?  (snooze-struct-ref struct1 'owner-id) 2000)
-        (check-equal?  (snooze-struct-ref struct1 'name) "Heathcliff")
-        (check-equal?  struct1 struct2)
-        (check-not-eq? struct1 struct2)))))
+    (test-case "snooze-struct-set"
+      (let ([test-person2 (copy-snooze-struct test-person)])
+        (check-equal?     test-person test-person2)
+        (check-not-eq?    test-person test-person2)))))
 
 ; Provide statements -----------------------------
 

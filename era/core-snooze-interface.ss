@@ -2,10 +2,6 @@
 
 (require "../base.ss")
 
-; (parameter boolean)
-(define in-cache-code?
-  (make-parameter #f))
-
 (define guid-cache<%>
   (interface ()
     
@@ -36,24 +32,12 @@
     ;   - cache    - store.
     cache-add!
     
-    ; snooze-struct -> guid
-    ;
-    ; Like cache-add! but propagates to parent caches.
-    deep-cache-add!
+    ; guid -> snooze-struct
+    cache-remove!
     
-    ; guid -> guid
-    ;
-    ; Saves a struct to the database. Implementations:
-    ;   - database - do revision check, run hook, perform update/insert, mutate guid with new ID;
-    ;   - cache    - already stored locally - add a clone to parent, propagate, reintern entity/id.
-    save!
-    
-    ; guid -> guid
-    ;
-    ; Deletes a struct from the database. Implementations:
-    ;   - database - do revision check, run hook, perform delete, mutate guid with #f ID;
-    ;   - cache    - propagate, unintern entity/id.
-    delete!))
+    ; guid (U natural #f) (U symbol #f) (U natural #f) -> void
+    ; Recaches guid with a new id, serial and revision.
+    recache!))
 
 (define snooze<%>
   (interface (snooze-cache<%>)
@@ -79,7 +63,21 @@
     ;
     ; Drops the supplied table (or table name). Does nothing if the table does not exist.
     drop-table
-
+    
+    ; guid -> guid
+    ;
+    ; Saves a struct to the database. Implementations:
+    ;   - database - do revision check, run hook, perform update/insert, mutate guid with new ID;
+    ;   - cache    - already stored locally - add a clone to parent, propagate, reintern entity/id.
+    save!
+    
+    ; guid -> guid
+    ;
+    ; Deletes a struct from the database. Implementations:
+    ;   - database - do revision check, run hook, perform delete, mutate guid with #f ID;
+    ;   - cache    - propagate, unintern entity/id.
+    delete!
+    
     ; snooze-struct [(listof stage)] -> snooze-struct
     ;
     ; Used to specifically insert a snooze-struct with a particular ID and revision.
@@ -159,7 +157,6 @@
 ; Provide statements -----------------------------
 
 (provide/contract
- [in-cache-code?  (parameter/c boolean?)]
  [guid-cache<%>   interface?]
  [snooze-cache<%> interface?]
  [snooze<%>       interface?])

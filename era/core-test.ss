@@ -13,12 +13,7 @@
 
 (define guid-tests
   (test-suite "guid"
-    
-    (test-case "make-guid"
-      (check-pred guid? (make-guid 123))
-      (check-pred guid? (make-guid #f))
-      (check-exn exn:fail:contract? (cut make-guid -123)))
-    
+        
     (test-case "make-person-guid"
       (let ([guid (make-person "Dave")])
         (check-equal? (guid-entity guid) person)
@@ -48,7 +43,9 @@
       (check-equal? (entity-struct-type person) struct:person))
     
     (test-case "entity-private-constructor"
-      (check-pred procedure? (entity-private-constructor person))
+      (check-pred procedure? (entity-private-constructor person)))
+    
+    (test-case "entity-guid-constructor"
       (check-pred procedure? (entity-guid-constructor person)))
     
     (test-case "entity-cached-constructor"
@@ -59,7 +56,7 @@
       (check-pred procedure? (entity-private-predicate person))
       (check-pred (entity-private-predicate person)
                   ((entity-private-constructor person)
-                   ((entity-guid-constructor person) (current-snooze) #f)
+                   (entity-make-guid person #f)
                    #f
                    "Dave")))
     
@@ -74,33 +71,37 @@
       (check-pred procedure? (entity-guid-predicate person)))
     
     (test-case "entity-make-guid"
-      (let ([guid (entity-make-guid person)])
+      (let ([guid (entity-make-guid person #f)])
         (check-pred (entity-guid-predicate person) guid)
         (check-equal? (guid-id guid) #f))
       (let ([guid (entity-make-guid person 123)])
         (check-pred (entity-guid-predicate person) guid)
-        (check-equal? (guid-id guid) 123)))
+        (check-equal? (guid-id guid) 123))
+      (let ([guid (entity-make-guid person 123 'guid456)])
+        (check-pred (entity-guid-predicate person) guid)
+        (check-equal? (guid-id guid) 123)
+        (check-equal? (guid-serial guid) 'guid456)))
     
     (test-case "entity-guid?"
-      (check-true  (entity-guid? person (entity-make-guid person)))
-      (check-false (entity-guid? person (entity-make-guid pet))))
+      (check-true  (entity-guid? person (entity-make-guid person #f)))
+      (check-false (entity-guid? person (entity-make-guid pet #f))))
     
     (test-case "entity-attributes"
       (let ([attrs (entity-attributes pet)])
-        (check-equal? (map attribute-name        attrs) '(guid revision owner-id name))
-        (check-equal? (map attribute-column-name attrs) '(id revision ownerID name))
+        (check-equal? (map attribute-name        attrs) '(guid revision owner name))
+        (check-equal? (map attribute-column-name attrs) '(id revision owner name))
         (check-equal? (map attribute-index       attrs) '(0 1 2 3))
         (check-equal? (cddr (map attribute-type attrs))
-                      (list type:integer
-                            type:string))))
+                      (list (make-guid-type #t person)
+                            (make-string-type #t #f)))))
     
     (test-case "entity-has-attribute?"
       (check-true  (entity-has-attribute? pet 'guid))
       (check-true  (entity-has-attribute? pet (attr pet guid)))
       (check-true  (entity-has-attribute? pet 'revision))
       (check-true  (entity-has-attribute? pet (attr pet revision)))
-      (check-true  (entity-has-attribute? pet 'owner-id))
-      (check-true  (entity-has-attribute? pet (attr pet owner-id)))
+      (check-true  (entity-has-attribute? pet 'owner))
+      (check-true  (entity-has-attribute? pet (attr pet owner)))
       (check-true  (entity-has-attribute? pet 'name))
       (check-true  (entity-has-attribute? pet (attr pet name)))
       (check-false (entity-has-attribute? pet 'NAME))
@@ -120,9 +121,7 @@
               (attribute-column-name attr)
               (attribute-index attr)
               (procedure? (attribute-private-accessor attr))
-              (procedure? (attribute-private-mutator attr))
               (procedure? (attribute-cached-accessor attr))
-              (procedure? (attribute-cached-mutator attr))
               (attribute-type attr)))
       
       (define-check (check-attribute attr+name expected)
@@ -130,27 +129,19 @@
                             (length expected))
                       expected))
       
-      (let ([expected (list 'guid 'id 0 #t #t #t #t)])
+      (let ([expected (list 'guid 'id 0 #t #t (make-guid-type #f pet))])
         (check-attribute 'guid expected)
-        (check-attribute (attr pet guid) expected)
-        ; We can't make a type that is equal? to a guid type,
-        ; so we test the type using type-compatible? instead:
-        (check-true (type-compatible? (attribute-type (attr pet guid))
-                                      (make-guid-type #f pet))))
+        (check-attribute (attr pet guid) expected))
       
-      (let ([expected (list 'revision 'revision 1 #t #t #t #t)])
+      (let ([expected (list 'revision 'revision 1 #t #t (make-integer-type #f))])
         (check-attribute 'revision expected)
-        (check-attribute (attr pet revision) expected)
-        ; We can't make a type that is equal? to a revision type,
-        ; so we test the type using type-compatible? instead:
-        (check-true (type-compatible? (attribute-type (attr pet revision))
-                                      type:integer)))
+        (check-attribute (attr pet revision) expected))
       
-      (let ([expected (list 'owner-id 'ownerID 2 #t #t #t #t type:integer)])
-        (check-attribute 'owner-id expected)
-        (check-attribute (attr pet owner-id) expected))
+      (let ([expected (list 'owner 'owner 2 #t #t (make-guid-type #t person))])
+        (check-attribute 'owner expected)
+        (check-attribute (attr pet owner) expected))
       
-      (let ([expected (list 'name 'name 3 #t #t #t #t type:string)])
+      (let ([expected (list 'name 'name 3 #t #t type:string)])
         (check-attribute 'name expected)
         (check-attribute (attr pet name) expected))
       

@@ -7,12 +7,25 @@
 (define-entity person
   ([name     string])
   #:table-name         'people
-  #:pretty-name-plural "people")
+  #:pretty-name-plural "people"
+  #:pretty-formatter
+  (lambda (person)
+    (person-name person)))
 
 (define-entity pet
   ([owner    person]
    [name     string])
-  #:table-name 'pets)
+  #:table-name 'pets
+  #:pretty-formatter
+  (lambda (pet [include-owner? #f])
+    (if include-owner?
+        (if (pet-owner pet)
+            (format "~a's pet ~a"
+                    (person-name (pet-owner pet))
+                    (pet-name pet))
+            (format "Stray animal ~a"
+                    (pet-name pet)))
+        (pet-name pet))))
 
 (define-entity course
   ([code     symbol]
@@ -41,15 +54,15 @@
 
 ; -> void
 (define (recreate-test-tables)
-  (if (table-exists? person)
-      (for-each delete! (find-all (sql (select #:from person))))
-      (create-table person))
-  (if (table-exists? pet)
-      (for-each delete! (find-all (sql (select #:from pet))))
-      (create-table pet))
-  (if (table-exists? course)
-      (for-each delete! (find-all (sql (select #:from course))))
-      (create-table course)))
+  (when (table-exists? pet)
+    (drop-table pet))
+  (when (table-exists? person)
+    (drop-table person))
+  (when (table-exists? course)
+    (drop-table course))
+  (create-table course)
+  (create-table person)
+  (create-table pet))
   
 ; Provide statements -----------------------------
 

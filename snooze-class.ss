@@ -6,6 +6,7 @@
          srfi/26
          (planet untyped/unlib:3/gen)
          (planet untyped/unlib:3/parameter)
+         (prefix-in real: (only-in "era/snooze-struct.ss" make-snooze-struct))
          "cache.ss"
          "guid-cache.ss"
          "era/era.ss"
@@ -76,20 +77,24 @@
     
     ; guid -> (U snooze-struct #f)
     (define/public (cache-ref guid)
+      (auto-connect)
       (parameterize ([in-cache-code? #t])
         (log-cache "snooze.cache-ref" guid)
         (or (send (current-cache) cache-ref guid)
-            (if (guid-id guid)
-                (let-alias ([x (guid-entity guid)])
-                  (let* ([gen (send database g:find
-                                    this
-                                    (current-connection)
-                                    (sql (select #:from x #:where (= x.guid ,guid))))]
-                         [ans (gen)])
-                    (and (not (g:end? ans)) 
-                         (send (current-cache) cache-ref ans))))
-                (raise-exn exn:fail:snooze:cache
-                  (format "unsaved guid not cached: ~s" guid))))))
+            (cond [(guid-serial guid)
+                   (raise-exn exn:fail:snooze:cache
+                     (format "guid with serial not found in cache: ~s" guid))]
+                  [(guid-id guid)
+                   (let-alias ([x (guid-entity guid)])
+                     (let* ([gen (send database g:find
+                                       this
+                                       (current-connection)
+                                       (sql (select #:from x #:where (= x.guid ,guid))))]
+                            [ans (gen)])
+                       (and (not (g:end? ans)) 
+                            (send (current-cache) cache-ref ans))))]
+                  [else (raise-exn exn:fail:snooze:cache
+                          (format "guid found with no ID and no serial: ~s" guid))]))))
     
     ; snooze-struct -> void
     (define/public (cache-add! struct)
@@ -97,11 +102,17 @@
         (log-cache "snooze.cache-add!" struct)
         (send (current-cache) cache-add! struct)))
     
-    ; snooze-struct -> void
-    (define/public (deep-cache-add! struct)
+    ; guid -> snooze-struct
+    (define/public (cache-remove! guid)
       (parameterize ([in-cache-code? #t])
-        (log-cache "snooze.deep-cache-add!" struct)
-        (send (current-cache) deep-cache-add! struct)))
+        (log-cache "snooze.cache-remove!" guid)
+        (send (current-cache) cache-remove! guid)))
+    
+    ; giud (U natural #f) (U symbol #f) -> void
+    (define/public (recache! guid id serial)
+      (parameterize ([in-cache-code? #t])
+        (log-cache "snooze.recache!" (list guid id serial))
+        (send (current-cache) recache! guid id serial)))
     
     ; -> database<%>
     (define/public (get-database)
@@ -162,32 +173,35 @@
     ; guid -> guid
     (define/public (save! guid)
       (auto-connect)
-      (let ([revision (struct-revision guid)]
-            [entity   (struct-entity   guid)])
+      (let* ([entity        (guid-entity     guid)]
+             [revision      (struct-revision guid)]
+             [next-revision (if revision (add1 revision) 0)])
         (call-with-transaction
          (lambda ()
            (begin0
              (if (struct-saved? guid)
-                 (begin (if (and revision (record-exists-with-revision? entity guid revision))
-                            ; The audit trail package requires us to update the revision *before* calling the hook:
-                            (begin (set-struct-revision! guid (add1 revision))
-                                   ((entity-on-save entity)
-                                    (lambda (conn guid)
-                                      (send database update-record conn guid)
-                                      guid)
-                                    (current-connection)
-                                    guid))
-                            (raise-exn exn:fail:snooze:revision "structure has been revised since it was loaded from the database" guid)))
-                 ; The audit trail package requires us to update the revision *before* calling the hook:
-                 (begin (set-struct-revision! guid 0)
-                        ; Run the insert hook:
-                        ((entity-on-save entity)
-                         (lambda (conn guid)
-                           (set-guid-id! guid (send database insert-record conn guid))
-                           guid)
-                         (current-connection)
-                         guid)))
-             (send (current-cache) save! guid))))))
+                 (if (and revision (record-exists-with-revision? entity guid revision))
+                     ; Run the update hook:
+                     ((entity-on-save entity)
+                      (lambda (conn guid)
+                        (set-struct-revision! guid next-revision)
+                        (send database update-record conn guid)
+                        (recache! guid (guid-id guid) #f)
+                        guid)
+                      (current-connection)
+                      guid)
+                     (raise-exn exn:fail:snooze:revision
+                       "structure has been revised since it was loaded from the database"
+                       guid))
+                 ; Run the insert hook:
+                 ((entity-on-save entity)
+                  (lambda (conn guid)
+                    (set-struct-revision! guid next-revision)
+                    (let ([next-id (send database insert-record conn guid)])
+                      (recache! guid next-id #f)
+                      guid))
+                  (current-connection)
+                  guid)))))))
     
     ; guid -> guid
     (define/public (delete! guid)
@@ -203,8 +217,7 @@
                      ((entity-on-delete entity)
                       (lambda (conn guid)
                         (send database delete-record conn guid)
-                        (set-guid-id! guid #f)
-                        guid)
+                        (send (current-cache) cache-remove! guid))
                       (current-connection)
                       guid)
                      (raise-exn exn:fail:snooze:revision "database has been revised since structure was loaded" guid))))
@@ -250,8 +263,8 @@
     
     ; select -> (U result #f)
     (define/public (find-one query)
-      (define result ((g:find query)))
-      (and (not (g:end? result)) result))
+      (let ([result ((g:find query))])
+        (and (not (g:end? result)) result)))
     
     ; select -> result-generator
     (define/public (g:find select)
@@ -291,6 +304,7 @@
     
     ; guid -> guid
     (define/public (find-by-guid guid)
+      (auto-connect)
       (cache-ref guid))
     
     ; -> (listof symbol)
@@ -320,6 +334,18 @@
       (send database debug-sql query output-port format))
     
     ; Helpers ------------------------------------
+    
+    ; entity natural natural guid -> snooze-struct
+    ;(define (make-saved-copy entity id revision original)
+    ;  
+    ;  (apply (entity-private-constructor entity)
+    ;         (entity-make-guid #:snooze this entity id #f)
+    ;         revision
+    ;         (map (lambda (val)
+    ;                (if (guid? val)
+    ;                    (entity-make-guid #:snooze this (guid-entity val) (guid-id val) #f)
+    ;                    val))
+    ;              (cddr (snooze-struct-ref* original)))))
     
     ; entity integer integer -> boolean
     (define (record-exists-with-revision? entity guid revision)
