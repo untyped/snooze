@@ -29,6 +29,7 @@
 
 ; Exception types ------------------------------
 
+; Raised when Snooze encounters a problem that is likely caused by mistakes in user code.
 (define-struct (exn:fail:snooze exn:fail) () #:transparent)
 
 ; Raised when Snooze could not parse a query.

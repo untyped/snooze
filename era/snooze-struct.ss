@@ -96,9 +96,7 @@
               arg-attrs
               arg-vals
               (lambda (attr)
-                (if (entity-guid-attribute? entity attr)
-                    (entity-make-guid #:snooze snooze entity #f)
-                    (attribute-default #:snooze snooze attr))))))))
+                (attribute-default #:snooze snooze attr)))))))
 
 ; snooze-struct -> snooze-struct
 (define (copy-snooze-struct original)

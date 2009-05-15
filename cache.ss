@@ -15,9 +15,6 @@
     
     ; Fields -------------------------------------
     
-    ; guid-cache<%>
-    (init-field guid-cache)
-    
     ; snooze-cache<%>
     (init-field [parent #f])
     
@@ -38,11 +35,7 @@
     (define/public (get-structs)
       structs)
     
-    ; -> hash
-    (define/public (get-guids)
-      (send guid-cache get-guids))
-    
-    ; guid [(guid -> any)] -> snooze-struct
+    ; guid -> snooze-struct
     (define/public (cache-ref guid)
       (parameterize ([in-cache-code? #t])
         (log-cache "cache.cache-ref" guid)
@@ -52,7 +45,7 @@
             (let ([remote (and parent (send parent cache-ref guid))])
               (and remote
                    (let ([local (copy-snooze-struct remote)])
-                     (dict-set! structs (struct-guid local) local)
+                     (dict-set! structs (copy-guid guid) local)  ;; IMPLEMENT IN TERMS OF CACHE-ADD! ???
                      local))))))
     
     ; snooze-struct -> guid
@@ -60,7 +53,7 @@
       (parameterize ([in-cache-code? #t])
         (log-cache "cache.cache-add!" struct)
         (let* ([guid0 (struct-guid struct)]
-               [guid1 (entity-make-guid #:snooze (guid-snooze guid0) (guid-entity guid0) (guid-id guid0) (guid-serial guid0))])
+               [guid1 (copy-guid guid0)])
           (when (and (guid-serial guid1) (dict-ref structs guid1 #f))
             (raise-cache-add-error struct))
           (dict-set! structs guid1 struct)
@@ -75,16 +68,7 @@
         (let ([ans (dict-ref structs guid)])
           (dict-remove! structs guid)
           (when parent (send parent cache-remove! guid))
-          ans)))
-    
-    ; guid (U natural #f) (U symbol #f) -> void
-    (define/public (recache! guid id serial)
-      (let ([struct (cache-remove! guid)])
-        (set-guid-id! guid id)
-        (set-guid-serial! guid serial)
-        (set-guid-id! (struct-guid struct) id)
-        (set-guid-serial! (struct-guid struct) serial)
-        (cache-add! struct)))))
+          ans)))))
 
 ; Helpers ----------------------------------------
 

@@ -3,6 +3,7 @@
 (require "../base.ss")
 
 (require (for-syntax scheme/base)
+         scheme/dict
          "../generic/connection.ss"
          "core-snooze-interface.ss")
 
@@ -14,16 +15,14 @@
 
 ; (struct snooze-cache<%> integer)
 (define-serializable-struct guid
-  ([id #:mutable] [serial #:mutable] snooze)
+  (id+serial snooze)
   #:transparent
   #:property
   prop:custom-write
   (lambda (guid out write?)
     (define show (if write? write display))
     (display "#(" out)
-    (show (guid-serial guid) out)
-    (display " ")
-    (show (guid-id guid) out)
+    (show (guid-id+serial guid) out)
     (display ")" out)))
 
 ; property
@@ -32,23 +31,47 @@
 (define-values (prop:guid-entity-box guid-entity? guid-entity-box)
   (make-struct-type-property 'guid-entity-box))
 
+; property
+; guid -> boolean
+; guid -> (weak-hashof guid (weak-box guid))
+(define-values (prop:intern-hash has-intern-hash? intern-hash)
+  (make-struct-type-property 'intern-hash))
+
+; guid -> guid
+(define (copy-guid guid)
+  ((entity-guid-constructor (guid-entity guid))
+   (guid-id+serial guid)
+   (guid-snooze guid)))
+
+; guid -> (U integer #f)
+(define (guid-id guid)
+  (and (number? (guid-id+serial guid))
+       (guid-id+serial guid)))
+
+; guid -> (U symbol #f)
+(define (guid-serial guid)
+  (and (symbol? (guid-id+serial guid))
+       (guid-id+serial guid)))
+
 ; guid guid -> boolean
 (define (guid=? guid1 guid2)
-  (and (equal? (guid-id     guid1) (guid-id     guid2))
-       (eq?    (guid-serial guid1) (guid-serial guid2))
-       (eq?    (entity-name (guid-entity guid1))
-               (entity-name (guid-entity guid2)))))
+  (and (eq? (guid-id+serial guid1)
+            (guid-id+serial guid2))
+       (eq? (entity-name (guid-entity guid1))
+            (entity-name (guid-entity guid2)))
+       (eq? (guid-snooze guid1)
+            (guid-snooze guid2))))
 
 ; guid guid -> boolean
 (define (guid=?-hash-code guid)
   (equal-hash-code
-   (list (guid-id     guid)
-         (guid-serial guid)
-         (entity-name (guid-entity guid)))))
+   (list (guid-id+serial guid)
+         (entity-name (guid-entity guid))
+         (guid-snooze guid))))
 
 ; guid -> boolean
-(define (guid-live? guid)
-  (not (guid-serial guid)))
+(define (guid-local? guid)
+  (and (guid-serial guid) #t))
 
 ; (_ id entity)
 (define-syntax (define-guid-type stx)
@@ -64,14 +87,13 @@
            #:property
            prop:custom-write
            (lambda (guid out write?)
-             (parameterize ([in-cache-code? #t])
-               (let ([show   (if write? write display)]
-                     [struct (and (not (in-cache-code?))
-                                  (guid-ref guid))])
+             (let ([show   (if write? write display)]
+                   [struct (and (not (in-cache-code?))
+                                (with-handlers ([exn? (lambda (exn) (printf "exn fetching struct: ~s~n" (exn-message exn)))])
+                                  (guid-ref guid)))])
+               (parameterize ([in-cache-code? #t])
                  (display print-prefix out)
-                 (show (guid-id guid) out)
-                 (display " " out)
-                 (show (guid-serial guid) out)
+                 (show (guid-id+serial guid) out)
                  (when struct
                    (for ([val (in-vector (struct->vector struct) 2)])
                      (display " " out)
@@ -83,7 +105,10 @@
                    (same? (guid-ref guid1)
                           (guid-ref guid2)))
                  (lambda (guid recur) (recur guid))
-                 (lambda (guid recur) (recur guid)))))]))
+                 (lambda (guid recur) (recur guid)))
+           #:property
+           prop:intern-hash
+           (make-weak-custom-hash guid=? guid=?-hash-code)))]))
 
 ; guid -> entity
 (define (guid-entity guid)
@@ -91,24 +116,33 @@
 
 ; guid -> snooze-struct
 (define (guid-ref guid)
-  (or (send (guid-snooze guid) cache-ref guid)
-      (raise-exn exn:fail:snooze:cache (format "guid not cached: ~s" guid))))
+  (parameterize ([in-cache-code? #t])
+    (or (send (guid-snooze guid) cache-ref guid)
+        (raise-exn exn:fail:snooze:cache
+          (format "guid not cached: ~s" guid)))))
 
 ; Attribute types --------------------------------
 
 ; (struct boolean)
 (define-serializable-struct type (allows-null?) #:transparent)
-(define-serializable-struct (boolean-type type) () #:transparent)
-(define-serializable-struct (integer-type type) () #:transparent)
-(define-serializable-struct (real-type type) () #:transparent)
-
-; (struct boolean (U integer #f))
-(define-serializable-struct (string-type type) (max-length) #:transparent)
-(define-serializable-struct (symbol-type type) (max-length) #:transparent)
 
 ; (struct boolean)
-(define-serializable-struct (time-utc-type type) () #:transparent)
-(define-serializable-struct (time-tai-type type) () #:transparent)
+(define-serializable-struct (boolean-type type) () #:transparent)
+
+; (struct boolean)
+(define-serializable-struct (numeric-type type) () #:transparent)
+(define-serializable-struct (integer-type numeric-type) () #:transparent)
+(define-serializable-struct (real-type    numeric-type) () #:transparent)
+
+; (struct boolean (U natural #f))
+(define-serializable-struct (character-type type) (max-length) #:transparent)
+(define-serializable-struct (string-type character-type) () #:transparent)
+(define-serializable-struct (symbol-type character-type) () #:transparent)
+
+; (struct boolean)
+(define-serializable-struct (temporal-type type)          () #:transparent)
+(define-serializable-struct (time-utc-type temporal-type) () #:transparent)
+(define-serializable-struct (time-tai-type temporal-type) () #:transparent)
 
 ; (struct boolean entity)
 (define-serializable-struct (guid-type type) (entity) #:transparent)
@@ -127,11 +161,11 @@
         [(boolean-type? type)            (boolean? value)]
         [(integer-type? type)            (integer? value)]
         [(real-type? type)               (real? value)]
-        [(string-type? type)             (let ([max-length (string-type-max-length type)])
+        [(string-type? type)             (let ([max-length (character-type-max-length type)])
                                            (and (string? value)
                                                 (or (not max-length)
                                                     (<= (string-length value) max-length))))]
-        [(symbol-type? type)             (let ([max-length (string-type-max-length type)])
+        [(symbol-type? type)             (let ([max-length (character-type-max-length type)])
                                            (and (symbol? value)
                                                 (or (not max-length)
                                                     (<= (string-length (symbol->string value)) max-length))))]
@@ -244,9 +278,20 @@
                on-save                  ; hooks
                on-delete))              ;
 
-; entity [#:snooze snooze] (U natural #f) [(U symbol #f)] -> guid
-(define (entity-make-guid #:snooze [snooze (current-snooze)] entity id [serial (gensym)])
-  ((entity-guid-constructor entity) id serial snooze))
+; entity [#:snooze snooze] natural -> guid
+(define (entity-make-vanilla-guid #:snooze [snooze (current-snooze)] entity id)
+  (let ([guid ((entity-guid-constructor entity) id snooze)])
+    (weak-box-value
+     (dict-ref (intern-hash guid)
+               guid
+               (lambda ()
+                 (let ([box (make-weak-box guid)])
+                   (dict-set! (intern-hash guid) guid box)
+                   box))))))
+
+; entity [#:snooze snooze] -> guid
+(define (entity-make-local-guid #:snooze [snooze (current-snooze)] entity)
+  ((entity-guid-constructor entity) (gensym (entity-name entity)) snooze))
 
 ; entity any -> boolean
 (define (entity-guid? entity guid)
@@ -350,89 +395,90 @@
          struct:guid)
 
 (provide/contract
- [current-snooze                  (parameter/c (or/c (is-a?/c snooze-cache<%>) #f))]
- [guid?                           procedure?]
- [guid=?                          (-> guid? guid? boolean?)]
- [guid=?-hash-code                (-> guid? number?)]
- [guid-live?                      (-> guid? boolean?)]
- [guid-snooze                     (-> guid? (is-a?/c snooze-cache<%>))]
- [guid-id                         (-> guid? (or/c natural-number/c #f))]
- [set-guid-id!                    (-> guid? (or/c natural-number/c #f) void?)]
- [set-guid-serial!                (-> guid? (or/c symbol? #f) void?)]
- [guid-serial                     (-> guid? (or/c symbol? #f))]
- [guid-entity-box                 (-> struct-type? box?)]
- [guid-entity                     (-> guid? entity?)]
- [guid-ref                        (-> guid? snooze-struct?)]
- [struct type                     ([allows-null? boolean?])]
- [struct (guid-type type)         ([allows-null? boolean?] [entity entity?])]
- [struct (boolean-type type)      ([allows-null? boolean?])]
- [struct (integer-type type)      ([allows-null? boolean?])]
- [struct (real-type type)         ([allows-null? boolean?])]
- [struct (string-type type)       ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
- [struct (symbol-type type)       ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
- [struct (time-utc-type type)     ([allows-null? boolean?])]
- [struct (time-tai-type type)     ([allows-null? boolean?])]
- [type-null                       (-> type? any)]
- [type-valid?                     (-> type? any/c boolean?)]
- [type-name                       (-> type? symbol?)]
- [type-compatible?                (-> type? type? boolean?)]
- [type:boolean                    boolean-type?]
- [type:integer                    integer-type?]
- [type:real                       real-type?]
- [type:string                     string-type?]
- [type:symbol                     symbol-type?]
- [type:time-tai                   time-tai-type?]
- [type:time-utc                   time-utc-type?]
- [struct entity                   ([name                symbol?]
-                                   [table-name          symbol?]
-                                   [pretty-name         string?]
-                                   [pretty-name-plural  string?]
-                                   [pretty-formatter    procedure?]
-                                   [struct-type         struct-type?]
-                                   [private-constructor procedure?]
-                                   [private-predicate   procedure?]
-                                   [private-accessor    procedure?]
-                                   [private-mutator     procedure?]
-                                   [cached-constructor  procedure?]
-                                   [cached-predicate    procedure?]
-                                   [guid-constructor    (-> (or/c natural-number/c #f)
-                                                            (or/c symbol? #f)
-                                                            (is-a?/c snooze-cache<%>)
-                                                            guid?)]
-                                   [guid-predicate      (-> any/c boolean?)]
-                                   [attributes          (listof attribute?)]
-                                   [on-save             (-> (-> connection? guid? guid?) connection? guid? guid?)]
-                                   [on-delete           (-> (-> connection? guid? guid?) connection? guid? guid?)])]
- [make-vanilla-entity             (-> symbol?
-                                      symbol?
-                                      string?
-                                      string?
-                                      procedure?
-                                      procedure?
-                                      procedure?
-                                      procedure?
-                                      procedure?
-                                      entity?)]
- [entity-make-guid                (->* (entity? (or/c natural-number/c #f))
-                                       (#:snooze (is-a?/c snooze-cache<%>) (or/c symbol? #f))
-                                       guid?)]
- [entity-guid?                    (-> entity? any/c boolean?)]
- [entity-has-attribute?           (-> entity? (or/c symbol? attribute?) boolean?)]
- [entity-guid-attribute?          (-> entity? (or/c symbol? attribute?) boolean?)]
- [entity-attribute                (-> entity? (or/c symbol? attribute?) attribute?)]
- [struct attribute                ([name                symbol?]
-                                   [column-name         symbol?]
-                                   [pretty-name         string?]
-                                   [pretty-name-plural  string?]
-                                   [type                type?]
-                                   [entity              entity?]
-                                   [index               integer?]
-                                   [default-maker       procedure?]
-                                   [private-accessor    procedure?]
-                                   [private-mutator     procedure?]
-                                   [cached-accessor     procedure?]
-                                   [cached-mutator      procedure?])]
- [attribute-default               (->* (attribute?) (#:snooze (is-a?/c snooze-cache<%>)) any/c)]
- [prop:entity                     struct-type-property?]
- [prop:entity-set?                (-> any/c boolean?)]
- [prop:entity-ref                 (-> any/c entity?)])
+ [current-snooze                       (parameter/c (or/c (is-a?/c snooze-cache<%>) #f))]
+ [guid?                                procedure?]
+ [guid=?                               (-> guid? guid? boolean?)]
+ [guid=?-hash-code                     (-> guid? number?)]
+ [guid-local?                          (-> guid? boolean?)]
+ [guid-snooze                          (-> guid? (is-a?/c snooze-cache<%>))]
+ [copy-guid                            (-> guid? guid?)]
+ [guid-id                              (-> guid? (or/c natural-number/c #f))]
+ [guid-serial                          (-> guid? (or/c symbol? #f))]
+ [guid-entity-box                      (-> struct-type? box?)]
+ [guid-entity                          (-> guid? entity?)]
+ [guid-ref                             (-> guid? snooze-struct?)]
+ [struct type                          ([allows-null? boolean?])]
+ [struct (guid-type type)              ([allows-null? boolean?] [entity entity?])]
+ [struct (boolean-type type)           ([allows-null? boolean?])]
+ [struct (numeric-type type)           ([allows-null? boolean?])]
+ [struct (integer-type numeric-type)   ([allows-null? boolean?])]
+ [struct (real-type numeric-type)      ([allows-null? boolean?])]
+ [struct (character-type type)         ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
+ [struct (string-type character-type)  ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
+ [struct (symbol-type character-type)  ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
+ [struct (temporal-type type)          ([allows-null? boolean?])]
+ [struct (time-utc-type temporal-type) ([allows-null? boolean?])]
+ [struct (time-tai-type temporal-type) ([allows-null? boolean?])]
+ [type-null                            (-> type? any)]
+ [type-valid?                          (-> type? any/c boolean?)]
+ [type-name                            (-> type? symbol?)]
+ [type-compatible?                     (-> type? type? boolean?)]
+ [type:boolean                         boolean-type?]
+ [type:integer                         integer-type?]
+ [type:real                            real-type?]
+ [type:string                          string-type?]
+ [type:symbol                          symbol-type?]
+ [type:time-tai                        time-tai-type?]
+ [type:time-utc                        time-utc-type?]
+ [struct entity                        ([name                symbol?]
+                                        [table-name          symbol?]
+                                        [pretty-name         string?]
+                                        [pretty-name-plural  string?]
+                                        [pretty-formatter    procedure?]
+                                        [struct-type         struct-type?]
+                                        [private-constructor procedure?]
+                                        [private-predicate   procedure?]
+                                        [private-accessor    procedure?]
+                                        [private-mutator     procedure?]
+                                        [cached-constructor  procedure?]
+                                        [cached-predicate    procedure?]
+                                        [guid-constructor    (-> (or/c natural-number/c #f)
+                                                                 (or/c symbol? #f)
+                                                                 (is-a?/c snooze-cache<%>)
+                                                                 guid?)]
+                                        [guid-predicate      (-> any/c boolean?)]
+                                        [attributes          (listof attribute?)]
+                                        [on-save             (-> (-> connection? guid? guid?) connection? guid? guid?)]
+                                        [on-delete           (-> (-> connection? guid? guid?) connection? guid? guid?)])]
+ [make-vanilla-entity                  (-> symbol?
+                                           symbol?
+                                           string?
+                                           string?
+                                           procedure?
+                                           procedure?
+                                           procedure?
+                                           procedure?
+                                           procedure?
+                                           entity?)]
+ [entity-make-vanilla-guid             (->* (entity? natural-number/c) (#:snooze (is-a?/c snooze-cache<%>)) guid?)]
+ [entity-make-local-guid               (->* (entity?) (#:snooze (is-a?/c snooze-cache<%>)) guid?)]
+ [entity-guid?                         (-> entity? any/c boolean?)]
+ [entity-has-attribute?                (-> entity? (or/c symbol? attribute?) boolean?)]
+ [entity-guid-attribute?               (-> entity? (or/c symbol? attribute?) boolean?)]
+ [entity-attribute                     (-> entity? (or/c symbol? attribute?) attribute?)]
+ [struct attribute                     ([name                symbol?]
+                                        [column-name         symbol?]
+                                        [pretty-name         string?]
+                                        [pretty-name-plural  string?]
+                                        [type                type?]
+                                        [entity              entity?]
+                                        [index               integer?]
+                                        [default-maker       procedure?]
+                                        [private-accessor    procedure?]
+                                        [private-mutator     procedure?]
+                                        [cached-accessor     procedure?]
+                                        [cached-mutator      procedure?])]
+ [attribute-default                    (->* (attribute?) (#:snooze (is-a?/c snooze-cache<%>)) any/c)]
+ [prop:entity                          struct-type-property?]
+ [prop:entity-set?                     (-> any/c boolean?)]
+ [prop:entity-ref                      (-> any/c entity?)])

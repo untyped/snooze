@@ -2,19 +2,45 @@
 
 (require "../test-base.ss")
 
-(require (only-in srfi/1 take)
+(require scheme/dict
+         (only-in srfi/1 take)
          srfi/26
          (unlib-in hash)
          "../test-data.ss"
          "core.ss"
          (only-in "define-entity.ss" attr))
 
+(require/expose "core.ss"
+  (intern-hash))
+
+(define (hash->alist hash)
+  (for/list ([item (in-dict-pairs hash)]) item))
+      
 ; Guid tests -----------------------------------
 
 (define guid-tests
   (test-suite "guid"
-        
-    (test-case "make-person-guid"
+    
+    #:before
+    recreate-test-tables
+    
+    (test-case "entity-make-local-guid, entity-make-vanilla-guid"
+      (parameterize ([in-cache-code? #t])
+        (collect-garbage)
+        (let ([local (entity-make-local-guid person)])
+          (check-equal? (hash->alist (intern-hash local)) null)
+          (let ([vanilla1 (entity-make-vanilla-guid person 123)])
+            (collect-garbage)
+            (check-equal? (length (hash->alist (intern-hash local))) 1)
+            (check-eq? (entity-make-vanilla-guid person 123) vanilla1)
+            (check-not-eq? (entity-make-vanilla-guid person 321) vanilla1)))))
+    
+    (test-case "xxx"
+      (collect-garbage)
+      (let ([local (entity-make-local-guid person)])
+        (check-equal? (hash->alist (intern-hash local)) null)))
+    
+    (test-case "make-person"
       (let ([guid (make-person "Dave")])
         (check-equal? (guid-entity guid) person)
         (check-equal? (guid-id guid) #f)))))
@@ -29,7 +55,7 @@
 
 ; Entity tests ---------------------------------
 
-(define entity-tests
+#;(define entity-tests
   (test-suite "entity"
     
     (test-case "entity-name"
@@ -56,7 +82,7 @@
       (check-pred procedure? (entity-private-predicate person))
       (check-pred (entity-private-predicate person)
                   ((entity-private-constructor person)
-                   (entity-make-guid person #f)
+                   #f
                    #f
                    "Dave")))
     
@@ -168,7 +194,7 @@
   (test-suite "core.ss"
     guid-tests
     type-tests
-    entity-tests
+    ;entity-tests
     relationship-tests
     attribute-tests))
 

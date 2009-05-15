@@ -2,22 +2,10 @@
 
 (require "../base.ss")
 
-(define guid-cache<%>
-  (interface ()
-    
-    ; entity integer -> guid
-    get-interned-guid
-    
-    ; guid -> void
-    intern-guid!
-    
-    ; entity integer -> void
-    unintern-guid!))
-
 (define snooze-cache<%>
   (interface ()
     
-    ; guid -> snooze-struct
+    ; guid -> (U snooze-struct #f)
     ;
     ; Retrieves a struct from the cache. Implementations:
     ;   - database - load by ID;
@@ -32,12 +20,8 @@
     ;   - cache    - store.
     cache-add!
     
-    ; guid -> snooze-struct
-    cache-remove!
-    
-    ; guid (U natural #f) (U symbol #f) (U natural #f) -> void
-    ; Recaches guid with a new id, serial and revision.
-    recache!))
+    ; guid -> guid
+    cache-remove!))
 
 (define snooze<%>
   (interface (snooze-cache<%>)
@@ -157,6 +141,5 @@
 ; Provide statements -----------------------------
 
 (provide/contract
- [guid-cache<%>   interface?]
  [snooze-cache<%> interface?]
  [snooze<%>       interface?])

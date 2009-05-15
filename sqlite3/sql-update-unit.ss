@@ -145,17 +145,16 @@
   (let ([type (attribute-type attr)]
         [name (attribute-column-name attr)])
     (string-join (append (list (escape-name name)
-                               (cond [(guid-type? type)     (format "INTEGER REFERENCES ~a.~a" 
-                                                                    (escape-name (entity-name (guid-type-entity type)))
-                                                                    (escape-name 'id))]
-                                     [(boolean-type? type)  "INTEGER"]
-                                     [(integer-type? type)  "INTEGER"]
-                                     [(real-type? type)     "REAL"]
-                                     [(string-type? type)   (string-type-definition-sql (string-type-max-length type))]
-                                     [(symbol-type? type)   (string-type-definition-sql (symbol-type-max-length type))]
-                                     [(time-tai-type? type) "INTEGER"]
-                                     [(time-utc-type? type) "INTEGER"]
-                                     [else                  (raise-exn exn:fail:snooze (format "Unrecognised type: ~a" type))]))
+                               (cond [(guid-type? type)      (format "INTEGER REFERENCES ~a.~a" 
+                                                                     (escape-name (entity-name (guid-type-entity type)))
+                                                                     (escape-name 'id))]
+                                     [(boolean-type? type)   "INTEGER"]
+                                     [(integer-type? type)   "INTEGER"]
+                                     [(real-type? type)      "REAL"]
+                                     [(character-type? type) (character-type-definition-sql (character-type-max-length type))]
+                                     [(time-tai-type? type)  "INTEGER"]
+                                     [(time-utc-type? type)  "INTEGER"]
+                                     [else                   (raise-exn exn:fail:snooze (format "Unrecognised type: ~a" type))]))
                          (if (type-allows-null? type)
                              null
                              (list "NOT NULL"))
@@ -163,7 +162,7 @@
                  " ")))
 
 ; (U integer #f) -> string
-(define (string-type-definition-sql max-length)
+(define (character-type-definition-sql max-length)
   (if max-length
       (format "CHARACTER VARYING (~a)" max-length)
       "TEXT"))

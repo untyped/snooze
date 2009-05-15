@@ -35,8 +35,8 @@
                               (cond [(boolean-type? type)  "a yes/no value."]
                                     [(integer-type? type)  "an integer value."]
                                     [(real-type? type)     "a numeric value."]
-                                    [(string-type? type)   (format "text of length ~a or less." (string-type-max-length type))]
-                                    [(symbol-type? type)   (format "text of length ~a or less." (symbol-type-max-length type))]
+                                    [(string-type? type)   (format "text of length ~a or less." (character-type-max-length type))]
+                                    [(symbol-type? type)   (format "text of length ~a or less." (character-type-max-length type))]
                                     [(time-tai-type? type) "a date and time."]
                                     [(time-utc-type? type) "a date and time."])))
           (check-fail (cond [(boolean-type? type)     "boolean"]

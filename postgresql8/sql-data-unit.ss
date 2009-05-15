@@ -19,11 +19,14 @@
   (cond [(boolean-type? type)  (guard type value boolean? "boolean")          (if value "true" "false")]
         [(not value)           "NULL"]
         [(guid-type? type)     (guard type value guid? "(U guid #f)")         (cond [(not (eq? (guid-entity value) (guid-type-entity type)))
-                                                                                     (error (format "wrong guid entity: expected ~a, received ~a."
-                                                                                                    (entity-name (guid-entity value))
-                                                                                                    (entity-name (guid-type-entity type))))]
+                                                                                     (raise-exn exn:fail:snooze:query
+                                                                                       (format "wrong guid entity: expected ~a, received ~a."
+                                                                                               (entity-name (guid-entity value))
+                                                                                               (entity-name (guid-type-entity type))))]
                                                                                     [(guid-id value) => number->string]
-                                                                                    [else (error "reference to unsaved struct" value)])]
+                                                                                    [else (raise-exn exn:fail:snooze:query
+                                                                                            (format "cannot use unsaved struct in a query: ~s" value)
+                                                                                            #f)])]
         [(integer-type? type)  (guard type value integer?  "(U integer #f)")  (number->string value)]
         [(real-type? type)     (guard type value real?     "(U real #f)")     (number->string value)]
         [(string-type? type)   (guard type value string?   "(U string #f)")   (string-append "'" (regexp-replace* #rx"'" value "''") "'")]
@@ -35,7 +38,7 @@
 ; snooze-cache<%> type (U string sql-null) -> any
 (define (parse-value snooze type value)
   (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
-    (cond [(guid-type? type)     (entity-make-guid #:snooze snooze (guid-type-entity type) (inexact->exact value) #f)]
+    (cond [(guid-type? type)     (entity-make-vanilla-guid #:snooze snooze (guid-type-entity type) (inexact->exact value))]
           [(sql-null? value)     #f]
           [(boolean-type? type)  value]
                 [(integer-type? type)  (inexact->exact value)]
@@ -44,7 +47,7 @@
                 [(symbol-type? type)   (string->symbol value)]
                 [(time-tai-type? type) (date->time-tai (sql-datetime->srfi-date value))]
                 [(time-utc-type? type) (date->time-utc (sql-datetime->srfi-date value))]
-                [else                  (error "unrecognised type" type)])))
+                [else                  (raise-exn exn:fail:snooze (format "unrecognised type: ~a" type))])))
 
 ; snooze (listof type) -> ((U (listof database-value) #f) -> (U (listof scheme-value) #f))
 (define (make-parser snooze types)

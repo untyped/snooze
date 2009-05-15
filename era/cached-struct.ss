@@ -15,16 +15,14 @@
          procedure-name
          struct-constructor
          expected-arity)
-  (lambda (#:snooze [snooze (current-snooze)]
-                    #:guid     [guid     (entity-make-guid entity #:snooze snooze #f)]
-                    #:revision [revision #f] . args)
+  (lambda (#:snooze [snooze (current-snooze)] . args)
     (unless (= (length args) expected-arity)
       (raise-exn exn:fail:contract
         (format "~a: expected ~a non-keyword argument(s), received ~s"
                 procedure-name
                 expected-arity
                 args)))
-    (send snooze cache-add! (apply struct-constructor guid revision args))))
+    (send snooze cache-add! (apply struct-constructor #f #f args))))
 
 ; (any -> boolean) -> (any -> boolean)
 (define (make-cached-predicate struct-predicate)
@@ -62,7 +60,7 @@
 (define struct-id guid-id)
 
 ; guid -> boolean
-(define struct-live? guid-live?)
+(define struct-local? guid-local?)
 
 ; guid -> boolean
 (define (struct-saved? guid)
@@ -99,10 +97,7 @@
                attr
                arg-attrs
                arg-vals
-               (lambda (attr)
-                 (if (entity-guid-attribute? entity attr)
-                     (entity-make-guid #:snooze (guid-snooze existing) entity (guid-id existing))
-                     existing))))))))
+               (lambda (attr) existing)))))))
 
 ; guid (U symbol attribute) any -> void
 (define (snooze-struct-set! guid name+attr val)
@@ -125,8 +120,7 @@
   (let ([entity (struct-entity original)])
     (struct-cache-add!
      (apply (entity-private-constructor entity)
-            (entity-make-guid #:snooze (guid-snooze original) entity (guid-id original))
-            (cdr (snooze-struct-ref* original))))))
+            (snooze-struct-ref* original)))))
 
 ; guid any ... -> string
 (define (snooze-struct-format guid . rest)
@@ -149,7 +143,7 @@
  [struct-entity                   (-> (or/c guid? prop:entity-set?) entity?)]
  [struct-guid                     (-> (or/c guid? prop:entity-set?) guid?)]
  [struct-id                       (-> guid? (or/c natural-number/c #f))]
- [struct-live?                    (-> guid? boolean?)]
+ [struct-local?                   (-> guid? boolean?)]
  [struct-saved?                   (-> guid? boolean?)]
  [struct-revision                 (-> guid? (or/c natural-number/c #f))]
  [set-struct-revision!            (-> guid? (or/c natural-number/c #f) void?)]

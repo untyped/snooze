@@ -111,7 +111,92 @@
           (check-equality per2 per3 #t #t #t)
           (check-equal? (person-name per1) "David")
           (check-equal? (person-name per2) "David")
-          (check-equal? (person-name per3) "David"))))
+          (check-equal? (person-name per3) "David")))
+      
+      (test-case "create, delete"
+        (recreate-test-tables)
+        (cache-clear!)
+        (let* ([per1 (make-person "Dave")])
+          (check-exn exn:fail:snooze? (cut delete! per1))))
+      
+      (test-case "load, delete"
+        (recreate-test-tables)
+        (save! (make-person "Dave"))
+        (cache-clear!)
+        (let* ([per1 (select-one #:from person)])
+          (delete! per1)
+          (check-equal? (person-name per1) "Dave")
+          (check-false (guid-id per1))
+          (check-pred symbol? (guid-serial per1))
+          (check-exn exn:fail:snooze? (cut delete! per1))
+          (check-exn exn:fail:snooze:query?
+            (cut select-one #:from person #:where (= person.guid ,per1)))
+          (check-not-exn (cut save! per1))))
+      
+      (test-case "load, load live duplicate, delete"
+        (recreate-test-tables)
+        (save! (make-person "Dave"))
+        (cache-clear!)
+        (let* ([per1 (select-one #:from person)]
+               [per2 (select-one #:from person)])
+          (delete! per1)
+          ; per1
+          (check-equal? (person-name per1) "Dave")
+          (check-false (guid-id per1))
+          (check-pred symbol? (guid-serial per1))
+          (check-exn exn:fail:snooze? (cut delete! per1))
+          (check-exn exn:fail:snooze:query?
+            (cut select-one #:from person #:where (= person.guid ,per1)))
+          (check-not-exn (cut save! per1))
+          ; per2
+          (debug "per2" per2)
+          (debug-location)
+          (check-equal? (person-name per2) "Dave")
+          (debug-location)
+          (check-false (guid-id per2))
+          (debug-location)
+          (check-pred symbol? (guid-serial per2))
+          (debug-location)
+          (check-exn exn:fail:snooze? (cut delete! per2))
+          (debug-location)
+          (check-exn exn:fail:snooze:query?
+            (cut select-one #:from person #:where (= person.guid ,per2)))
+          (debug-location)
+          (check-not-exn (cut save! per2))))
+      
+      
+      #;(test-case "load, modify, delete"
+        (recreate-test-tables)
+        (save! (make-person "Dave"))
+        (cache-clear!)
+        (let* ([per1 (select-one #:from person)]
+               [per2 (person-set per1 #:name "David")])
+          (check-cache-size (list 2))
+          (delete! per1)
+          (check-cache-size (list 2))
+          ; per1
+          (check-equal? (person-name per1) "Dave")
+          (check-false (guid-id per1))
+          (check-pred symbol? (guid-serial per1))
+          (check-exn exn:fail:snooze? (cut delete! per1))
+          (check-exn exn:fail:snooze:query?
+            (cut select-one #:from person #:where (= person.guid ,per1)))
+          ; per2
+          (check-equal? (person-name per2) "David")
+          (check-false (guid-id per2))
+          (check-pred symbol? (guid-serial per2))
+          (check-exn exn:fail:snooze? (cut delete! per2))
+          (check-exn exn:fail:snooze:query?
+            (cut select-one #:from person #:where (= person.guid ,per2)))
+          ; both
+          (check-equality per1 per2 #f #f #f)))
+          
+          
+          
+          
+      
+      
+      )
     
     (test-suite "inter-struct references"
       

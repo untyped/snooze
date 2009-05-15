@@ -159,17 +159,16 @@
   (let ([type (attribute-type attr)]
         [name (attribute-column-name attr)])
     (string-join (append (list (escape-name name)
-                               (cond [(guid-type? type)     (format "INTEGER REFERENCES ~a(~a)"
-                                                                    (escape-name (entity-table-name (guid-type-entity type)))
-                                                                    (escape-name (attribute-column-name (car (entity-attributes (guid-type-entity type))))))]
-                                     [(boolean-type? type)  "BOOLEAN"]
-                                     [(integer-type? type)  "INTEGER"]
-                                     [(real-type? type)     "REAL"]
-                                     [(string-type? type)   (string-type-definition-sql (string-type-max-length type))]
-                                     [(symbol-type? type)   (string-type-definition-sql (symbol-type-max-length type))]
-                                     [(time-tai-type? type) "TIMESTAMP WITHOUT TIME ZONE"]
-                                     [(time-utc-type? type) "TIMESTAMP WITHOUT TIME ZONE"]
-                                     [else                  (raise-exn exn:fail:snooze (format "Unrecognised type: ~a" type))]))
+                               (cond [(guid-type? type)      (format "INTEGER REFERENCES ~a(~a)"
+                                                                     (escape-name (entity-table-name (guid-type-entity type)))
+                                                                     (escape-name (attribute-column-name (car (entity-attributes (guid-type-entity type))))))]
+                                     [(boolean-type? type)   "BOOLEAN"]
+                                     [(integer-type? type)   "INTEGER"]
+                                     [(real-type? type)      "REAL"]
+                                     [(character-type? type) (character-type-definition-sql (character-type-max-length type))]
+                                     [(time-tai-type? type)  "TIMESTAMP WITHOUT TIME ZONE"]
+                                     [(time-utc-type? type)  "TIMESTAMP WITHOUT TIME ZONE"]
+                                     [else                   (raise-exn exn:fail:snooze (format "Unrecognised type: ~a" type))]))
                          (if (type-allows-null? type)
                              null
                              (list "NOT NULL"))
@@ -177,7 +176,7 @@
                  " ")))
 
 ; (U integer #f) -> string
-(define (string-type-definition-sql max-length)
+(define (character-type-definition-sql max-length)
   (if max-length
       (format "CHARACTER VARYING (~a)" max-length)
       "TEXT"))

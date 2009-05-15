@@ -34,7 +34,7 @@
 ; snooze type string -> any
 (define (parse-value snooze type value)
   (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
-    (cond [(guid-type? type)     (send (send snooze get-guid-cache) get-interned-guid (guid-type-entity type) (inexact->exact value))]
+    (cond [(guid-type? type)     (entity-make-vanilla-guid #:snooze snooze (guid-type-entity type) (inexact->exact value))]
           [(boolean-type? type)  (equal? value "1")]
           [(not value)           #f]
           [(integer-type? type)  (inexact->exact (string->number value))]

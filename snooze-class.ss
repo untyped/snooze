@@ -8,7 +8,6 @@
          (planet untyped/unlib:3/parameter)
          (prefix-in real: (only-in "era/snooze-struct.ss" make-snooze-struct))
          "cache.ss"
-         "guid-cache.ss"
          "era/era.ss"
          "generic/connection.ss"
          "generic/database.ss"
@@ -41,11 +40,8 @@
             (lambda (continue conn guid)
               (continue conn guid))])
     
-    ; guid-cache%
-    (field [guid-cache (new guid-cache%)])
-    
     ; (parameter snooze-cache%)
-    (field [current-cache (make-parameter (new snooze-cache% [guid-cache guid-cache]))])
+    (field [current-cache (make-parameter (new snooze-cache%))])
     
     ; Constructor --------------------------------
     
@@ -61,19 +57,12 @@
     
     ; (-> any) -> any
     (define/public (call-with-cache thunk)
-      (parameterize ([current-cache
-                      (new snooze-cache%
-                           [parent (current-cache)]
-                           [guid-cache guid-cache])])
+      (parameterize ([current-cache (new snooze-cache% [parent (current-cache)])])
         (thunk)))
     
     ; -> snooze-cache%
     (define/public (get-current-cache)
       (current-cache))
-    
-    ; -> guid-cache%
-    (define/public (get-guid-cache)
-      guid-cache)
     
     ; guid -> (U snooze-struct #f)
     (define/public (cache-ref guid)
@@ -82,8 +71,7 @@
         (log-cache "snooze.cache-ref" guid)
         (or (send (current-cache) cache-ref guid)
             (cond [(guid-serial guid)
-                   (raise-exn exn:fail:snooze:cache
-                     (format "guid with serial not found in cache: ~s" guid))]
+                   (raise-exn exn:fail:snooze:cache (format "guid with serial not found in cache: ~s" guid))]
                   [(guid-id guid)
                    (let-alias ([x (guid-entity guid)])
                      (let* ([gen (send database g:find
@@ -93,8 +81,7 @@
                             [ans (gen)])
                        (and (not (g:end? ans)) 
                             (send (current-cache) cache-ref ans))))]
-                  [else (raise-exn exn:fail:snooze:cache
-                          (format "guid found with no ID and no serial: ~s" guid))]))))
+                  [else (raise-exn exn:fail:snooze:cache (format "guid found with no id and no serial: ~s" guid))]))))
     
     ; snooze-struct -> void
     (define/public (cache-add! struct)
@@ -158,7 +145,7 @@
     ; If the thread is suspended or killed, the connection is disconnected and set to #f.
     (define/public (current-connection)
       (or (thread-cell-ref current-connection-cell)
-          (error "no database connection: use call-with-connection to set one up.")))
+          (raise-exn exn:fail:snooze "no database connection: use call-with-connection to set one up")))
     
     ; entity -> void
     (define/public (create-table entity)
@@ -190,9 +177,7 @@
                         guid)
                       (current-connection)
                       guid)
-                     (raise-exn exn:fail:snooze:revision
-                       "structure has been revised since it was loaded from the database"
-                       guid))
+                     (raise-exn exn:fail:snooze:revision "cannot save: structure has been revised since it was loaded from the database" guid))
                  ; Run the insert hook:
                  ((entity-on-save entity)
                   (lambda (conn guid)
@@ -217,45 +202,40 @@
                      ((entity-on-delete entity)
                       (lambda (conn guid)
                         (send database delete-record conn guid)
-                        (send (current-cache) cache-remove! guid))
+                        (set-struct-revision! guid #f)
+                        (send (current-cache) recache! guid #f (gensym))
+                        guid)
                       (current-connection)
                       guid)
-                     (raise-exn exn:fail:snooze:revision "database has been revised since structure was loaded" guid))))
-              (error "cannot delete: struct has not been saved" guid))
-          (send (current-cache) delete! guid))))
+                     (raise-exn exn:fail:snooze:revision "cannot delete: database has been revised since structure was loaded" guid))))
+              (raise-exn exn:fail:snooze (format "cannot delete: struct has not been saved: ~s" guid))))))
     
     ; guid [((connection guid -> any) connection guid -> any)] -> guid
     (define/public (insert/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])
       (auto-connect)
-      (begin0
-        (hook (lambda (conn guid)
-                (send database insert-record/id conn guid)
-                guid)
-              (current-connection)
+      (hook (lambda (conn guid)
+              (send database insert-record/id conn guid)
               guid)
-        (send guid-cache intern-guid! guid)))
+            (current-connection)
+            guid))
     
     ; guid [((connection guid -> any) connection guid -> any)] -> guid
     (define/public (update/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])
       (auto-connect)
-      (begin0
-        (hook (lambda (conn guid)
-                (send database update-record conn guid)
-                guid)
-              (current-connection)
+      (hook (lambda (conn guid)
+              (send database update-record conn guid)
               guid)
-        (send guid-cache intern-guid! guid)))
+            (current-connection)
+            guid))
     
     ; guid [((connection guid -> any) connection guid -> any)] -> guid
     (define/public (delete/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])
       (auto-connect)
-      (begin0
-        (hook (lambda (conn guid)
-                (send database delete-record conn guid)
-                guid)
-              (current-connection)
+      (hook (lambda (conn guid)
+              (send database delete-record conn guid)
               guid)
-        (send guid-cache intern-guid! guid)))
+            (current-connection)
+            guid))
     
     ; query -> (list-of result)
     (define/public (find-all query)

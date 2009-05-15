@@ -255,26 +255,22 @@
                
                (define (defaults-constructor
                          #:snooze   [snooze   (current-snooze)]
-                         #:guid     [guid     (entity-make-guid #:snooze snooze entity-private #f)]
-                         #:revision [revision #f]
                          #,@(append-map (lambda (kw attr name)
                                           (list kw #`[#,name (attribute-default #:snooze snooze #,attr)]))
                                         (syntax->list #'(attr-kw ...))
                                         (syntax->list #'(attr-private ...))
                                         (syntax->list #'(attr ...))))
-                 ((entity-cached-constructor entity-private) #:snooze snooze #:guid guid #:revision revision attr ...))
+                 ((entity-cached-constructor entity-private) #:snooze snooze attr ...))
                
                (define (copy-constructor
                         original
                         #:snooze   [snooze   (guid-snooze original)]
-                        #:guid     [guid     (entity-make-guid #:snooze snooze (guid-entity original) (guid-id original))]
-                        #:revision [revision (struct-revision original)]
                         #,@(append-map (lambda (kw accessor name)
                                          (list kw #`[#,name (#,accessor original)]))
                                        (syntax->list #'(attr-kw ...))
                                        (syntax->list #'(accessor ...))
                                        (syntax->list #'(attr ...))))
-                 ((entity-cached-constructor entity-private) #:snooze snooze #:guid guid #:revision revision attr ...))
+                 ((entity-cached-constructor entity-private) #:snooze snooze attr ...))
                
                #,(if (eq? (syntax-local-context) 'module)
                      #'(begin (define deserialize-info

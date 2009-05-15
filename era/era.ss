@@ -3,7 +3,11 @@
 (require "../base.ss")
 
 (require "cached-struct.ss"
-         (except-in "core.ss" make-entity)
+         (except-in "core.ss"
+                    make-entity
+                    make-numeric-type
+                    make-character-type
+                    make-temporal-type)
          "define-entity.ss"
          "syntax-info.ss")
 

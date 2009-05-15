@@ -91,7 +91,7 @@
     (let* ([name             'guid]
            [col              'id]
            [type             (make-guid-type #f entity)]
-           [default-maker    (cut entity-make-guid #:snooze <> entity #f)]
+           [default-maker    (lambda (snooze) #f)]
            [index            0])
       (create-attribute name col "unique ID" "unique IDs" type entity index default-maker struct-accessor struct-mutator)))
   
