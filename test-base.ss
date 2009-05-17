@@ -7,8 +7,8 @@
          "cache.ss"
          "snooze-class.ss"
          "era/era.ss"
-         (prefix-in postgresql8: "postgresql8/postgresql8.ss")
-         (prefix-in sqlite3: "sqlite3/sqlite3.ss"))
+         "postgresql8/postgresql8.ss"
+         "sqlite3/sqlite3.ss")
 
 ; test-suite -> any
 (define (run-tests/no-database tests)
@@ -29,7 +29,7 @@
                                #:username [username "dave"]
                                #:password [password #f]
                                tests)
-  (parameterize ([current-snooze (make-snooze (postgresql8:make-database
+  (parameterize ([current-snooze (make-snooze (make-postgresql8-database
                                                #:server   server
                                                #:port     port
                                                #:database database
@@ -43,7 +43,7 @@
          [existing? (and file? (file-exists? location))])
     (when (and file? existing?)
       (delete-file location))
-    (parameterize ([current-snooze (make-snooze (sqlite3:make-database location))])
+    (parameterize ([current-snooze (make-snooze (make-sqlite3-database location))])
       (run-tests tests))
     (when (and file? (not existing?))
       (delete-file location))))

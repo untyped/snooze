@@ -43,15 +43,25 @@
       (dict-remove! hash key)))
   (check-equal? (cache-size cache) 0 "post-clear!"))
 
-; [cache%] -> alist
+; -> void
+(define (recreate-test-tables/cache)
+  (recreate-test-tables)
+  (cache-clear!))
+
+; [cache%] -> (listof (alistof guid cached-data))
 ;
 ; Returns printable debugging information about the supplied/current cache.
 (define (cache-alist [cache (cache)])
-  (list (cons 'CONTENT (for/list ([item (in-dict-pairs (cache-hash cache))])
-                         item))
-        (cons 'PARENT  (if (cache-parent cache)
-                           (cache-alist (cache-parent cache))
-                           #f))))
+  (for/list ([item (in-dict-pairs (cache-hash cache))]) item))
+
+; [cache%] -> (listof (alistof guid cached-data))
+;
+; Returns printable debugging information about the supplied/current cache.
+(define (cache-alists [cache (cache)])
+  (if cache
+      (cons (cache-alist cache)
+            (cache-alist (cache-parent cache)))
+      null))
 
 ; [cache%] -> alist
 ;

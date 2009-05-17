@@ -31,12 +31,6 @@
 (define-values (prop:guid-entity-box guid-entity? guid-entity-box)
   (make-struct-type-property 'guid-entity-box))
 
-; property
-; guid -> boolean
-; guid -> (weak-hashof guid (weak-box guid))
-(define-values (prop:intern-hash has-intern-hash? intern-hash)
-  (make-struct-type-property 'intern-hash))
-
 ; guid -> guid
 (define (copy-guid guid)
   ((entity-guid-constructor (guid-entity guid))
@@ -105,10 +99,7 @@
                    (same? (guid-ref guid1)
                           (guid-ref guid2)))
                  (lambda (guid recur) (recur guid))
-                 (lambda (guid recur) (recur guid)))
-           #:property
-           prop:intern-hash
-           (make-weak-custom-hash guid=? guid=?-hash-code)))]))
+                 (lambda (guid recur) (recur guid)))))]))
 
 ; guid -> entity
 (define (guid-entity guid)
@@ -120,6 +111,27 @@
     (or (send (guid-snooze guid) cache-ref guid)
         (raise-exn exn:fail:snooze:cache
           (format "guid not cached: ~s" guid)))))
+
+; Interning guids --------------------------------
+
+; (weak-custom-hashof guid (weak-box guid))
+(define interned-guids
+  (make-weak-custom-hash guid=? guid=?-hash-code))
+
+; guid -> boolean
+(define (guid-interned? guid)
+  (eq? (dict-ref interned-guids guid #f) guid))
+
+; guid -> guid
+(define (intern-guid guid)
+  (weak-box-value
+   (dict-ref interned-guids
+             guid
+             (lambda ()
+               (let* ([guid (copy-guid guid)]
+                      [box  (make-weak-box guid)])
+                 (dict-set! interned-guids guid box)
+                 box)))))
 
 ; Attribute types --------------------------------
 
@@ -280,14 +292,7 @@
 
 ; entity [#:snooze snooze] natural -> guid
 (define (entity-make-vanilla-guid #:snooze [snooze (current-snooze)] entity id)
-  (let ([guid ((entity-guid-constructor entity) id snooze)])
-    (weak-box-value
-     (dict-ref (intern-hash guid)
-               guid
-               (lambda ()
-                 (let ([box (make-weak-box guid)])
-                   (dict-set! (intern-hash guid) guid box)
-                   box))))))
+  ((entity-guid-constructor entity) id snooze))
 
 ; entity [#:snooze snooze] -> guid
 (define (entity-make-local-guid #:snooze [snooze (current-snooze)] entity)
@@ -407,6 +412,8 @@
  [guid-entity-box                      (-> struct-type? box?)]
  [guid-entity                          (-> guid? entity?)]
  [guid-ref                             (-> guid? snooze-struct?)]
+ [guid-interned?                       (-> guid? boolean?)]
+ [intern-guid                          (-> (and/c guid? (not/c guid-local?)) guid?)]
  [struct type                          ([allows-null? boolean?])]
  [struct (guid-type type)              ([allows-null? boolean?] [entity entity?])]
  [struct (boolean-type type)           ([allows-null? boolean?])]

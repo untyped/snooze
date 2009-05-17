@@ -3,7 +3,6 @@
 (require mzlib/etc
          scheme/class
          scheme/unit
-         "extract-test.ss"
          "quick-find-test.ss"
          "snooze-api.ss"
          "snooze-create-test.ss"
@@ -19,12 +18,13 @@
          ;"audit/all-audit-tests.ss"
          "check/all-check-tests.ss"
          "era/all-era-tests.ss"
+         "generic/all-generic-tests.ss"
          "sql/all-sql-tests.ss")
 
 ; Tests ----------------------------------------
 
 ; snooze% test-suite -> test-suite
-(define (make-snooze-tests back-end-tests)
+(define (make-snooze-tests all-back-end-tests)
   (test-suite "snooze"
     
     #:before
@@ -32,11 +32,11 @@
     
     ; Tests that can be run without a database connection:
     all-era-tests
-    extract-tests
     all-sql-tests
     
     ; Tests for the back end:
-    back-end-tests
+    all-generic-tests
+    all-back-end-tests
     
     ; Tests the front end:
     snooze-create-tests

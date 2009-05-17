@@ -11,17 +11,18 @@
     ;   - database - load by ID;
     ;   - cache    - if hit, return;
     ;              - if miss, propagate to parent, clone, store, intern entity/id and return.
-    cache-ref
+    ;cache-ref
     
     ; snooze-struct -> guid
     ;
     ; Adds a new struct to the cache. Implementations:
     ;   - database - do nothing;
     ;   - cache    - store.
-    cache-add!
+    ;cache-add!
     
     ; guid -> guid
-    cache-remove!))
+    ;cache-remove!
+    ))
 
 (define snooze<%>
   (interface (snooze-cache<%>)

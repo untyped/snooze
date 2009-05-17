@@ -5,10 +5,10 @@
          scheme/match
          srfi/13/string
          srfi/26/cut
-         (prefix-in sqlite3: "sqlite3/all-sqlite3-tests.ss")
-         (prefix-in sqlite3: "sqlite3/sqlite3.ss")
-         (prefix-in postgresql8: "postgresql8/all-postgresql8-tests.ss")
-         (prefix-in postgresql8: "postgresql8/postgresql8.ss")
+         "sqlite3/all-sqlite3-tests.ss"
+         "sqlite3/sqlite3.ss"
+         "postgresql8/all-postgresql8-tests.ss"
+         "postgresql8/postgresql8.ss"
          "all-snooze-tests.ss"
          "snooze.ss"
          "snooze-class.ss"
@@ -38,7 +38,7 @@ ENDOUTPUT
   (match (vector->list (current-command-line-arguments))
     [(list) (print-usage)]
     [(list-rest "sqlite3" rest)
-     (let ([tests (make-snooze-tests sqlite3:all-sqlite3-tests)])
+     (let ([tests (make-snooze-tests all-sqlite3-tests)])
        (match rest
          [(list)
           (run-tests/sqlite3 "snooze-sqlite3-test.db")]
@@ -46,7 +46,7 @@ ENDOUTPUT
           (run-tests/sqlite3 location)]
          [_ (error "bad sqlite3 options")]))]
     [(list-rest "postgresql8" rest)
-     (let ([tests (make-snooze-tests postgresql8:all-postgresql8-tests)])
+     (let ([tests (make-snooze-tests all-postgresql8-tests)])
        (match rest
          [(list)
           (run-tests/postgresql8 tests)]

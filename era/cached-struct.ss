@@ -84,20 +84,21 @@
 
 ; guid <attr any> ... -> guid
 (define (snooze-struct-set original . args)
-  (struct-cache-add!
-   (let*-values ([(entity)             (struct-entity original)]
+  (let*-values ([(entity)             (struct-entity original)]
                  [(arg-attrs arg-vals) (check-attribute-keywords entity args)]
                  [(attrs)              (entity-attributes entity)]
                  [(existing)           (snooze-struct-ref* original)])
-     (apply (entity-private-constructor entity)
-            (for/list ([attr     (in-list attrs)]
-                       [existing (in-list existing)])
-              (attribute-keyword-get
-               entity
-               attr
-               arg-attrs
-               arg-vals
-               (lambda (attr) existing)))))))
+    (send (guid-snooze original)
+          cache-add!
+          (apply (entity-private-constructor entity)
+                 (for/list ([attr     (in-list attrs)]
+                            [existing (in-list existing)])
+                   (attribute-keyword-get
+                    entity
+                    attr
+                    arg-attrs
+                    arg-vals
+                    (lambda (attr) existing)))))))
 
 ; guid (U symbol attribute) any -> void
 (define (snooze-struct-set! guid name+attr val)
@@ -108,29 +109,28 @@
   (real:snooze-struct-set*! (guid-ref guid) vals))
 
 ; entity any ... -> guid
-(define (make-snooze-struct entity . args)
-  (struct-cache-add! (apply real:make-snooze-struct entity args)))
+(define (make-snooze-struct #:snooze [snooze (current-snooze)] entity . args)
+  (send (current-snooze)
+        cache-add!
+        (apply real:make-snooze-struct entity args)))
 
 ; entity <attr any> ... -> guid
-(define (make-snooze-struct/defaults entity . args)
-  (struct-cache-add! (apply real:make-snooze-struct/defaults entity args)))
+(define (make-snooze-struct/defaults #:snooze [snooze (current-snooze)] entity . args)
+  (send (current-snooze)
+        cache-add!
+        (apply real:make-snooze-struct/defaults entity args)))
 
 ; guid -> guid
 (define (copy-snooze-struct original)
   (let ([entity (struct-entity original)])
-    (struct-cache-add!
-     (apply (entity-private-constructor entity)
-            (snooze-struct-ref* original)))))
+    (send (guid-snooze original)
+          cache-add!
+          (apply (entity-private-constructor entity)
+                 (snooze-struct-ref* original)))))
 
 ; guid any ... -> string
 (define (snooze-struct-format guid . rest)
   (apply (entity-pretty-formatter (struct-entity guid)) guid rest))
-
-; Helpers ----------------------------------------
-
-; snooze-struct -> guid
-(define (struct-cache-add! struct)
-  (send (guid-snooze (real:struct-guid struct)) cache-add! struct))
 
 ; Provide statements -----------------------------
 

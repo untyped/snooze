@@ -11,7 +11,7 @@
          (only-in "define-entity.ss" attr))
 
 (require/expose "core.ss"
-  (intern-hash))
+  (interned-guids))
 
 (define (hash->alist hash)
   (for/list ([item (in-dict-pairs hash)]) item))
@@ -24,26 +24,39 @@
     #:before
     recreate-test-tables
     
-    (test-case "entity-make-local-guid, entity-make-vanilla-guid"
+    (test-case "entity-make-local-guid, entity-make-vanilla-guid, guid-id, guid-serial"
       (parameterize ([in-cache-code? #t])
-        (collect-garbage)
-        (let ([local (entity-make-local-guid person)])
-          (check-equal? (hash->alist (intern-hash local)) null)
-          (let ([vanilla1 (entity-make-vanilla-guid person 123)])
-            (collect-garbage)
-            (check-equal? (length (hash->alist (intern-hash local))) 1)
-            (check-eq? (entity-make-vanilla-guid person 123) vanilla1)
-            (check-not-eq? (entity-make-vanilla-guid person 321) vanilla1)))))
+        (let* ([local1   (entity-make-local-guid person)]
+               [local2   (entity-make-local-guid person)]
+               [vanilla1 (entity-make-vanilla-guid person 123)]
+               [vanilla2 (entity-make-vanilla-guid person 123)])
+          (check-not-eq? local1 local2)
+          (check-false (guid=? local1 local2))
+          (check-not-eq? vanilla1 vanilla2)
+          (check guid=? vanilla1 vanilla2)
+          (check-equal? (guid-id local1) #f)
+          (check-equal? (guid-id vanilla1) 123)
+          (check-equal? (guid-id vanilla2) 123)
+          (check-pred symbol? (guid-serial local1))
+          (check-pred symbol? (guid-serial local2))
+          (check-not-eq? (guid-serial local1) (guid-serial local2))
+          (check-false (guid-serial vanilla1))
+          (check-false (guid-serial vanilla2)))))
     
-    (test-case "xxx"
+    (test-case "intern-guid"
+      (let* ([vanilla1 (entity-make-vanilla-guid person 123)]
+             [vanilla2 (intern-guid vanilla1)]
+             [vanilla3 (intern-guid vanilla1)])
+        (check-not-eq? vanilla1 vanilla2)
+        (check-not-eq? vanilla1 vanilla3)
+        (check-eq? vanilla2 vanilla3)
+        (check guid=? vanilla1 vanilla2)
+        (check guid=? vanilla1 vanilla3)
+        (check-equal? (dict-count interned-guids) 1)))
+    
+    (test-case "intern-guid gc"
       (collect-garbage)
-      (let ([local (entity-make-local-guid person)])
-        (check-equal? (hash->alist (intern-hash local)) null)))
-    
-    (test-case "make-person"
-      (let ([guid (make-person "Dave")])
-        (check-equal? (guid-entity guid) person)
-        (check-equal? (guid-id guid) #f)))))
+      (check-equal? (dict-count interned-guids) 0))))
 
 ; Type tests -----------------------------------
 

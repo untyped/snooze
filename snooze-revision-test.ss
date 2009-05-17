@@ -48,7 +48,7 @@
     (test-case "save! throws an exception when revision is incorrect"
       (let ([course1 (make-course 'code "Name" 12345 1234.5 #t time-tai1)])
         (save! course1)
-        (let ([course2 (copy-course course1)])
+        (let ([course2 (course-set course1)])
           (check-equal? (struct-revision course1) (struct-revision course2))
           (save! course1)
           (check-equal? (struct-revision course1) (add1 (struct-revision course2)))
@@ -59,7 +59,7 @@
     (test-case "delete! throws an exception when revision is incorrect"
       (let ([course1 (make-course 'code "Name" 12345 1234.5 #t time-tai1)])
         (save! course1)
-        (let ([course2 (copy-course course1)])
+        (let ([course2 (course-set course1)])
           (check-equal? (struct-revision course1) (struct-revision course2))
           (save! course1)
           (check-equal? (struct-revision course1) (add1 (struct-revision course2)))

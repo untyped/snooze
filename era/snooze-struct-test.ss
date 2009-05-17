@@ -25,15 +25,10 @@
     
     #:before
     (lambda ()
-      (set! test-person (make-snooze-struct person
-                                            (entity-make-guid person #f)
-                                            #f
-                                            "Jon"))
-      (set! test-pet    (make-snooze-struct pet
-                                            (entity-make-guid pet #f)
-                                            #f
-                                            (struct-guid test-person)
-                                            "Garfield")))
+      (set! test-person (make-snooze-struct person #f #f "Jon"))
+      ; We shouldn't technically have a direct reference to the guid INSIDE a struct
+      ; like this, but in the absence of access to the full caching system it will suffice:
+      (set! test-pet    (make-snooze-struct pet #f #f (struct-guid test-person) "Garfield")))
     
     (test-case "struct-entity"
       (check-eq? (struct-entity test-person) person)
@@ -48,24 +43,18 @@
       (check-true (struct-saved? (snooze-struct-set
                                   test-person
                                   (attr person guid)
-                                  (entity-make-guid person 1)))))
+                                  (entity-make-vanilla-guid person 1)))))
     
     (test-case "struct-id"
       (check-equal? (struct-id test-person) #f)
       (check-equal? (struct-id (snooze-struct-set
                                 test-person
                                 (attr person guid)
-                                (entity-make-guid person 1))) 1))
+                                (entity-make-vanilla-guid person 1))) 1))
     
     (test-case "struct-revision"
       (check-equal? (struct-revision test-person) #f)
       (check-equal? (struct-revision (snooze-struct-set test-person (attr person revision) 1)) 1))
-    
-    (test-case "set-struct-revision!"
-      (let ([struct (make-person* "Dave")])
-        (check-equal? (struct-revision struct) #f)
-        (set-struct-revision! struct 1000)
-        (check-equal? (struct-revision struct) 1000)))
     
     (test-case "snooze-struct-ref"
       (check-equal? (guid-entity (snooze-struct-ref test-pet 'guid)) pet)
@@ -96,7 +85,7 @@
             [test-person3 (snooze-struct-set
                            test-person
                            (attr person guid)
-                           (entity-make-guid person 123))])
+                           (entity-make-vanilla-guid person 123))])
         (check-equal?     test-person test-person2)
         (check-not-eq?    test-person test-person2)
         (check-not-equal? test-person test-person3)
@@ -110,7 +99,7 @@
               [test-person3 (make-snooze-struct/defaults
                              person
                              (attr person guid)
-                             (entity-make-guid person 123))])
+                             (entity-make-vanilla-guid person 123))])
           (check-false  (struct-id test-person))
           (check-false  (struct-id test-person2))
           (check-equal? (struct-id test-person3) 123)))

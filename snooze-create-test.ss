@@ -1,49 +1,29 @@
 #lang scheme/base
 
-(require "snooze-api.ss"
-         "test-base.ss"
+(require "test-base.ss")
+
+(require scheme/dict
+         (unlib-in hash)
+         "snooze-api.ss"
          "test-data.ss"
+         "snooze-cache-test-util.ss"
          "era/era.ss"
-         "sql/sql.ss")
+         (prefix-in real: "era/snooze-struct.ss"))
 
-; Tests ----------------------------------------
-
-(define-alias a person)
+; Tests -------------------------------------------
 
 ; test-suite
 (define snooze-create-tests
   (test-suite "snooze-create-tests"
     
-    #:before
-    drop-all-tables
-    
-    #:after
-    drop-all-tables
-    
-    (test-case "create-table, drop-table and table-exists?, entity arguments"
-      (check-false (table-exists? person))
-      (create-table person)
-      (check-pred table-exists? person)
-      (drop-table person)
-      (check-false (table-exists? person)))
-    
-    (test-case "drop-table and table-exists?, symbol arguments"
-      (check-false (table-exists? 'people))
-      (create-table person)
-      (check-pred table-exists? 'people)
-      (drop-table 'people)
-      (check-false (table-exists? 'people)))
-    
-    (test-case "table-names"
-      (check-equal? (table-names) null)
-      (create-table person)
-      (create-table pet)
-      (create-table course)
-      (check-equal? (table-names) (list 'courses 'people 'pets))
-      (drop-table 'people)
-      (drop-table 'pets)
-      (drop-table 'courses)
-      (check-equal? (table-names) (list)))))
+    (test-case "make-person creates a local guid with the correct mapping"
+      (recreate-test-tables/cache)
+      (let* ([local-guid (make-person person)]
+             [local-val  (cdr (assq local-guid (cache-alist)))])
+        (check-pred guid-local? local-guid)
+        (check-false (car local-val))
+        (check-pred real:snooze-struct? (cdr local-val))
+        (check-false (real:struct-guid (cdr local-val)))))))
 
 ; Provide statements -----------------------------
 

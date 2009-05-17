@@ -9,8 +9,7 @@
          (prefix-in real: (only-in "era/snooze-struct.ss" make-snooze-struct))
          "cache.ss"
          "era/era.ss"
-         "generic/connection.ss"
-         "generic/database.ss"
+         "generic/generic.ss"
          "sql/sql.ss")
 
 ; database<%> [#:auto-connect? boolean] -> snooze<%>
@@ -28,8 +27,7 @@
     ;
     ; A thread-cell to store the current connection. 
     ; See the current-connection method below for more information.
-    (field [current-connection-cell
-            (make-thread-cell #f)])
+    (field [current-connection-cell (make-thread-cell #f)])
     
     ; (connection guid -> any) connection guid -> any
     ;
@@ -52,6 +50,8 @@
     (init-field [auto-connect? #f])
     
     (super-new)
+    
+    (send database set-snooze! this)
     
     ; Public interface ---------------------------
     

@@ -20,15 +20,8 @@
     
     #:before
     (lambda ()
-      (set! test-person (make-snooze-struct person
-                                            (entity-make-guid person #f)
-                                            #f
-                                            "Jon"))
-      (set! test-pet    (make-snooze-struct pet
-                                            (entity-make-guid pet #f)
-                                            #f
-                                            (struct-guid test-person)
-                                            "Garfield")))
+      (set! test-person (make-snooze-struct person #f #f "Jon"))
+      (set! test-pet    (make-snooze-struct pet #f #f test-person "Garfield")))
     
     (test-case "struct-entity"
       (check-eq? (struct-entity test-person) person))
@@ -40,7 +33,7 @@
     
     (test-case "struct-saved?"
       (check-false (struct-saved? test-person))
-      (check-true  (struct-saved? (person-set test-person #:guid (entity-make-guid person 123)))))
+      (check-true  (struct-saved? (person-set test-person #:guid (entity-make-vanilla-guid person 123)))))
     
     (test-case "struct-revision and set-struct-revision!"
       (check-equal? (struct-revision test-person) #f)
@@ -100,8 +93,8 @@
                         (make-person "Dave"))
       
       ; Guid (in)equality:
-      (let ([test-person2 (make-snooze-struct/defaults person (attr person guid) (entity-make-guid person 123))]
-            [test-person3 (make-snooze-struct/defaults person (attr person guid) (entity-make-guid person 123))])
+      (let ([test-person2 (make-snooze-struct/defaults person (attr person guid) (entity-make-vanilla-guid person 123))]
+            [test-person3 (make-snooze-struct/defaults person (attr person guid) (entity-make-vanilla-guid person 123))])
         (check-equal? (struct-id   test-person2) 123)
         (check-equal? (struct-guid test-person2) (struct-guid test-person3))
         (check-false  (eq? (struct-guid test-person2) (struct-guid test-person3))))

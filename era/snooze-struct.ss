@@ -108,7 +108,7 @@
 (provide/contract
  [snooze-struct?              (-> any/c boolean?)]
  [struct-entity               (-> (or/c snooze-struct? prop:entity-set?) entity?)]
- [struct-guid                 (-> (or/c snooze-struct? prop:entity-set?) guid?)]
+ [struct-guid                 (-> (or/c snooze-struct? prop:entity-set?) (or/c guid? #f))]
  [struct-id                   (-> snooze-struct? (or/c natural-number/c #f))]
  [struct-saved?               (-> snooze-struct? boolean?)]
  [struct-revision             (-> snooze-struct? (or/c natural-number/c #f))]
