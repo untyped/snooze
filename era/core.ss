@@ -98,8 +98,21 @@
            #:property
            prop:equal+hash
            (list (lambda (guid1 guid2 same?)
-                   (same? (guid-ref guid1)
-                          (guid-ref guid2)))
+                   (let ([struct1 (guid-ref guid1)]
+                         [struct2 (guid-ref guid2)])
+                     (or (and (not struct1)
+                              (not struct2))
+                         (and struct1
+                              struct2
+                              (for/and ([a (in-vector (struct->vector (guid-ref guid1)))]
+                                        [b (in-vector (struct->vector (guid-ref guid2)))])
+                                (if (guid? a)
+                                    (if (guid? b)
+                                        (guid=? a b)
+                                        #f)
+                                    (if (guid? b)
+                                        #f
+                                        (same? a b))))))))
                  (lambda (guid recur) (recur guid))
                  (lambda (guid recur) (recur guid)))))]))
 

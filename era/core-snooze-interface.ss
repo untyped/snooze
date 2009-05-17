@@ -5,16 +5,30 @@
 (define snooze-cache<%>
   (interface ()
     
+    ; -> (U snooze-cache<%> #f)
+    ; Returns the parent of this cache.
+    get-parent
+    
     ; local-guid -> snooze-struct
-    ; Dereferences a locally cached guid.
+    ; Dereferences a local guid.
     cache-ref/local
     
-    ; snooze-struct -> local-guid
-    cache-add!
+    ; local-guid -> (U snooze-struct #f)
+    ; Dereferences a vanilla guid, promoting it to the current cache if necessary.
+    ; Returns the mapped struct, or #f if the guid was not found in any cache.
+    cache-ref/vanilla
     
-    ; guid -> guid
-    ;cache-remove!
-    ))
+    ; snooze-struct -> local-guid
+    ; Adds a struct to the cache and returns a new local guid that points to it:
+    ;   - if the struct contains an id, it is cached by vanilla and local guid;
+    ;   - if the struct's id is #f, it is cached by local guid only.
+    add-struct!
+    
+    ; vanilla-guid -> (U local-guid #f)
+    ; Searches for vanilla-guid in this cache and its ancestors,
+    ; syncing the caches as it goes. Returns a local guid pointing to the same struct,
+    ; or #f if the struct is not in the cache.
+    get-local-alias))
 
 (define snooze<%>
   (interface ()

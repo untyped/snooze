@@ -380,7 +380,7 @@ ENDSQL
       
       (define query1
         (sql (select #:what   (a b)
-                     #:from   (inner a b (= a.guid b.owner-id))
+                     #:from   (inner a b (= a.guid b.owner))
                      #:where  (= a.name "Jon Arbuckle")
                      #:order  ((asc a.name)
                                (asc b.name))
@@ -389,14 +389,14 @@ ENDSQL
       
       (define query2
         (sql (select #:what   (a b)
-                     #:from   (inner ,(sql:alias 'subq (sql (select #:from a))) b (= a.guid b.owner-id))
+                     #:from   (inner ,(sql:alias 'subq (sql (select #:from a))) b (= a.guid b.owner))
                      #:where  (= a.name b.name)
                      #:order  ((asc a.name)
                                (asc b.name)))))
       
       (define query3
         (sql (select #:what   (a expr)
-                     #:from   (inner a b (= a.guid b.owner-id))
+                     #:from   (inner a b (= a.guid b.owner))
                      #:group  (a))))
       
       ; Test the special aliasing behaviour with right-nested joins:
@@ -406,19 +406,19 @@ ENDSQL
       
       (define sql1
         #<<ENDSQL
-SELECT [a].[guid] AS [a-guid], [a].[revision] AS [a-revision], [a].[name] AS [a-name], [b].[guid] AS [b-guid], [b].[revision] AS [b-revision], [b].[ownerID] AS [b-owner-id], [b].[name] AS [b-name] FROM [Person] AS [a] INNER JOIN [Pet] AS [b] ON ([a].[guid] = [b].[ownerID]) WHERE ([a].[name] = 'Jon Arbuckle') ORDER BY [a-name] ASC, [b-name] ASC LIMIT 10 OFFSET 20
+SELECT [a].[guid] AS [a-guid], [a].[revision] AS [a-revision], [a].[name] AS [a-name], [b].[guid] AS [b-guid], [b].[revision] AS [b-revision], [b].[owner] AS [b-owner], [b].[name] AS [b-name] FROM [Person] AS [a] INNER JOIN [Pet] AS [b] ON ([a].[guid] = [b].[owner]) WHERE ([a].[name] = 'Jon Arbuckle') ORDER BY [a-name] ASC, [b-name] ASC LIMIT 10 OFFSET 20
 ENDSQL
         )
       
       (define sql2
         #<<ENDSQL
-SELECT [a-guid], [a-revision], [a-name], [b].[guid] AS [b-guid], [b].[revision] AS [b-revision], [b].[ownerID] AS [b-owner-id], [b].[name] AS [b-name] FROM (SELECT [a].[guid] AS [a-guid], [a].[revision] AS [a-revision], [a].[name] AS [a-name] FROM [Person] AS [a]) AS [subq] INNER JOIN [Pet] AS [b] ON ([a-guid] = [b].[ownerID]) WHERE ([a-name] = [b].[name]) ORDER BY [a-name] ASC, [b-name] ASC
+SELECT [a-guid], [a-revision], [a-name], [b].[guid] AS [b-guid], [b].[revision] AS [b-revision], [b].[owner] AS [b-owner], [b].[name] AS [b-name] FROM (SELECT [a].[guid] AS [a-guid], [a].[revision] AS [a-revision], [a].[name] AS [a-name] FROM [Person] AS [a]) AS [subq] INNER JOIN [Pet] AS [b] ON ([a-guid] = [b].[owner]) WHERE ([a-name] = [b].[name]) ORDER BY [a-name] ASC, [b-name] ASC
 ENDSQL
         )
       
       (define sql3
         #<<ENDSQL
-SELECT [a].[guid] AS [a-guid], [a].[revision] AS [a-revision], [a].[name] AS [a-name], count([b].*) AS [expr] FROM [Person] AS [a] INNER JOIN [Pet] AS [b] ON ([a].[guid] = [b].[ownerID]) GROUP BY [a-guid], [a-revision], [a-name]
+SELECT [a].[guid] AS [a-guid], [a].[revision] AS [a-revision], [a].[name] AS [a-name], count([b].*) AS [expr] FROM [Person] AS [a] INNER JOIN [Pet] AS [b] ON ([a].[guid] = [b].[owner]) GROUP BY [a-guid], [a-revision], [a-name]
 ENDSQL
         )
       

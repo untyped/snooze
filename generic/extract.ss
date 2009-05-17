@@ -77,9 +77,11 @@
       (let* ([cache     (send (get-snooze) get-current-cache)]
              [guid      (car row)]
              [num-attrs (length (entity-attributes entity))])
-        (values (and guid                                        ; if id is #f, struct is null
-                     (or (send cache cache-ref/no-database guid) ; if struct is cached, return a new local guid
-                         (send cache cache-add!                  ; else add the new struct to the cache, and return a new local guid
+        (unless (or (not guid) (and (guid? guid) (not (guid-local? guid))))
+          (raise-type-error 'row->struct "(U vanilla-guid #f)" guid))
+        (values (and guid                                  ; if id is #f, struct is null
+                     (or (send cache get-local-alias guid) ; if struct is cached (locally or in an ancestor cache), return a new local guid
+                         (send cache add-struct!           ; else add the new struct to the cache, and return a new local guid
                                (apply (entity-private-constructor entity)
                                       guid
                                       (cdr (take row num-attrs))))))

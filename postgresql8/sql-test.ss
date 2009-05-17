@@ -156,52 +156,52 @@
     
     (test-case "parse-value : boolean"
       (let ([t (make-boolean-type #t)])
-        (check-equal? (parse-value (current-snooze) t sql-null) #f)
-        (check-equal? (parse-value (current-snooze) t #t) #t)
-        (check-equal? (parse-value (current-snooze) t #f) #f)))
+        (check-equal? (parse-value t sql-null) #f)
+        (check-equal? (parse-value t #t) #t)
+        (check-equal? (parse-value t #f) #f)))
     
     (test-case "parse-value : integer"
       (let ([t (make-integer-type #t)])
-        (check-equal? (parse-value (current-snooze) t sql-null) #f)
-        (check-equal? (parse-value (current-snooze) t 1) 1)
-        (check-equal? (parse-value (current-snooze) t 0) 0)
-        (check-equal? (parse-value (current-snooze) t -1) -1)))
+        (check-equal? (parse-value t sql-null) #f)
+        (check-equal? (parse-value t 1) 1)
+        (check-equal? (parse-value t 0) 0)
+        (check-equal? (parse-value t -1) -1)))
     
     (test-case "parse-value : real"
       (let ([t (make-real-type #t)])
-        (check-equal? (parse-value (current-snooze) t sql-null) #f)
-        (check-equal? (parse-value (current-snooze) t 0.00000000001) 0.00000000001)
-        (check-equal? (parse-value (current-snooze) t 0.0) 0.0)
-        (check-equal? (parse-value (current-snooze) t 123456789) 123456789)))
+        (check-equal? (parse-value t sql-null) #f)
+        (check-equal? (parse-value t 0.00000000001) 0.00000000001)
+        (check-equal? (parse-value t 0.0) 0.0)
+        (check-equal? (parse-value t 123456789) 123456789)))
     
     (test-case "parse-value : string"
       (let ([t (make-string-type #t #f)])
-        (check-equal? (parse-value (current-snooze) t sql-null) #f)
-        (check-equal? (parse-value (current-snooze) t "") "")
-        (check-equal? (parse-value (current-snooze) t "Dave") "Dave")
-        (check-equal? (parse-value (current-snooze) t "Dave's stuff") "Dave's stuff")))
+        (check-equal? (parse-value t sql-null) #f)
+        (check-equal? (parse-value t "") "")
+        (check-equal? (parse-value t "Dave") "Dave")
+        (check-equal? (parse-value t "Dave's stuff") "Dave's stuff")))
     
     (test-case "parse-value : symbol"
       (let ([t (make-symbol-type #t #f)])
-        (check-equal? (parse-value (current-snooze) t sql-null) #f)
-        (check-equal? (parse-value (current-snooze) t "") '||)
-        (check-equal? (parse-value (current-snooze) t "Dave") 'Dave)
-        (check-equal? (parse-value (current-snooze) t "Dave's stuff") '|Dave's stuff|)))
+        (check-equal? (parse-value t sql-null) #f)
+        (check-equal? (parse-value t "") '||)
+        (check-equal? (parse-value t "Dave") 'Dave)
+        (check-equal? (parse-value t "Dave's stuff") '|Dave's stuff|)))
     
     (test-case "parse-value : time-tai"
       (let ([t (make-time-tai-type #t)])
         (check-exn exn:fail:contract?
           (cut parse-value t ""))
-        (check-equal? (parse-value (current-snooze) t (make-sql-timestamp 9999 12 31 23 59 59 0 0)) 
+        (check-equal? (parse-value t (make-sql-timestamp 9999 12 31 23 59 59 0 0)) 
                       time-tai3
                       "check 2 failed")
-        (check-equal? (parse-value (current-snooze) t (make-sql-timestamp 1234 12 23 12 34 56 123456000 0))
+        (check-equal? (parse-value t (make-sql-timestamp 1234 12 23 12 34 56 123456000 0))
                       (date->time-tai (make-date 123456000 56 34 12 23 12 1234 0)))))
     
     (test-case "parse-value : time-utc"
       (let ([t (make-time-utc-type #t)])
         (check-exn exn:fail:contract? (cut parse-value t ""))
-        (check-equal? (parse-value (current-snooze) t (make-sql-timestamp 1234 12 23 12 34 56 123456000 0))
+        (check-equal? (parse-value t (make-sql-timestamp 1234 12 23 12 34 56 123456000 0))
                       (date->time-utc (make-date 123456000 56 34 12 23 12 1234 0)))))
     
     (test-exn "parse-value : unknown type"
@@ -209,11 +209,10 @@
       (cut parse-value 'foo "hello"))
     
     (test-case "make-parser"
-      (let ([parse (make-parser (current-snooze)
-                         (list (make-boolean-type #t)
-                               (make-integer-type #t)
-                               (make-string-type #t #f)
-                               (make-symbol-type #t #f)))])
+      (let ([parse (make-parser (list (make-boolean-type #t)
+                                      (make-integer-type #t)
+                                      (make-string-type  #t #f)
+                                      (make-symbol-type  #t #f)))])
         (check-equal? (parse (list #t 1 "1" "1"))
                       (list #t 1 "1" '|1|))
         (check-equal? (parse (list sql-null sql-null sql-null sql-null))
@@ -335,7 +334,7 @@ ENDSQL
         
         (define query1
           (sql:select #:what   (list a b)
-                      #:from   (sql:inner a b (sql:= (sql a.guid) (sql b.owner-id)))
+                      #:from   (sql:inner a b (sql:= (sql a.guid) (sql b.owner)))
                       #:where  (sql:= (sql a.name) "Jon Arbuckle")
                       #:order  (list (sql:asc (sql a.name))
                                      (sql:asc (sql b.name)))
@@ -344,31 +343,31 @@ ENDSQL
         
         (define query2
           (sql:select #:what   (list a b)
-                      #:from   (sql:inner (sql:alias 'subq (sql:select #:from a)) b (sql:= (sql a.guid) (sql b.owner-id)))
+                      #:from   (sql:inner (sql:alias 'subq (sql:select #:from a)) b (sql:= (sql a.guid) (sql b.owner)))
                       #:where  (sql:= (sql a.name) (sql b.name))
                       #:order  (list (sql:asc (sql a.name))
                                      (sql:asc (sql b.name)))))
         
         (define query3
           (sql:select #:what  (list a expr)
-                      #:from  (sql:inner a b (sql:= (sql a.guid) (sql b.owner-id)))
+                      #:from  (sql:inner a b (sql:= (sql a.guid) (sql b.owner)))
                       #:group (list a)))
         
         (define sql1
           #<<ENDSQL
-SELECT "a"."id" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", "b"."id" AS "b-guid", "b"."revision" AS "b-revision", "b"."ownerID" AS "b-owner-id", "b"."name" AS "b-name" FROM ("people" AS "a" INNER JOIN "pets" AS "b" ON ("a"."id" = "b"."ownerID")) WHERE ("a"."name" = 'Jon Arbuckle') ORDER BY "a-name" ASC, "b-name" ASC LIMIT 10 OFFSET 20
+SELECT "a"."id" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", "b"."id" AS "b-guid", "b"."revision" AS "b-revision", "b"."owner" AS "b-owner", "b"."name" AS "b-name" FROM ("people" AS "a" INNER JOIN "pets" AS "b" ON ("a"."id" = "b"."owner")) WHERE ("a"."name" = 'Jon Arbuckle') ORDER BY "a-name" ASC, "b-name" ASC LIMIT 10 OFFSET 20
 ENDSQL
           )
         
         (define sql2
           #<<ENDSQL
-SELECT "a-guid", "a-revision", "a-name", "b"."id" AS "b-guid", "b"."revision" AS "b-revision", "b"."ownerID" AS "b-owner-id", "b"."name" AS "b-name" FROM ((SELECT "a"."id" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name" FROM "people" AS "a") AS "subq" INNER JOIN "pets" AS "b" ON ("a-guid" = "b"."ownerID")) WHERE ("a-name" = "b"."name") ORDER BY "a-name" ASC, "b-name" ASC
+SELECT "a-guid", "a-revision", "a-name", "b"."id" AS "b-guid", "b"."revision" AS "b-revision", "b"."owner" AS "b-owner", "b"."name" AS "b-name" FROM ((SELECT "a"."id" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name" FROM "people" AS "a") AS "subq" INNER JOIN "pets" AS "b" ON ("a-guid" = "b"."owner")) WHERE ("a-name" = "b"."name") ORDER BY "a-name" ASC, "b-name" ASC
 ENDSQL
           )
         
         (define sql3
           #<<ENDSQL
-SELECT "a"."id" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", count("b".*) AS "expr" FROM ("people" AS "a" INNER JOIN "pets" AS "b" ON ("a"."id" = "b"."ownerID")) GROUP BY "a-guid", "a-revision", "a-name"
+SELECT "a"."id" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", count("b".*) AS "expr" FROM ("people" AS "a" INNER JOIN "pets" AS "b" ON ("a"."id" = "b"."owner")) GROUP BY "a-guid", "a-revision", "a-name"
 ENDSQL
           )
         
