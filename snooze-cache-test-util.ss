@@ -23,8 +23,8 @@
 ; [cache%] -> (dictof guid struct)
 ;
 ; Returns the struct dictionary from the supplied/current cache.
-(define (cache-hash [cache (cache)])
-  (send cache get-structs))
+(define (cache-data [cache (cache)])
+  (send cache get-data))
 
 ; [cache%] -> (U cache% #f)
 ;
@@ -38,7 +38,7 @@
 (define (cache-clear! [cache (cache)])
   (when (cache-parent cache)
     (cache-clear! (cache-parent cache)))
-  (let ([hash (cache-hash cache)])
+  (let ([hash (cache-data cache)])
     (for ([key (in-list (dict-map hash (lambda (k v) k)))])
       (dict-remove! hash key)))
   (check-equal? (cache-size cache) 0 "post-clear!"))
@@ -52,7 +52,7 @@
 ;
 ; Returns printable debugging information about the supplied/current cache.
 (define (cache-alist [cache (cache)])
-  (for/list ([item (in-dict-pairs (cache-hash cache))]) item))
+  (for/list ([item (in-dict-pairs (cache-data cache))]) item))
 
 ; [cache%] -> (listof (alistof guid cached-data))
 ;
@@ -67,7 +67,7 @@
 ;
 ; Returns the number of guids in the supplied/current cache (ignores ancestor caches).
 (define (cache-size [cache (cache)])
-  (dict-count (cache-hash cache)))
+  (dict-count (cache-data cache)))
 
 ; (_ (listof natural))
 ;

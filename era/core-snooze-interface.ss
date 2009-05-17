@@ -24,10 +24,9 @@
     ;   - if the struct's id is #f, it is cached by local guid only.
     add-struct!
     
-    ; vanilla-guid -> (U local-guid #f)
-    ; Searches for vanilla-guid in this cache and its ancestors,
-    ; syncing the caches as it goes. Returns a local guid pointing to the same struct,
-    ; or #f if the struct is not in the cache.
+    ; guid -> (U local-guid #f)
+    ; Searches for guid in this cache (and its ancestors, performing fetches, if applicable).
+    ; Returns a local guid pointing to the same struct, or #f if the struct is not in the cache.
     get-local-alias))
 
 (define snooze<%>

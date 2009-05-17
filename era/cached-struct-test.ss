@@ -39,7 +39,8 @@
       (check-equal? (struct-revision test-person) #f))
     
     (test-case "field accessors and mutators"
-      (check-eq?    (pet-owner test-pet) test-person)
+      (check-not-eq? (pet-owner test-pet) test-person)
+      (check struct-eq? (pet-owner test-pet) test-person)
       (check-equal? (pet-name  test-pet) "Garfield")
       (check-equal? (pet-owner (pet-set test-pet #:owner #f)) #f)
       (check-equal? (pet-name  (pet-set test-pet #:name "Odie")) "Odie"))

@@ -52,7 +52,8 @@
     (define (vanilla+struct-ref guid)
       (let ([vanilla+struct (dict-ref data guid #f)])
         (and vanilla+struct
-             (apply values vanilla+struct))))
+             (values (car vanilla+struct)
+                     (cdr vanilla+struct)))))
     
     ; snooze-struct (U interned-vanilla-guid #f) -> local-guid
     ; Returns a cached local guid pointing to the supplied struct / vanilla guid.
@@ -72,6 +73,10 @@
     ; -> (U snooze-cache<%> #f)
     (define/public (get-parent)
       parent)
+    
+    ; -> (weak-custom-hashof guid (cons (U vanilla-guid #f) snooze-struct))
+    (define/public (get-data)
+      data)
     
     ; Referencing the cache ----------------------
     
@@ -130,17 +135,17 @@
     
     ; Introducing local guids --------------------
     
-    ; vanilla-guid -> (U local-guid #f)
+    ; guid -> (U local-guid #f)
     ;
-    ; Searches for vanilla-guid in this cache and its ancestors,
-    ; syncing the caches as it goes.
-    ;
-    ; Returns a local guid pointing to the same struct,
-    ; or #f if the struct is not in the cache.
-    (define/public (get-local-alias vanilla-guid)
-      (printf "get-local-alias ~s~n" vanilla-guid)
-      (let ([struct (cache-ref/vanilla vanilla-guid)])
-        (and struct (localize-guid struct vanilla-guid))))))
+    ; Searches for guid in this cache (and its ancestors, performing fetches, if applicable).
+    ; Returns a local guid pointing to the same struct, or #f if the struct is not in the cache.
+    (define/public (get-local-alias guid)
+      (printf "get-local-alias ~s~n" guid)
+      (if (guid-local? guid)
+          (let-values ([(vanilla struct) (vanilla+struct-ref guid)])
+            (localize-guid struct vanilla))
+          (let ([struct (cache-ref/vanilla guid)])
+            (and struct (localize-guid struct guid)))))))
 
 ; Provide statements -----------------------------
 

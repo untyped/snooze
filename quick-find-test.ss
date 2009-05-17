@@ -40,32 +40,32 @@
     #:after
     drop-all-tables
     
-    (test-case "find-count #:active"
-      (check-equal? (find-count-courses #:active #t) 2)
-      (check-equal? (find-count-courses #:active #f) 3))
+    (test-case "find-count #:active?"
+      (check-equal? (find-count-courses #:active? #t) 2)
+      (check-equal? (find-count-courses #:active? #f) 3))
     
     (test-case "find-one #:guid"
       (check-equal? (find-course #:guid #f) #f)
       (check-equal? (find-course #:guid c1) c1)
       (check-equal? (find-course #:guid c2) c2))
     
-    (test-case "find-all #:active"
-      (check-equal? (find-courses #:active #t) (list c2 c4))
-      (check-equal? (find-courses #:active #f) (list c1 c3 c5)))
+    (test-case "find-all #:active?"
+      (check-equal? (find-courses #:active? #t) (list c2 c4))
+      (check-equal? (find-courses #:active? #f) (list c1 c3 c5)))
     
-    (test-case "g:find #:active"
-      (check-equal? (g:collect (g:courses #:active #t)) (list c2 c4))
-      (check-equal? (g:collect (g:courses #:active #f)) (list c1 c3 c5)))
+    (test-case "g:find #:active?"
+      (check-equal? (g:collect (g:courses #:active? #t)) (list c2 c4))
+      (check-equal? (g:collect (g:courses #:active? #f)) (list c1 c3 c5)))
     
-    (test-case "find-one #:active and #:value"
-      (check-equal? (find-course #:active #f #:value 1) c1)
-      (check-equal? (find-course #:active #f #:value 2) #f)
-      (check-equal? (find-course #:active #f #:value 3) c3)
-      (check-equal? (find-course #:active #f #:value 4) #f)
-      (check-equal? (find-course #:active #t #:value 1) #f)
-      (check-equal? (find-course #:active #t #:value 2) c2)
-      (check-equal? (find-course #:active #t #:value 3) #f)
-      (check-equal? (find-course #:active #t #:value 4) c4))
+    (test-case "find-one #:active? and #:value"
+      (check-equal? (find-course #:active? #f #:value 1) c1)
+      (check-equal? (find-course #:active? #f #:value 2) #f)
+      (check-equal? (find-course #:active? #f #:value 3) c3)
+      (check-equal? (find-course #:active? #f #:value 4) #f)
+      (check-equal? (find-course #:active? #t #:value 1) #f)
+      (check-equal? (find-course #:active? #t #:value 2) c2)
+      (check-equal? (find-course #:active? #t #:value 3) #f)
+      (check-equal? (find-course #:active? #t #:value 4) c4))
     
     (test-case "find-all #:limit and #:offset"
       (check-equal? (find-courses #:limit 1) (list c1))

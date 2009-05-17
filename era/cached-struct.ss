@@ -33,7 +33,10 @@
 ; (struct -> any) -> (guid -> any)
 (define (make-cached-accessor struct-accessor)
   (lambda (guid)
-    (struct-accessor (guid-ref guid))))
+    (let ([ans (struct-accessor (guid-ref guid))])
+      (if (guid? ans)
+          (send (send (guid-snooze ans) get-current-cache) get-local-alias ans)
+          ans))))
 
 ; (struct any -> void) -> (guid any -> void)
 (define (make-cached-mutator struct-mutator)
@@ -62,6 +65,11 @@
 
 ; guid -> boolean
 (define struct-local? guid-local?)
+
+; guid guid -> boolean
+(define (struct-eq? guid1 guid2)
+  (eq? (guid-ref guid1)
+       (guid-ref guid2)))
 
 ; guid -> boolean
 (define (struct-saved? guid)
@@ -142,6 +150,7 @@
  [make-cached-accessor            (-> procedure? procedure?)]
  [make-cached-mutator             (-> procedure? procedure?)]
  [snooze-struct?                  (-> any/c boolean?)]
+ [struct-eq?                      (-> guid? guid? boolean?)]
  [struct-entity                   (-> (or/c guid? prop:entity-set?) entity?)]
  [struct-guid                     (-> (or/c guid? prop:entity-set?) guid?)]
  [struct-id                       (-> guid? (or/c natural-number/c #f))]
