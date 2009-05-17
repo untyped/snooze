@@ -19,11 +19,12 @@
 
 ; snooze-struct -> (U natural #f)
 (define (struct-id struct)
-  (guid-id (struct-guid struct)))
+  (and (struct-guid struct)
+       (guid-id (struct-guid struct))))
 
 ; snooze-struct -> boolean
 (define (struct-saved? struct)
-  (and (guid-id (struct-guid struct)) #t))
+  (and (struct-guid struct) #t))
 
 ; snooze-struct -> (U natural #f)
 (define (struct-revision struct)
@@ -120,7 +121,7 @@
  [snooze-struct-set*!         (-> snooze-struct? list? void?)]
  [make-snooze-struct          (->* (entity?) () #:rest any/c snooze-struct?)]
  [make-snooze-struct/defaults (->* (entity?)
-                                   (#:snooze (is-a?/c snooze-cache<%>))
+                                   (#:snooze (is-a?/c snooze<%>))
                                    #:rest attr/value-list?
                                    snooze-struct?)]
  [copy-snooze-struct          (-> snooze-struct? snooze-struct?)])

@@ -13,7 +13,7 @@
 ;   (listof symbol)
 ;   (entity -> (listof type))
 ;   (listof (snooze -> any))
-;   (snooze-cache<%> (U natural #f) -> guid)
+;   (snooze<%> (U natural #f) -> guid)
 ;   (any -> boolean)
 ;   [#:table-name               symbol]
 ;   [#:pretty-name              string]

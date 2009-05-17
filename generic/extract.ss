@@ -77,9 +77,9 @@
       (let ([guid      (car row)]
             [num-attrs (length (entity-attributes entity))]
             [snooze    (get-snooze)])
-        (values (and guid                                            ; if id is #f, struct is null
-                     (or (and (send snooze cache/parent! guid) guid) ; if struct is cached, return that
-                         (send snooze cache/struct!                  ; else parse the data in the row
+        (values (and guid                                         ; if id is #f, struct is null
+                     (or (send snooze cache-ref/no-database guid) ; if struct is cached, return a new local guid
+                         (send snooze cache-add!                  ; else add the new struct to the cache, and return a new local guid
                                (apply (entity-private-constructor entity)
                                       guid
                                       (cdr (take row num-attrs))))))

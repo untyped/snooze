@@ -19,21 +19,21 @@
     drop-all-tables
     
     (test-case "guid-id, guid-serial"
-      (let ([person1 (make-person "Dave")])
+      (let/debug ([person1 (make-person "Dave")])
         
         ; New struct: id = #f, serial <> #f
         (check-false     (guid-id     person1))
         (check-not-false (guid-serial person1))
         
-        (let ([person2 (save! person1)])
+        (let/debug ([person2 (save! person1)])
         
           ; Saved struct: id <> #f, serial = #f
-          (check-false     (guid-id     person1))
-          (check-not-false (guid-serial person1))
+          (check-not-false (guid-id     person1))
+          (check-false     (guid-serial person1))
           (check-not-false (guid-id     person2))
           (check-false     (guid-serial person2))
           
-          (let ([person3 (delete! person2)])
+          (let/debug ([person3 (delete! person2)])
         
             ; Deleted struct: id = #f, serial <> #f
             (check-false     (guid-id     person1))

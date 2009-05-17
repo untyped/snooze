@@ -10,11 +10,6 @@
          "postgresql8/postgresql8.ss"
          "sqlite3/sqlite3.ss")
 
-; test-suite -> any
-(define (run-tests/no-database tests)
-  (parameterize ([current-snooze (new snooze-cache%)])
-    (run-tests tests 'verbose)))
-
 ;  [#:server   string]
 ;  [#:port     natural]
 ;  [#:database string]
@@ -63,7 +58,6 @@
                      run-tests))
 
 (provide/contract
- [rename run-tests/no-database run-tests (-> test-suite? any)]
  [run-tests/postgresql8 (->* (test-suite?)
                              (#:server string?
                                        #:port     natural-number/c

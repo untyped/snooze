@@ -5,27 +5,19 @@
 (define snooze-cache<%>
   (interface ()
     
-    ; guid -> (U snooze-struct #f)
-    ;
-    ; Retrieves a struct from the cache. Implementations:
-    ;   - database - load by ID;
-    ;   - cache    - if hit, return;
-    ;              - if miss, propagate to parent, clone, store, intern entity/id and return.
-    ;cache-ref
+    ; local-guid -> snooze-struct
+    ; Dereferences a locally cached guid.
+    cache-ref/local
     
-    ; snooze-struct -> guid
-    ;
-    ; Adds a new struct to the cache. Implementations:
-    ;   - database - do nothing;
-    ;   - cache    - store.
-    ;cache-add!
+    ; snooze-struct -> local-guid
+    cache-add!
     
     ; guid -> guid
     ;cache-remove!
     ))
 
 (define snooze<%>
-  (interface (snooze-cache<%>)
+  (interface ()
     
     ; (-> any) -> any
     call-with-connection
@@ -101,12 +93,6 @@
     
     ; select -> (gen-> result)
     g:find
-    
-    ; entity (U integer #f) -> (U snooze-struct #f)
-    ; find-by-id
-    
-    ; guid -> (U snooze-struct #f)
-    find-by-guid
     
     ; (-> ans) any ... -> ans
     ;

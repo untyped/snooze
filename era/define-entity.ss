@@ -278,7 +278,7 @@
                                  ; maker
                                  (lambda args
                                    (let ([struct (apply (entity-private-constructor entity-private) args)])
-                                     (send (current-snooze) cache-add! struct)
+                                     (send (send (current-snooze) get-current-cache) cache-add! struct)
                                      struct))
                                  ; cycle-maker
                                  (lambda ()

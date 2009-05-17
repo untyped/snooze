@@ -110,38 +110,31 @@
                   (map (cut string-append <> ";")
                        (regexp-split #px";" (drop-table-sql entity))))))
     
-    ; connection snooze-struct -> ineteger
+    ; connection guid -> ineteger
     ;
     ; Inserts a new database record for the struct and returns its ID.
-    (define/public (insert-record conn struct)
+    (define/public (insert-record conn guid)
       ; symbol
-      (define sequence-name 
-        (symbol-append (entity-table-name (struct-entity struct)) '_seq))
-      ; integer
-      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" struct))
-        ; The two lines below work as follows:
-        ;   - the first line inserts the record, using the SEQUENCE "entity_seq" to determine the new ID
-        ;   - the second line reads the current value of "entity_seq", retrieving the ID of the new struct
-        ; Note that there is no transaction around this: the PostgreSQL function "currval" returns
-        ; a session-local value. The INSERT SQL from insert-sql lets PostgreSQL assign a new ID from the 
-        ; sequence "entity_seq". Returns the new value of the ID sequence (and thus the ID of the 
-        ; just-inserted element):
-        (send (connection-back-end conn) exec (insert-sql struct))
-        (parse-value #f type:integer (send (connection-back-end conn) query-value 
-                                           (string-append "SELECT currval('" (escape-sql-name sequence-name) "');")))))
+      (let ([sequence-name (symbol-append (entity-table-name (guid-entity guid)) '_seq)])
+        ; integer
+        (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" guid))
+          ; The two lines below work as follows:
+          ;   - the first line inserts the record, using the SEQUENCE "entity_seq" to determine the new ID
+          ;   - the second line reads the current value of "entity_seq", retrieving the ID of the new struct
+          ; Note that there is no transaction around this: the PostgreSQL function "currval" returns
+          ; a session-local value. The INSERT SQL from insert-sql lets PostgreSQL assign a new ID from the 
+          ; sequence "entity_seq". Returns the new value of the ID sequence (and thus the ID of the 
+          ; just-inserted element):
+          (send (connection-back-end conn) exec (insert-sql (guid-ref guid)))
+          (parse-value
+           type:integer
+           (send (connection-back-end conn) query-value
+                 (string-append "SELECT currval('" (escape-sql-name sequence-name) "');"))))))
     
-    ; connection snooze-struct -> void
-    ;
-    ; Inserts a new database record for the struct and interns its guid.
-    (define/public (insert-record/id conn guid)
-      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" guid))
-        (send (connection-back-end conn) exec (insert-sql guid #t))
-        (void)))
-    
-    ; connection snooze-struct -> void
+    ; connection guid -> void
     (define/public (update-record conn guid)
       (with-snooze-reraise (exn:fail? (format "Could not update database record for ~a" guid))
-        (send (connection-back-end conn) exec (update-sql guid))
+        (send (connection-back-end conn) exec (update-sql (guid-ref guid)))
         (void)))
     
     ; connection guid -> void
@@ -229,7 +222,7 @@
     
     ; connection -> (listof symbol)
     (define/public (table-names conn)
-      (map (cut parse-value #f type:symbol <>)
+      (map (cut parse-value type:symbol <>)
            (send (connection-back-end conn) query-list 
                  "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;")))
     

@@ -39,7 +39,7 @@
               (continue conn guid))])
     
     ; (parameter snooze-cache%)
-    (field [current-cache (make-parameter (new snooze-cache%))])
+    (field [current-cache (make-parameter (new snooze-cache% [snooze this]))])
     
     ; Constructor --------------------------------
     
@@ -57,50 +57,13 @@
     
     ; (-> any) -> any
     (define/public (call-with-cache thunk)
-      (parameterize ([current-cache (new snooze-cache% [parent (current-cache)])])
+      (parameterize ([current-cache (new snooze-cache% [snooze this] [parent (current-cache)])])
         (thunk)))
     
     ; -> snooze-cache%
     (define/public (get-current-cache)
       (current-cache))
-    
-    ; guid -> (U snooze-struct #f)
-    (define/public (cache-ref guid)
-      (auto-connect)
-      (parameterize ([in-cache-code? #t])
-        (log-cache "snooze.cache-ref" guid)
-        (or (send (current-cache) cache-ref guid)
-            (cond [(guid-serial guid)
-                   (raise-exn exn:fail:snooze:cache (format "guid with serial not found in cache: ~s" guid))]
-                  [(guid-id guid)
-                   (let-alias ([x (guid-entity guid)])
-                     (let* ([gen (send database g:find
-                                       this
-                                       (current-connection)
-                                       (sql (select #:from x #:where (= x.guid ,guid))))]
-                            [ans (gen)])
-                       (and (not (g:end? ans)) 
-                            (send (current-cache) cache-ref ans))))]
-                  [else (raise-exn exn:fail:snooze:cache (format "guid found with no id and no serial: ~s" guid))]))))
-    
-    ; snooze-struct -> void
-    (define/public (cache-add! struct)
-      (parameterize ([in-cache-code? #t])
-        (log-cache "snooze.cache-add!" struct)
-        (send (current-cache) cache-add! struct)))
-    
-    ; guid -> snooze-struct
-    (define/public (cache-remove! guid)
-      (parameterize ([in-cache-code? #t])
-        (log-cache "snooze.cache-remove!" guid)
-        (send (current-cache) cache-remove! guid)))
-    
-    ; giud (U natural #f) (U symbol #f) -> void
-    (define/public (recache! guid id serial)
-      (parameterize ([in-cache-code? #t])
-        (log-cache "snooze.recache!" (list guid id serial))
-        (send (current-cache) recache! guid id serial)))
-    
+        
     ; -> database<%>
     (define/public (get-database)
       database)
@@ -173,7 +136,7 @@
                       (lambda (conn guid)
                         (set-struct-revision! guid next-revision)
                         (send database update-record conn guid)
-                        (recache! guid (guid-id guid) #f)
+                        ;(recache! guid (guid-id guid) #f)
                         guid)
                       (current-connection)
                       guid)
@@ -183,7 +146,7 @@
                   (lambda (conn guid)
                     (set-struct-revision! guid next-revision)
                     (let ([next-id (send database insert-record conn guid)])
-                      (recache! guid next-id #f)
+                      ;(recache! guid next-id #f)
                       guid))
                   (current-connection)
                   guid)))))))
@@ -203,7 +166,7 @@
                       (lambda (conn guid)
                         (send database delete-record conn guid)
                         (set-struct-revision! guid #f)
-                        (send (current-cache) recache! guid #f (gensym))
+                        ;(send (current-cache) recache! guid #f (gensym))
                         guid)
                       (current-connection)
                       guid)
@@ -282,11 +245,6 @@
                             metadata-args))))
             (body))))
     
-    ; guid -> guid
-    (define/public (find-by-guid guid)
-      (auto-connect)
-      (cache-ref guid))
-    
     ; -> (listof symbol)
     (define/public (table-names)
       (auto-connect)
@@ -315,18 +273,6 @@
     
     ; Helpers ------------------------------------
     
-    ; entity natural natural guid -> snooze-struct
-    ;(define (make-saved-copy entity id revision original)
-    ;  
-    ;  (apply (entity-private-constructor entity)
-    ;         (entity-make-guid #:snooze this entity id #f)
-    ;         revision
-    ;         (map (lambda (val)
-    ;                (if (guid? val)
-    ;                    (entity-make-guid #:snooze this (guid-entity val) (guid-id val) #f)
-    ;                    val))
-    ;              (cddr (snooze-struct-ref* original)))))
-    
     ; entity integer integer -> boolean
     (define (record-exists-with-revision? entity guid revision)
       ; entity-alias
@@ -341,50 +287,6 @@
 
 ; Provide statements -----------------------------
 
-; contract
-;(define snooze%/c
-;  (object-contract
-;    
-;    [field database            (is-a?/c database<%>)]
-;    [field auto-connect?       boolean?]
-;    
-;    [get-database              (-> (is-a?/c database<%>))]
-;    [set-database!             (-> (is-a?/c database<%>) void?)]
-;    
-;    [get-transaction-pipeline  (-> (listof procedure?))]
-;    [set-transaction-pipeline! (-> (listof procedure?) void?)]
-;    
-;    [call-with-connection      (-> procedure? any)]
-;    [connect                   (-> any)]
-;    [disconnect                (-> any)]
-;    [current-connection        (-> connection?)]
-;    
-;    [create-table              (-> entity? void?)]
-;    [drop-table                (-> (or/c entity? symbol?) void?)]
-;    
-;    [save!                     (-> guid? guid?)]
-;    [delete!                   (-> guid? guid?)]
-;    
-;    [insert/id+revision!       (->* (guid?) ((listof procedure?)) guid?)]
-;    [update/id+revision!       (->* (guid?) ((listof procedure?)) guid?)]
-;    [delete/id+revision!       (->* (guid?) ((listof procedure?)) guid?)]
-;    
-;    [find-all                  (-> query? list?)]
-;    [find-one                  (-> query? any)]
-;    [g:find                    (-> query? procedure?)]
-;    
-;    [call-with-transaction     (->* (procedure?) ((or/c string? #f)) any)]
-;    
-;    [find-by-id                (-> entity? (or/c integer? #f) (or/c guid? #f))]
-;    [find-by-guid              (-> guid? (or/c guid? #f))]
-;    
-;    [table-names               (-> (listof symbol?))]
-;    [table-exists?             (-> (or/c entity? symbol?) boolean?)]
-;    
-;    [query->string             (-> query? string?)]
-;    [debug-sql                 (->* (query?) (string? output-port?) query?)]))
-
 (provide/contract
  [snooze%     class?]
- ;[snooze%/c   contract?]
  [make-snooze (->* ((is-a?/c database<%>)) (#:auto-connect? boolean?) any)])

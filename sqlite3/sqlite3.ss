@@ -69,15 +69,15 @@
       (with-snooze-reraise (sqlite:exn:sqlite? (format "Could not drop table for ~a" entity))
         (sqlite:exec/ignore (connection-back-end conn) (drop-table-sql entity))))
     
-    ; connection snooze-struct -> guid
-    (define/public (insert-record conn struct)
-      (with-snooze-reraise (sqlite:exn:sqlite? (format "Could not insert database record for ~a" struct))
-        (sqlite:insert (connection-back-end conn) (insert-sql struct))))
+    ; connection guid -> integer
+    (define/public (insert-record conn guid)
+      (with-snooze-reraise (sqlite:exn:sqlite? (format "Could not insert database record for ~a" guid))
+        (sqlite:insert (connection-back-end conn) (insert-sql (guid-ref guid)))))
     
-    ; connection snooze-struct -> void
-    (define/public (update-record conn struct)
-      (with-snooze-reraise (sqlite:exn:sqlite? (format "Could not update database record for ~a" struct))
-        (sqlite:exec/ignore (connection-back-end conn) (update-sql struct))
+    ; connection guid -> void
+    (define/public (update-record conn guid)
+      (with-snooze-reraise (sqlite:exn:sqlite? (format "Could not update database record for ~a" guid))
+        (sqlite:exec/ignore (connection-back-end conn) (update-sql (guid-ref guid)))
         (void)))
     
     ; connection guid -> void

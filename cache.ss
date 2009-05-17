@@ -15,7 +15,10 @@
     
     ; Fields -------------------------------------
     
-    ; snooze-cache<%>
+    ; snooze<%>
+    (init-field snooze)
+    
+    ; (U snooze-cache<%> #f)
     (init-field [parent #f])
     
     ; (hashof guid (cons (U vanilla-guid #f) struct))
@@ -31,7 +34,7 @@
     ; Private methods ----------------------------
     
     ; guid -> (U struct #f)
-    (define (struct-ref guid)  
+    (define (struct-ref guid)
       (let ([vanilla+struct (dict-ref data guid)])
         (and vanilla+struct
              (cdr vanilla+struct))))
@@ -50,96 +53,49 @@
       (values (vanilla-ref guid)
               (struct-ref guid)))
     
-    ; guid (U vanilla-guid #f) struct -> vuid
-    (define (cache-set! guid vanilla-guid struct)
-      (if (guid-local? guid)
-          (unless (and vanilla-guid (not (guid-local? vanilla-guid)))
-            (error "attempt to cache local guid against invalid vanilla guid" (list guid vanilla-guid struct)))
-          (when vanilla-guid
-            (error "attempt to cache vanilla guid against " (list guid vanilla-guid struct))))
-      (dict-set! data guid (cons vanilla-guid struct)))
+    ; snooze-struct (U interned-vanilla-guid #f) -> local-guid
+    ; Returns a cached local guid pointing to the supplied struct / vanilla guid.
+    ; Assumes any vaniila-guid caching is taken care of elsewhere.
+    (define (localize-guid struct vanilla-guid)
+      (printf "localize-guid ~s ~s~n" struct vanilla-guid)
+      (let ([local-guid (entity-make-local-guid #:snooze snooze (struct-entity struct))])
+        (dict-set! data local-guid (cons vanilla-guid struct))
+        local-guid))
     
-    ; Methods ------------------------------------
+    ; Public methods -----------------------------
+    
+    ; -> (U snooze<%> #f)
+    (define/public (get-snooze)
+      snooze)
     
     ; -> (U snooze-cache<%> #f)
     (define/public (get-parent)
       parent)
     
-    ; guid -> snooze-struct
-    ;(define/public (cache-ref guid)
-    ;  (parameterize ([in-cache-code? #t])
-    ;    (log-cache "cache.cache-ref" guid)
-    ;    
-    ;    ; Try to retrieve from the local cache...
-    ;    (or (let ([guid+struct (dict-ref structs guid #f)])
-    ;          (and guid+struct (cdr guid+struct)))
-    ;        ; ...then try to retrieve from the parent cache:
-    ;        (let ([struct (and parent (send parent cache-ref guid))])
-    ;          (and struct
-    ;               (let ([local-guid (intern-guid (struct-guid struct))])
-    ;                 (dict-set! structs local-guid struct)  ;; IMPLEMENT IN TERMS OF CACHE-ADD! ???
-    ;                 struct))))))
-    
-    ; guid -> local-guid
-    (define/public (make-local-copy! original)
-      (let-values ([(vanilla struct) (vanilla+struct-ref original)])
-        (unless (and vanilla struct)
-          (error "struct not cached" original))
-        (let ([local (entity-make-local-guid
-                      #:snooze (guid-snooze (struct-guid struct))
-                      (struct-entity struct))])
-          (cache-set! local vanilla struct) 
-          local)))
-    
-    ; snooze-struct -> guid
-    ;(define/public (cache-add! struct)
-    ;  (if (struct-guid struct)
-    ;      (cache-add/db! struct)
-    ;      (cache-add/local! struct)))
+    ; local-guid -> (U snooze-struct #f)
+    (define/public (cache-ref/local guid)
+      (printf "cache-ref/local ~s~n" guid)
+      (unless (and guid (guid-local? guid))
+        (raise-type-error 'cache-ref/local "local-guid" guid))
+      (struct-ref guid))
     
     ; snooze-struct -> local-guid
-    ;(define/public (cache-add/db! struct)
-    ;  (cache+create-local! (struct-guid struct)))
+    (define/public (cache-add! struct)
+      (printf "cache-add! ~s~n" struct)
+      (let* (; (U vanilla-guid #f)
+             [struct-guid  (struct-guid struct)]
+             ; (U interned-vanilla-guid)
+             [vanilla-guid (and struct-guid (cache-add/vanilla! struct (intern-guid struct-guid)))])
+        (localize-guid struct vanilla-guid)))
     
-    ; guid -> local-guid
-    ;(define/public (cache+create-local! original-guid)
-    ;  (let* ([vanilla-guid  (intern-guid original-guid)]
-    ;         [local-guid    (entity-make-local-guid #:snooze snooze (struct-entity struct))])
-    ;    (when (guid-local? original-guid)
-    ;      (error "guid should not be local" original-guid))
-    ;    (when (guid-interned? original-guid)
-    ;      (error "guid should not be interned" original-guid))
-    ;    (dict-set! structs vanilla-guid (cons #f struct))
-    ;    (dict-set! structs local-guid (cons vanilla-guid struct))
-    ;    local-guid))
-    
-    ; snooze-struct -> guid
-    ;(define/public (cache-add/local! struct)
-    ;  (let ([guid (entity-make-local-guid #:snooze snooze (struct-entity struct))])
-    ;    (dict-set! structs guid (cons #f struct))
-    ;    guid))
-    ; 
-    ;  (parameterize ([in-cache-code? #t])
-    ;    (log-cache "cache.cache-add!" struct)
-    ;    (let* ([guid0 (struct-guid struct)]
-    ;           [guid1 (copy-guid guid0)])
-    ;      (when (and (guid-serial guid1) (dict-ref structs guid1 #f))
-    ;        (raise-cache-add-error struct))
-    ;      (dict-set! structs guid1 struct)
-    ;      (when (and parent (not (guid-serial guid1)))
-    ;        (send parent cache-add! (copy-snooze-struct struct)))
-    ;      guid1)))
-    
-    ; guid -> snooze-struct
-    ;(define/public (cache-remove! guid)
-    ;  (parameterize ([in-cache-code? #t])
-    ;    (log-cache "cache.cache-remove!" guid)
-    ;    (let ([ans (dict-ref structs guid)])
-    ;      (dict-remove! structs guid)
-    ;      (when parent (send parent cache-remove! guid))
-    ;      ans)))
-    
-    ))
+    ; snooze-struct interned-vanilla-guid -> interned-vanilla-guid
+    (define (cache-add/vanilla! struct vanilla-guid)
+      (printf "cache-add/vanilla! ~s ~s~n" struct vanilla-guid)
+      (let ([parent (get-parent)])
+        (dict-set! data vanilla-guid (cons #f struct))
+        (if parent 
+            (send (get-parent) cache-add/vanilla! struct vanilla-guid)
+            vanilla-guid)))))
 
 ; Helpers ----------------------------------------
 
