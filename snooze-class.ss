@@ -212,7 +212,7 @@
     ; select -> result-generator
     (define/public (g:find select)
       (auto-connect)
-      (send database g:find this (current-connection) select))
+      (send database g:find (current-connection) select))
     
     ; thunk any ... -> any
     ;

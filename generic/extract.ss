@@ -25,13 +25,11 @@
     (define/public (make-query-extractor query)
       (let ([extract-info (query-extract-info query)])
         (if (or (pair? extract-info) (null? extract-info))
-            (make-single-item-extractor
-             (list (and (entity? extract-info)
-                        extract-info)))
             (make-multiple-item-extractor
-             (map (lambda (item)
-                    (and (entity? item) item))
-                  extract-info)))))
+             (list (and (entity? extract-info) extract-info)))
+            (make-single-item-extractor
+             (map (lambda (item) (and (entity? item) item))
+                  (list extract-info))))))
     
     ; (U entity #f) -> single-item-extractor
     ; where single-item-extractor : (U (listof scheme-primitive) #f) -> (U snooze-struct scheme-primitive)
