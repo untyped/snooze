@@ -163,12 +163,15 @@
 ; (listof procedure)
 (define snooze-struct-equal+hash
   (list (lambda (struct1 struct2 same?)
-          (let ([vec1 (struct->vector struct1)]
-                [vec2 (struct->vector struct2)])
-            (and (same? (vector-ref vec1 0)
-                        (vector-ref vec2 0))
-                 (same? (guid-id (vector-ref vec1 1))
-                        (guid-id (vector-ref vec2 1)))
+          (let* ([vec1  (struct->vector struct1)]
+                 [vec2  (struct->vector struct2)]
+                 [type1 (vector-ref vec1 0)]
+                 [type2 (vector-ref vec2 0)]
+                 [guid1 (vector-ref vec1 1)]
+                 [guid2 (vector-ref vec2 1)])
+            (and (same? type1 type2)
+                 (same? (and guid1 (guid-id guid1))
+                        (and guid2 (guid-id guid2)))
                  (for/and ([item1 (in-vector vec1 2)]
                            [item2 (in-vector vec2 2)])
                    (same? item1 item2)))))

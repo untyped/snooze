@@ -12,13 +12,18 @@
 
 ; integer integer string -> person
 (define (test-person id revision name)
-  (make-person #:guid     (entity-make-vanilla-guid person id)
-               #:revision revision name))
+  ((entity-private-constructor person)
+   (entity-make-vanilla-guid person id)
+   revision
+   name))
 
 ; integer integer string boolean -> person
-(define (test-pet id revision owner-id name)
-  (make-pet #:guid     (entity-make-vanilla-guid pet id)
-            #:revision revision owner-id name))
+(define (test-pet id revision owner-guid name)
+  ((entity-private-constructor pet)
+   (entity-make-vanilla-guid pet id)
+   revision
+   owner-guid
+   name))
 
 ; query -> (U single-item-extractor multiple-item-extractor)
 (define (make-query-extractor query)

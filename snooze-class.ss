@@ -44,7 +44,7 @@
     ; Constructor --------------------------------
     
     ; database<%>
-    (init-field [database #f])
+    (init-field database)
     
     ; boolean
     (init-field [auto-connect? #f])

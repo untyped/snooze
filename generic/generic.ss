@@ -29,8 +29,8 @@
        snooze)
      
      ; snooze<%> -> void
-     (define/public (set-snooze! snooze)
-       (set! snooze snooze)))))
+     (define/public (set-snooze! the-snooze)
+       (set! snooze the-snooze)))))
 
 ; Provide statements -----------------------------
 

@@ -35,16 +35,16 @@
         (check-not-eq?    a1 b)))
     
     (test-case "keyword constructor"
-      (check-equal? (make-person/defaults #:guid #f #:name "Dave")
+      (check-equal? (make-person/defaults #:name "Dave")
                     (make-person "Dave"))
-      (check-equal? (make-person/defaults #:guid #f #:name "Dave")
-                    (make-person #:guid (entity-make-vanilla-guid person 123) "Dave"))
-      (check-equal? (make-person/defaults #:guid (entity-make-vanilla-guid person 123) #:name "Dave")
-                    (person-set (make-person "Dave") #:guid (entity-make-vanilla-guid person 123))))
+      (check-equal? (make-person/defaults #:name "Dave")
+                    (make-person "Dave"))
+      (check-equal? (make-person/defaults #:name "Dave")
+                    (person-set (make-person "Dave"))))
     
     (test-case "copy constructor"
-      (check-equal? (make-person/defaults #:guid (entity-make-vanilla-guid person 123) #:name "Dave")
-                    (person-set (make-person "Dave") #:guid (entity-make-vanilla-guid person 123))))))
+      (check-equal? (make-person/defaults #:name "Dave")
+                    (person-set (make-person "Dave"))))))
 
 ; Provide statements -----------------------------
 

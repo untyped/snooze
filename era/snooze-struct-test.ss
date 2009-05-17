@@ -30,6 +30,17 @@
       (set! test-person      (make-snooze-struct person test-person-guid #f "Jon"))
       (set! test-pet         (make-snooze-struct pet #f #f test-person-guid "Garfield")))
     
+    (test-case "equal?"
+      (check-equal?
+       (make-snooze-struct person #f #f "Jon")
+       (make-snooze-struct person #f #f "Jon"))
+      (check-equal?
+       (make-snooze-struct person test-person-guid #f "Jon")
+       (make-snooze-struct person test-person-guid #f "Jon"))
+      (check-not-equal?
+       (make-snooze-struct person #f #f "Jon")
+       (make-snooze-struct person test-person-guid #f "Jon")))
+    
     (test-case "struct-entity"
       (check-eq? (struct-entity test-person) person)
       (check-exn exn:fail? (cut struct-entity test-normal)))

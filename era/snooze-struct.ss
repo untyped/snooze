@@ -106,10 +106,13 @@
 
 ; Provide statements -----------------------------
 
+(define attr-value-list/c
+  (cons/c (or/c (and/c guid? (not/c guid-local?)) #f) any/c))
+
 (provide/contract
  [snooze-struct?              (-> any/c boolean?)]
  [struct-entity               (-> (or/c snooze-struct? prop:entity-set?) entity?)]
- [struct-guid                 (-> (or/c snooze-struct? prop:entity-set?) (or/c guid? #f))]
+ [struct-guid                 (-> (or/c snooze-struct? prop:entity-set?) (or/c (and/c guid? (not/c guid-local?)) #f))]
  [struct-id                   (-> snooze-struct? (or/c natural-number/c #f))]
  [struct-saved?               (-> snooze-struct? boolean?)]
  [struct-revision             (-> snooze-struct? (or/c natural-number/c #f))]
@@ -118,8 +121,8 @@
  [snooze-struct-ref*          (-> snooze-struct? list?)]
  [snooze-struct-set           (->* (snooze-struct?) () #:rest attr/value-list? snooze-struct?)]
  [snooze-struct-set!          (-> snooze-struct? (or/c attribute? symbol?) any/c void?)]
- [snooze-struct-set*!         (-> snooze-struct? list? void?)]
- [make-snooze-struct          (->* (entity?) () #:rest any/c snooze-struct?)]
+ [snooze-struct-set*!         (-> snooze-struct? attr-value-list/c void?)]
+ [make-snooze-struct          (->* (entity?) () #:rest attr-value-list/c snooze-struct?)]
  [make-snooze-struct/defaults (->* (entity?)
                                    (#:snooze (is-a?/c snooze<%>))
                                    #:rest attr/value-list?

@@ -16,38 +16,37 @@
 ; Tests ------------------------------------------
 
 (define cached-struct-tests
-  (test-suite "cahed-struct.ss"
+  (test-suite "cached-struct.ss"
     
     #:before
     (lambda ()
-      (set! test-person (make-snooze-struct person #f #f "Jon"))
-      (set! test-pet    (make-snooze-struct pet #f #f test-person "Garfield")))
+      (set! test-person (make-person "Jon"))
+      (set! test-pet    (make-pet test-person "Garfield")))
     
     (test-case "struct-entity"
       (check-eq? (struct-entity test-person) person))
     
     (test-case "struct-guid"
-      (check-false (guid-id (struct-guid test-person)))
-      (check-eq? (guid-entity (struct-guid test-person)) person)
-      (check-not-equal? (struct-guid test-person) (struct-guid (make-person "Dave"))))
+      (check-true (guid-local? (struct-guid test-person)))
+      (check-eq?  (guid-id     (struct-guid test-person)) #f)
+      (check-eq?  (guid-entity (struct-guid test-person)) person)
+      (check-false (guid=? (struct-guid test-person) (struct-guid (make-person "Dave")))))
     
     (test-case "struct-saved?"
-      (check-false (struct-saved? test-person))
-      (check-true  (struct-saved? (person-set test-person #:guid (entity-make-vanilla-guid person 123)))))
+      (check-false (struct-saved? test-person)))
     
     (test-case "struct-revision and set-struct-revision!"
-      (check-equal? (struct-revision test-person) #f)
-      (check-equal? (struct-revision (person-set test-person #:revision 1000)) 1000))
+      (check-equal? (struct-revision test-person) #f))
     
     (test-case "field accessors and mutators"
-      (check-eq? (pet-owner test-pet) test-person)
-      (check-equal? (pet-name test-pet) "Garfield")
+      (check-eq?    (pet-owner test-pet) test-person)
+      (check-equal? (pet-name  test-pet) "Garfield")
       (check-equal? (pet-owner (pet-set test-pet #:owner #f)) #f)
       (check-equal? (pet-name  (pet-set test-pet #:name "Odie")) "Odie"))
     
     (test-case "snooze-struct-ref"
-      (check-equal? (snooze-struct-ref test-pet 'guid) test-pet)
-      (check-equal? (snooze-struct-ref test-pet (attr pet guid)) test-pet)
+      (check guid=? (snooze-struct-ref test-pet 'guid) test-pet)
+      (check guid=? (snooze-struct-ref test-pet (attr pet guid)) test-pet)
       (check-equal? (snooze-struct-ref test-pet 'revision) #f)
       (check-equal? (snooze-struct-ref test-pet (attr pet revision)) #f)
       (check-equal? (snooze-struct-ref test-pet 'owner) test-person)
@@ -63,14 +62,17 @@
       (let* ([test-person2 (snooze-struct-set test-person)])
         
         ; Struct equality:
-        (check-true  (equal? test-person2 test-person))
-        (check-false (eq? test-person2 test-person))
+        (check-false (guid=? test-person2 test-person))
+        (debug-location)
+        (check-equal?  test-person2 test-person)
+        (debug-location)
+        (check-not-eq? test-person2 test-person)
         
         ; Guids:
-        (check-pred  guid? (struct-guid test-person))
-        (check-pred  guid? (struct-guid test-person2))
-        (check-equal? (struct-guid test-person)      (struct-guid test-person2))
-        (check-false  (eq? (struct-guid test-person) (struct-guid test-person2)))
+        (check-pred guid? (struct-guid test-person))
+        (check-pred guid? (struct-guid test-person2))
+        (check-equal?  (struct-guid test-person) (struct-guid test-person2))
+        (check-not-eq? (struct-guid test-person) (struct-guid test-person2))
         
         ; Attributes:
         (check-equal? (struct-id test-person2)       (struct-id test-person))
@@ -95,7 +97,7 @@
       ; Guid (in)equality:
       (let ([test-person2 (make-snooze-struct/defaults person (attr person guid) (entity-make-vanilla-guid person 123))]
             [test-person3 (make-snooze-struct/defaults person (attr person guid) (entity-make-vanilla-guid person 123))])
-        (check-equal? (struct-id   test-person2) 123)
+        (check-equal? (struct-id   test-person2) #f)
         (check-equal? (struct-guid test-person2) (struct-guid test-person3))
         (check-false  (eq? (struct-guid test-person2) (struct-guid test-person3))))
       

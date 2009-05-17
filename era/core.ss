@@ -83,15 +83,17 @@
            (lambda (guid out write?)
              (let ([show   (if write? write display)]
                    [struct (and (not (in-cache-code?))
-                                (with-handlers ([exn? (lambda (exn) (printf "exn fetching struct: ~s~n" (exn-message exn)))])
+                                (with-handlers ([exn? (lambda (exn) 'uncached)])
                                   (guid-ref guid)))])
                (parameterize ([in-cache-code? #t])
                  (display print-prefix out)
                  (show (guid-id+serial guid) out)
                  (when struct
-                   (for ([val (in-vector (struct->vector struct) 2)])
-                     (display " " out)
-                     (show val out)))
+                   (if (eq? struct 'uncached)
+                       (display " uncached" out)
+                       (for ([val (in-vector (struct->vector struct) 2)])
+                         (display " " out)
+                         (show val out))))
                  (display ")" out))))
            #:property
            prop:equal+hash
