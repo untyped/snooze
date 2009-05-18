@@ -85,7 +85,9 @@
 ; contains a certain number of guids.
 (define-check (check-cache-size expected)
   (let ([actual (cache-alists)])
-    (with-check-info (['cache actual])
+    (with-handlers ([exn? (lambda (exn)
+                            (pretty-print actual)
+                            (raise exn))])
       (check-equal? (length actual) (length expected) "wrong number of caches")
       (for ([actual   (in-list actual)]
             [expected (in-list expected)]

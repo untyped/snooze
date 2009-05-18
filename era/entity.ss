@@ -5,7 +5,8 @@
 (require srfi/26
          (unlib-in symbol)
          "../generic/connection.ss"
-         "cached-struct.ss"
+         (prefix-in cached: "cached-struct.ss")
+         (prefix-in real: "snooze-struct.ss")
          "core.ss"
          "pretty.ss")
 
@@ -46,7 +47,7 @@
                        #:on-save                  [on-save                  (lambda (continue conn struct) (continue conn struct))]
                        #:on-delete                [on-delete                (lambda (continue conn struct) (continue conn struct))]
                        #:properties               [properties               null])
-    
+  
   ; entity
   (define entity
     (make-vanilla-entity name table-name pretty-name pretty-name-plural pretty-formatter guid-constructor guid-predicate on-save on-delete))
@@ -69,7 +70,7 @@
             [(not (= num-args (length attr-pretty-names-plural)))
              (raise-type-error 'make-entity (format "~a plural pretty names" num-attrs) attr-pretty-names-plural)]
             [else (+ num-args 2)])))
-
+  
   ; struct-type-descriptor
   ; any ... -> struct
   ; struct -> boolean
@@ -83,6 +84,7 @@
      0                          ; number of auto-value fields
      (void)                     ; values for auto-value fields
      (list* (cons prop:entity entity)
+            (cons prop:custom-write snooze-struct-custom-write)
             (cons prop:equal+hash snooze-struct-equal+hash)
             properties)         ; properties
      #f))                       ; inspector-or-#f
@@ -118,7 +120,7 @@
   
   ; any ... -> guid
   (define cached-constructor
-    (make-cached-constructor
+    (cached:make-cached-constructor
      entity
      (symbol-append 'make- name)
      struct-constructor
@@ -126,7 +128,7 @@
   
   ; any -> boolean
   (define cached-predicate
-    (make-cached-predicate struct-predicate))
+    (cached:make-cached-predicate struct-predicate))
   
   ; Patch the entity:
   (set-entity-struct-type! entity struct-type)
@@ -150,8 +152,8 @@
 (define (create-attribute name col pretty pretty-plural type entity index default-maker struct-accessor struct-mutator)
   (let* ([private-accessor (make-struct-field-accessor struct-accessor index name)]
          [private-mutator  (make-struct-field-mutator  struct-mutator index name)]
-         [cached-accessor  (make-cached-accessor private-accessor)]
-         [cached-mutator   (make-cached-mutator  private-mutator)])
+         [cached-accessor  (cached:make-cached-accessor private-accessor)]
+         [cached-mutator   (cached:make-cached-mutator  private-mutator)])
     (make-attribute name col pretty pretty-plural
                     type entity index
                     default-maker
@@ -159,6 +161,25 @@
                     private-mutator
                     cached-accessor
                     cached-mutator)))
+
+; snooze-struct output-port boolean -> void
+(define (snooze-struct-custom-write struct out write?)
+  (parameterize ([in-cache-code? #t])
+    (let* ([show   (if write? write display)]
+           [entity (real:struct-entity struct)]
+           [vals   (real:snooze-struct-ref* struct)]
+           [guid   (car vals)]
+           [rev    (cadr vals)])
+      (display "#(struct:" out)
+      (display (entity-name entity) out)
+      (display " " out)
+      (show (and guid (guid-id guid)) out)
+      (display " " out)
+      (show rev out)
+      (for ([val (in-list (cddr vals))])
+        (display " " out)
+        (show val out))
+      (display ")" out))))
 
 ; (listof procedure)
 (define snooze-struct-equal+hash

@@ -141,7 +141,7 @@
     ;
     ; Adds a vanilla struct to the cache and its ancestors,
     ; returning the interned local guid used.
-    (define (add-vanilla-struct! struct vanilla-guid)
+    (define/public (add-vanilla-struct! struct vanilla-guid)
       ;(printf "add-vanilla-struct! ~s ~s~n" struct vanilla-guid)
       (let ([parent (get-parent)])
         (dict-set! data vanilla-guid (cons #f struct))
