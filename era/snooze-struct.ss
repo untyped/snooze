@@ -31,8 +31,8 @@
   ((entity-private-accessor (struct-entity struct)) struct 1))
 
 ; snooze-struct -> (U natural #f)
-(define (set-struct-revision! struct val)
-  ((entity-private-mutator (struct-entity struct)) struct 1 val))
+; (define (set-struct-revision! struct val)
+;   ((entity-private-mutator (struct-entity struct)) struct 1 val))
 
 ; snooze-struct (U symbol attribute) -> any
 (define (snooze-struct-ref struct name+attr)
@@ -63,24 +63,24 @@
               (lambda (attr) existing))))))
 
 ; snooze-struct (U symbol attribute) any -> void
-(define (snooze-struct-set! struct name+attr val)
-  (let* ([entity  (struct-entity struct)]
-         [attr    (if (attribute? name+attr)
-                      name+attr
-                      (entity-attribute entity name+attr))])
-    ((attribute-private-mutator attr) struct val)))
+; (define (snooze-struct-set! struct name+attr val)
+;   (let* ([entity  (struct-entity struct)]
+;          [attr    (if (attribute? name+attr)
+;                       name+attr
+;                       (entity-attribute entity name+attr))])
+;     ((attribute-private-mutator attr) struct val)))
 
 ; snooze-struct (listof any) -> void
-(define (snooze-struct-set*! struct vals)
-  (let* ([entity (struct-entity struct)]
-         [attrs  (entity-attributes entity)])
-    (unless (= (length vals) (length attrs))
-      (raise-type-error 'snooze-struct-set!
-                        (format "list of ~a values" (length attrs))
-                        vals))
-    (for ([attr (in-list attrs)]
-          [val  (in-list vals)])
-      (snooze-struct-set! struct attr val))))
+; (define (snooze-struct-set*! struct vals)
+;   (let* ([entity (struct-entity struct)]
+;          [attrs  (entity-attributes entity)])
+;     (unless (= (length vals) (length attrs))
+;       (raise-type-error 'snooze-struct-set!
+;                         (format "list of ~a values" (length attrs))
+;                         vals))
+;     (for ([attr (in-list attrs)]
+;           [val  (in-list vals)])
+;       (snooze-struct-set! struct attr val))))
 
 ; snooze-struct -> snooze-struct
 (define (make-snooze-struct entity . args)
@@ -116,12 +116,12 @@
  [struct-id                   (-> snooze-struct? (or/c natural-number/c #f))]
  [struct-saved?               (-> snooze-struct? boolean?)]
  [struct-revision             (-> snooze-struct? (or/c natural-number/c #f))]
- [set-struct-revision!        (-> snooze-struct? (or/c natural-number/c #f) void?)]
+ ;[set-struct-revision!        (-> snooze-struct? (or/c natural-number/c #f) void?)]
  [snooze-struct-ref           (-> snooze-struct? (or/c attribute? symbol?) any)]
  [snooze-struct-ref*          (-> snooze-struct? list?)]
  [snooze-struct-set           (->* (snooze-struct?) () #:rest attr/value-list? snooze-struct?)]
- [snooze-struct-set!          (-> snooze-struct? (or/c attribute? symbol?) any/c void?)]
- [snooze-struct-set*!         (-> snooze-struct? attr-value-list/c void?)]
+ ;[snooze-struct-set!          (-> snooze-struct? (or/c attribute? symbol?) any/c void?)]
+ ;[snooze-struct-set*!         (-> snooze-struct? attr-value-list/c void?)]
  [make-snooze-struct          (->* (entity?) () #:rest attr-value-list/c snooze-struct?)]
  [make-snooze-struct/defaults (->* (entity?)
                                    (#:snooze (is-a?/c snooze<%>))

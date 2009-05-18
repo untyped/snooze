@@ -25,12 +25,6 @@
     (test-case "struct-entity"
       (check-eq? (struct-entity test-person) person))
     
-    (test-case "struct-guid"
-      (check-true (guid-local? (struct-guid test-person)))
-      (check-eq?  (guid-id     (struct-guid test-person)) #f)
-      (check-eq?  (guid-entity (struct-guid test-person)) person)
-      (check-false (guid=? (struct-guid test-person) (struct-guid (make-person "Dave")))))
-    
     (test-case "struct-saved?"
       (check-false (struct-saved? test-person)))
     
@@ -67,10 +61,9 @@
         (check-not-eq? test-person2 test-person)
         
         ; Guids:
-        (check-pred guid? (struct-guid test-person))
-        (check-pred guid? (struct-guid test-person2))
-        (check-equal?  (struct-guid test-person) (struct-guid test-person2))
-        (check-not-eq? (struct-guid test-person) (struct-guid test-person2))
+        (check-equal?  test-person test-person2)
+        (check-not-eq? test-person test-person2)
+        (check-false (guid=? test-person test-person2))
         
         ; Attributes:
         (check-equal? (struct-id test-person2)       (struct-id test-person))
@@ -95,9 +88,9 @@
       ; Guid (in)equality:
       (let ([test-person2 (make-snooze-struct/defaults person (attr person guid) (entity-make-vanilla-guid person 123))]
             [test-person3 (make-snooze-struct/defaults person (attr person guid) (entity-make-vanilla-guid person 123))])
-        (check-equal? (struct-id   test-person2) #f)
-        (check-equal? (struct-guid test-person2) (struct-guid test-person3))
-        (check-false  (eq? (struct-guid test-person2) (struct-guid test-person3))))
+        (check-equal?  (struct-id   test-person2) 123)
+        (check-equal?  test-person2 test-person3)
+        (check-false (guid=? test-person2 test-person3)))
       
       ; Bad attribute/value arguments:
       (check-exn exn:fail?

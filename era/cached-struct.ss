@@ -54,17 +54,10 @@
       (guid-entity struct+guid)
       (real:struct-entity struct+guid)))
 
-; (U snooze-struct guid) -> guid
-(define (struct-guid struct+guid)
-  (if (guid? struct+guid)
-      struct+guid
-      (real:struct-guid struct+guid)))
-
 ; guid -> (U natural #f)
-(define struct-id guid-id)
-
-; guid -> boolean
-(define struct-local? guid-local?)
+(define (struct-id guid)
+  (let ([struct (guid-ref guid)])
+    (real:struct-id struct)))
 
 ; guid guid -> boolean
 (define (struct-eq? guid1 guid2)
@@ -73,16 +66,16 @@
 
 ; guid -> boolean
 (define (struct-saved? guid)
-  (let ([vanilla (send (send (current-snooze) get-current-cache) get-vanilla-guid guid)])
-    (and vanilla #t)))
+  (let ([struct (guid-ref guid)])
+    (and (real:struct-guid struct) #t)))
 
 ; guid -> (U natural #f)
 (define (struct-revision guid)
   (real:struct-revision (guid-ref guid)))
 
 ; guid -> (U natural #f)
-(define (set-struct-revision! guid val)
-  (real:set-struct-revision! (guid-ref guid) val))
+; (define (set-struct-revision! guid val)
+;   (real:set-struct-revision! (guid-ref guid) val))
 
 ; guid (U symbol attribute) -> any
 (define (snooze-struct-ref guid name+attr)
@@ -115,12 +108,12 @@
                     (lambda (attr) existing)))))))
 
 ; guid (U symbol attribute) any -> void
-(define (snooze-struct-set! guid name+attr val)
-  (real:snooze-struct-set! (guid-ref guid) name+attr val))
+; (define (snooze-struct-set! guid name+attr val)
+;   (real:snooze-struct-set! (guid-ref guid) name+attr val))
 
 ; guid (listof any) -> void
-(define (snooze-struct-set*! guid vals)
-  (real:snooze-struct-set*! (guid-ref guid) vals))
+; (define (snooze-struct-set*! guid vals)
+;   (real:snooze-struct-set*! (guid-ref guid) vals))
 
 ; entity any ... -> guid
 (define (make-snooze-struct #:snooze [snooze (current-snooze)] entity . args)
@@ -153,17 +146,16 @@
  [snooze-struct?                  (-> any/c boolean?)]
  [struct-eq?                      (-> guid? guid? boolean?)]
  [struct-entity                   (-> (or/c guid? prop:entity-set?) entity?)]
- [struct-guid                     (-> (or/c guid? prop:entity-set?) guid?)]
+ ;[struct-guid                     (-> (or/c guid? prop:entity-set?) guid?)]
  [struct-id                       (-> guid? (or/c natural-number/c #f))]
- [struct-local?                   (-> guid? boolean?)]
  [struct-saved?                   (-> guid? boolean?)]
  [struct-revision                 (-> guid? (or/c natural-number/c #f))]
- [set-struct-revision!            (-> guid? (or/c natural-number/c #f) void?)]
+ ;[set-struct-revision!            (-> guid? (or/c natural-number/c #f) void?)]
  [snooze-struct-ref               (-> guid? (or/c attribute? symbol?) any)]
  [snooze-struct-ref*              (-> guid? list?)]
  [snooze-struct-set               (->* (guid?) () #:rest attr/value-list? guid?)]
- [snooze-struct-set!              (-> guid? (or/c attribute? symbol?) any/c void?)]
- [snooze-struct-set*!             (-> guid? list? void?)]
+ ;[snooze-struct-set!              (-> guid? (or/c attribute? symbol?) any/c void?)]
+ ;[snooze-struct-set*!             (-> guid? list? void?)]
  [make-snooze-struct              (->* (entity?) () #:rest any/c guid?)]
  [make-snooze-struct/defaults     (->* (entity?) () #:rest attr/value-list? guid?)]
  [copy-snooze-struct              (-> guid? guid?)]

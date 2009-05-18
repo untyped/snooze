@@ -135,7 +135,8 @@
 
 ; guid -> boolean
 (define (guid-interned? guid)
-  (eq? (dict-ref interned-guids guid #f) guid))
+  (let ([box (dict-ref interned-guids guid #f)])
+    (and box (eq? (weak-box-value box) guid))))
 
 ; guid -> guid
 (define (intern-guid guid)

@@ -129,12 +129,16 @@
     ; struct local-guid -> vanilla-guid
     (define/public (add-struct-and-update! struct old-guid)
       (let ([vanilla-guid (add-struct->vanilla-guid! struct)]) ; (U interned-vanilla-guid #f)
+        (unless (guid-local? old-guid)
+          (error "add-struct-and-update!: guid not local" old-guid))
+        (unless (guid-interned? vanilla-guid)
+          (error "add-struct-and-update!: guid not interned" vanilla-guid))
         (dict-set! data old-guid (cons vanilla-guid struct))
         (localize-guid struct vanilla-guid)))
     
     ; struct -> vanilla-guid
     (define/private (add-struct->vanilla-guid! struct)
-      (let ([struct-guid  (struct-guid struct)]) ; (U vanilla-guid #f)
+      (let ([struct-guid (struct-guid struct)]) ; (U vanilla-guid #f)
         (and struct-guid (add-vanilla-struct! struct (intern-guid struct-guid)))))
     
     ; snooze-struct interned-vanilla-guid -> interned-vanilla-guid
@@ -142,7 +146,8 @@
     ; Adds a vanilla struct to the cache and its ancestors,
     ; returning the interned local guid used.
     (define/public (add-vanilla-struct! struct vanilla-guid)
-      ;(printf "add-vanilla-struct! ~s ~s~n" struct vanilla-guid)
+      (unless (guid-interned? vanilla-guid)
+        (error "add-vanilla-struct!: guid not interned" vanilla-guid))
       (let ([parent (get-parent)])
         (dict-set! data vanilla-guid (cons #f struct))
         (if parent 

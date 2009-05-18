@@ -27,31 +27,51 @@
              [per2 (save! per1)])
         (check struct-eq? per1 per2)))
     
-    (test-case "save! : actually saves data"
+    (test-case "save! : stores information correctly in the cache"
       (recreate-test-tables/cache)
-      (pretty-print (cache-alists))
+      (pretty-print (cache-lists))
       (with-cache
-       (let* ([per1 (begin0 (save! (make-person "Dave"))
-                            (check-equal? (direct-query "select count(id) from people;")
-                                          (list (list 1)))
-                            (pretty-print (cache-alists)))]
-              [per2 (begin0 (save! (make-person "Dave"))
-                            (check-equal? (direct-query "select count(id) from people;")
-                                          (list (list 2)))
-                            (pretty-print (cache-alists)))]
-              [per3 (begin0 (save! per1)
-                            (check-equal? (direct-query "select count(id) from people;")
-                                          (list (list 2)))
-                            (pretty-print (cache-alists)))]
-              [per4 (begin0 (save! (make-person "Noel"))
-                            (check-equal? (direct-query "select count(id) from people;")
-                                          (list (list 3)))
-                            (pretty-print (cache-alists)))])
-         (check-cache-size (list 10 3))
-         (check-equal? (direct-query "select name from people order by id asc;")
-                       (list (list "Dave")
-                             (list "Dave")
-                             (list "Noel"))))))))
+       (let*/debug ([per1 (begin0 (save! (make-person "Dave"))
+                                  (check-equal? (direct-query "select count(id) from people;")
+                                                (list (list 1)))
+                                  (collect-garbage)
+                                  (debug* "per1 cache" cache-lists)
+                                  (check-cache-size (list 2 1)))]
+                    [per2 (begin0 (save! (make-person "Dave"))
+                                  (check-equal? (direct-query "select count(id) from people;")
+                                                (list (list 2)))
+                                  (collect-garbage)
+                                  (debug* "per2 cache" cache-lists)
+                                  (check-cache-size (list 4 2)))]
+                    [per3 (begin0 (save! per1)
+                                  (debug* "per3 cache1" cache-lists)
+                                  (check-equal? (direct-query "select count(id) from people;")
+                                                (list (list 2)))
+                                  (collect-garbage)
+                                  (collect-garbage)
+                                  (debug* "per3 cache2" cache-lists)
+                                  (debug "per3 per1" (list per1 (guid-ref per1)))
+                                  (check-cache-size (list 5 2)))]
+                    [per4 (begin0 (save! (make-person "Noel"))
+                                  (check-equal? (direct-query "select count(id) from people;")
+                                                (list (list 3)))
+                                  (collect-garbage)
+                                  (debug* "per4 cache" cache-lists)
+                                  (check-cache-size (list 7 3)))])
+                   (void))))
+    
+    (test-case "save! : stores information correctly in the database"
+      (recreate-test-tables/cache)
+      (pretty-print (cache-lists))
+      (with-cache
+       (let*/debug ([per1 (save! (make-person "Dave"))]
+                    [per2 (save! (make-person "Dave"))]
+                    [per3 (save! per1)]
+                    [per4 (save! (make-person "Noel"))])
+                   (check-equal? (direct-query "select id,name from people order by id asc;")
+                                 (list (list (struct-id per1) "Dave")
+                                       (list (struct-id per2) "Dave")
+                                       (list (struct-id per4) "Noel"))))))))
 
 ; Provide statements -----------------------------
 

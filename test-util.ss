@@ -61,16 +61,19 @@
 ; [cache%] -> (listof (alistof guid cached-data))
 ;
 ; Returns printable debugging information about the supplied/current cache.
-(define (cache-alist [cache (current-cache)])
-  (for/list ([item (in-dict-pairs (cache-data cache))]) item))
+(define (cache-list [cache (current-cache)])
+  (for/list ([item (in-dict-pairs (cache-data cache))])
+    (list (car item)
+          #;(cadr item)
+          (cddr item))))
 
 ; [cache%] -> (listof (alistof guid cached-data))
 ;
 ; Returns printable debugging information about the supplied/current cache.
-(define (cache-alists [cache (current-cache)])
+(define (cache-lists [cache (current-cache)])
   (if cache 
-      (cons (cache-alist cache)
-            (cache-alists (cache-parent cache)))
+      (cons (cache-list cache)
+            (cache-lists (cache-parent cache)))
       null))
 
 ; [cache%] -> alist
@@ -84,7 +87,7 @@
 ; Checks that each level the current cache stack (from the current cache upwards)
 ; contains a certain number of guids.
 (define-check (check-cache-size expected)
-  (let ([actual (cache-alists)])
+  (let ([actual (cache-lists)])
     (with-handlers ([exn? (lambda (exn)
                             (pretty-print actual)
                             (raise exn))])
