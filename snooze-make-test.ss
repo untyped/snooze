@@ -21,7 +21,7 @@
              [vanilla (send (current-cache) get-vanilla-guid)])
         (check-pred guid-local? per)
         (check-false (car vanilla))
-        (check-pred (entity-private-predicate entity) struct)
+        (check-pred (entity-private-predicate person) struct)
         (check-false (real:struct-guid struct))))))
 
 ; Provide statements -----------------------------

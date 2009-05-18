@@ -63,9 +63,7 @@
         
         ; Struct equality:
         (check-false (guid=? test-person2 test-person))
-        (debug-location)
         (check-equal?  test-person2 test-person)
-        (debug-location)
         (check-not-eq? test-person2 test-person)
         
         ; Guids:

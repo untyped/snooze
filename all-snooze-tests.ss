@@ -5,11 +5,11 @@
          scheme/unit
          "quick-find-test.ss"
          "snooze-api.ss"
-         "snooze-create-test.ss"
          ;"snooze-concurrency-test.ss"
          ;"snooze-find-test.ss"
          ;"snooze-guid-test.ss"
          ;"snooze-hook-test.ss"
+         "snooze-make-test.ss"
          ;"snooze-modify-test.ss"
          ;"snooze-revision-test.ss"
          "snooze-save-test.ss"
@@ -39,7 +39,7 @@
     all-back-end-tests
     
     ; Tests the front end:
-    snooze-create-tests
+    snooze-make-tests
     snooze-save-tests
     ;snooze-modify-tests
     ;snooze-hook-tests

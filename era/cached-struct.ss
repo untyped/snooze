@@ -137,7 +137,7 @@
   (let ([cache  (send (guid-snooze original) get-current-cache)]
         [entity (struct-entity original)])
     (send cache add-struct! (apply (entity-private-constructor entity)
-                                  (real:snooze-struct-ref* (guid-ref original))))))
+                                   (real:snooze-struct-ref* (guid-ref original))))))
 
 ; guid any ... -> string
 (define (snooze-struct-format guid . rest)
