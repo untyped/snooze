@@ -1,12 +1,21 @@
 #lang scheme/base
 
-(require "test-base.ss")
+(require "base.ss")
 
 (require scheme/dict
+         (schemeunit-in test)
          (unlib-in hash)
          "snooze-api.ss"
          "test-data.ss"
          "era/era.ss")
+
+; (parameter (string -> (listof (listof any))))
+(define direct-query-proc
+  (make-parameter (lambda (sql) (error "direct queries not initialised"))))
+
+; string -> (listof (listof any))
+(define (direct-query sql)
+  ((direct-query-proc) sql))
 
 ; (_ expr ...)
 ;
@@ -17,25 +26,26 @@
 ; -> cache%
 ;
 ; Returns the current cache.
-(define (cache)
-  ((get-field current-cache (current-snooze))))
+(define (current-cache)
+  (or (send (current-snooze) get-current-cache)
+      (error "no current cache")))
 
 ; [cache%] -> (dictof guid struct)
 ;
 ; Returns the struct dictionary from the supplied/current cache.
-(define (cache-data [cache (cache)])
+(define (cache-data [cache (current-cache)])
   (send cache get-data))
 
 ; [cache%] -> (U cache% #f)
 ;
 ; Returns the parent of the supplied/current cache.
-(define (cache-parent [cache (cache)])
+(define (cache-parent [cache (current-cache)])
   (send cache get-parent))
 
 ; [cache%] -> void
 ;
 ; Clears the supplied/current cache and its ancestors.
-(define (cache-clear! [cache (cache)])
+(define (cache-clear! [cache (current-cache)])
   (when (cache-parent cache)
     (cache-clear! (cache-parent cache)))
   (let ([hash (cache-data cache)])
@@ -51,22 +61,22 @@
 ; [cache%] -> (listof (alistof guid cached-data))
 ;
 ; Returns printable debugging information about the supplied/current cache.
-(define (cache-alist [cache (cache)])
+(define (cache-alist [cache (current-cache)])
   (for/list ([item (in-dict-pairs (cache-data cache))]) item))
 
 ; [cache%] -> (listof (alistof guid cached-data))
 ;
 ; Returns printable debugging information about the supplied/current cache.
-(define (cache-alists [cache (cache)])
-  (if cache
+(define (cache-alists [cache (current-cache)])
+  (if cache 
       (cons (cache-alist cache)
-            (cache-alist (cache-parent cache)))
+            (cache-alists (cache-parent cache)))
       null))
 
 ; [cache%] -> alist
 ;
 ; Returns the number of guids in the supplied/current cache (ignores ancestor caches).
-(define (cache-size [cache (cache)])
+(define (cache-size [cache (current-cache)])
   (dict-count (cache-data cache)))
 
 ; (_ (listof natural))
@@ -74,16 +84,13 @@
 ; Checks that each level the current cache stack (from the current cache upwards)
 ; contains a certain number of guids.
 (define-check (check-cache-size expected)
-  (with-check-info (['actual (cache-alist (cache))])
-    (let loop ([cache (cache)] [expected expected] [level 0])
-      (if (null? expected)
-          (check-false cache "too many levels of caching")
-          (begin (check-not-false cache "too few levels of caching")
-                 (check-equal? 
-                  (cache-size cache)
-                  (car expected)
-                  (format "wrong number of cached structs at depth ~a" level))
-                 (loop (cache-parent cache) (cdr expected) (add1 level)))))))
+  (let ([actual (cache-alists)])
+    (with-check-info (['cache actual])
+      (check-equal? (length actual) (length expected) "wrong number of caches")
+      (for ([actual   (in-list actual)]
+            [expected (in-list expected)]
+            [depth    (in-naturals)])
+        (check-equal? (length actual) expected (format "wrong number of entries at depth ~a" depth))))))
 
 ; (_ guid guid boolean boolean boolean)
 ;

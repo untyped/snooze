@@ -4,7 +4,6 @@
 
 (require "snooze-api.ss"
          "test-base.ss"
-         "test-data.ss"
          "era/era.ss")
 
 ; Helpers ----------------------------------------

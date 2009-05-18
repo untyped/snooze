@@ -33,17 +33,21 @@
     ; These functions do not do these things.
     ; ****************
     
-    ; connection snooze-struct -> integer
+    ; connection snooze-struct -> snooze-struct
     ; Inserts a new database record for the structure and returns the new id.
-    insert-record
+    insert-struct
     
-    ; connection snooze-struct -> void
+    ; connection snooze-struct -> snooze-struct
     ; Updates the database record for the structure.
-    update-record
+    update-struct
     
-    ; connection guid -> void
+    ; connection guid -> snooze-struct
     ; Deletes the database record for the given guid.
-    delete-record
+    delete-struct
+    
+    ; connetion guid -> guid
+    ; Deletes the database record for the given guid.
+    ; delete-guid
     
     ; connection (listof vanilla-guid) -> (listof interned-vanilla-guid)
     ; Selects a number of similarly typed structs by guid, stores their

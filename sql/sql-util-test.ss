@@ -2,7 +2,6 @@
 
 (require mzlib/etc
          "../test-base.ss"
-         "../test-data.ss"
          "sql-alias.ss"
          (prefix-in sql: "sql-lang.ss")
          "sql-struct.ss"

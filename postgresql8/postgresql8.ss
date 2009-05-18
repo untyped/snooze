@@ -1,15 +1,16 @@
 #lang scheme/base
-  
+
 (require "../base.ss")
 
 (require (prefix-in postgresql: (spgsql-in spgsql))
          (unlib-in gen symbol)
          "../base.ss"
-         "../era/era.ss"
+         "../era/core.ss"
+         "../era/snooze-struct.ss"
          "../generic/generic.ss"
          "../sql/sql-struct.ss"
          "sql.ss")
-  
+
 ;  [#:server      string]
 ;  [#:port        integer]
 ;   #:database    string
@@ -85,10 +86,10 @@
                                          '#:password    password
                                          '#:ssl         ssl
                                          '#:ssl-encrypt ssl-encrypt))
-        (send conn exec "SET client_min_messages TO warning;")
-        (send conn exec "SET datestyle TO iso;")
-        (send conn exec "SET regex_flavor TO extended;")
-        ;(send conn exec "SET standard_conforming_strings TO on;")
+        (send conn exec "SET client_min_messages = 'WARNING';")
+        (send conn exec "SET datestyle = iso;")
+        (send conn exec "SET regex_flavor = extended;")
+        ;(send conn exec "SET standard_conforming_strings = on;")
         (make-connection conn #f)))
     
     ; connection -> void
@@ -110,38 +111,85 @@
                   (map (cut string-append <> ";")
                        (regexp-split #px";" (drop-table-sql entity))))))
     
-    ; connection guid -> ineteger
-    ;
-    ; Inserts a new database record for the struct and returns its ID.
-    (define/public (insert-record conn guid)
-      ; symbol
-      (let ([sequence-name (symbol-append (entity-table-name (guid-entity guid)) '_seq)])
-        ; integer
-        (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" guid))
-          ; The two lines below work as follows:
-          ;   - the first line inserts the record, using the SEQUENCE "entity_seq" to determine the new ID
-          ;   - the second line reads the current value of "entity_seq", retrieving the ID of the new struct
-          ; Note that there is no transaction around this: the PostgreSQL function "currval" returns
-          ; a session-local value. The INSERT SQL from insert-sql lets PostgreSQL assign a new ID from the 
-          ; sequence "entity_seq". Returns the new value of the ID sequence (and thus the ID of the 
-          ; just-inserted element):
-          (send (connection-back-end conn) exec (insert-sql (guid-ref guid)))
-          (parse-value
-           type:integer
-           (send (connection-back-end conn) query-value
-                 (string-append "SELECT currval('" (escape-sql-name sequence-name) "');"))))))
+    ; connection snooze-struct -> snooze-struct
+    ; Inserts a new database record for the supplied struct.
+    (define/public (insert-struct conn old-struct)
+      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" old-struct))
+        (let* ([cache        (send (get-snooze) get-current-cache)]
+               [entity       (struct-entity old-struct)]
+               [guid-type    (attribute-type (car (entity-attributes entity)))]
+               [seq-name     (symbol-append (entity-table-name entity) '_seq)]
+               [guid         (struct-guid old-struct)]
+               [revision     (struct-revision old-struct)]
+               [new-struct   (apply (entity-private-constructor entity)
+                                    guid
+                                    (or revision 0)
+                                    (for/list ([val (in-list (cddr (snooze-struct-ref* old-struct)))])
+                                      (if (guid? val)
+                                          (send cache get-saveable-guid val)
+                                          val)))])
+          (send (connection-back-end conn) exec (insert-sql new-struct))
+          (let ([id (send (connection-back-end conn) query-value
+                          (string-append "SELECT currval('" (escape-sql-name seq-name) "');"))])
+            (apply (entity-private-constructor entity)
+                   (parse-value guid-type id)
+                   (cdr (snooze-struct-ref* new-struct)))))))
     
-    ; connection guid -> void
-    (define/public (update-record conn guid)
-      (with-snooze-reraise (exn:fail? (format "Could not update database record for ~a" guid))
-        (send (connection-back-end conn) exec (update-sql (guid-ref guid)))
-        (void)))
+    ; connection snooze-struct [boolean] -> snooze-struct
+    ; Updates the existing database record for the supplied struct.
+    (define/public (update-struct conn old-struct [check-revision? #t])
+      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" old-struct))
+        (let ([cache    (send (get-snooze) get-current-cache)]
+              [entity   (struct-entity old-struct)]
+              [guid     (struct-guid old-struct)]
+              [revision (struct-revision old-struct)])
+          (when check-revision?
+            (check-revision conn entity guid revision))
+          (let ([new-struct (apply (entity-private-constructor entity)
+                                   guid
+                                   (add1 revision)
+                                   (for/list ([val (in-list (cddr (snooze-struct-ref* old-struct)))])
+                                     (if (guid? val)
+                                         (send cache get-saveable-guid val)
+                                         val)))])
+            (send (connection-back-end conn) exec (update-sql new-struct))
+            new-struct))))
     
-    ; connection guid -> void
-    (define/public (delete-record conn guid)
-      (with-snooze-reraise (exn:fail? (format "Could not delete database record for ~a" guid))
+    ; connection snooze-struct [boolean] -> snooze-struct
+    ; Deletes the database record for the supplied struct.
+    (define/public (delete-struct conn old-struct [check-revision? #t])
+      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" old-struct))
+        (let ([cache    (send (get-snooze) get-current-cache)]
+              [entity   (struct-entity old-struct)]
+              [guid     (struct-guid old-struct)]
+              [revision (struct-revision old-struct)])
+          (when check-revision?
+            (check-revision conn entity guid revision))
+          (let ([new-struct (apply (entity-private-constructor entity)
+                                   #f
+                                   #f
+                                   (for/list ([val (in-list (cddr (snooze-struct-ref* old-struct)))])
+                                     (if (guid? val)
+                                         (send cache get-saveable-guid val)
+                                         val)))])
+            (send (connection-back-end conn) exec (delete-sql (struct-guid old-struct)))
+            new-struct))))
+    
+    ; connection vanilla-guid -> void
+    ; Deletes the database record for the supplied guid.
+    (define/public (delete-guid conn guid)
+      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" guid))
         (send (connection-back-end conn) exec (delete-sql guid))
         (void)))
+    
+    ; connection entity vanilla-guid natural -> void
+    (define (check-revision conn entity guid expected)
+      (let ([actual (send (connection-back-end conn) query-value
+                          (format "SELECT revision FROM ~a WHERE id = ~a;"
+                                  (escape-sql-name (entity-table-name entity))
+                                  (guid-id guid)))])
+        (unless (equal? actual expected)
+          (error (format "revision mismatch: database ~a, struct ~a" actual expected)))))
     
     ; (listof vanilla-guid) -> (listof interned-vanilla-guid)
     (define/public (direct-find conn guids)
@@ -252,7 +300,7 @@
 ; (contract symbol)
 (define ssl/c
   (symbols 'yes 'no 'optional))
-  
+
 ; (contract symbol)
 (define ssl-encrypt/c
   (symbols 'sslv2-or-v3 'sslv2 'sslv3 'tls))

@@ -3,7 +3,6 @@
 (require srfi/26
          "snooze-api.ss"
          "test-base.ss"
-         "test-data.ss"
          "era/era.ss")
 
 ; Tests ------------------------------------------

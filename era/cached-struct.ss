@@ -73,7 +73,8 @@
 
 ; guid -> boolean
 (define (struct-saved? guid)
-  (and (guid-id guid) #t))
+  (let ([vanilla (send (send (current-snooze) get-current-cache) get-vanilla-guid guid)])
+    (and vanilla #t)))
 
 ; guid -> (U natural #f)
 (define (struct-revision guid)

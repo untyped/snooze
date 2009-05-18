@@ -5,7 +5,6 @@
          (planet untyped/unlib:3/gen)
          "snooze-api.ss"
          "test-base.ss"
-         "test-data.ss"
          "era/era.ss"
          "sql/sql.ss")
 

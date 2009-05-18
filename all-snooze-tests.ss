@@ -6,15 +6,15 @@
          "quick-find-test.ss"
          "snooze-api.ss"
          "snooze-create-test.ss"
-         "snooze-concurrency-test.ss"
-         "snooze-find-test.ss"
-         "snooze-guid-test.ss"
-         "snooze-hook-test.ss"
-         "snooze-modify-test.ss"
-         "snooze-revision-test.ss"
-         "snooze-transaction-test.ss"
+         ;"snooze-concurrency-test.ss"
+         ;"snooze-find-test.ss"
+         ;"snooze-guid-test.ss"
+         ;"snooze-hook-test.ss"
+         ;"snooze-modify-test.ss"
+         ;"snooze-revision-test.ss"
+         "snooze-save-test.ss"
+         ;"snooze-transaction-test.ss"
          "test-base.ss"
-         "test-data.ss"
          ;"audit/all-audit-tests.ss"
          "check/all-check-tests.ss"
          "era/all-era-tests.ss"
@@ -40,13 +40,14 @@
     
     ; Tests the front end:
     snooze-create-tests
-    snooze-modify-tests
-    snooze-hook-tests
-    snooze-find-tests
-    snooze-revision-tests
-    snooze-transaction-tests
-    snooze-concurrency-tests
-    quick-find-tests
+    snooze-save-tests
+    ;snooze-modify-tests
+    ;snooze-hook-tests
+    ;snooze-find-tests
+    ;snooze-revision-tests
+    ;snooze-transaction-tests
+    ;snooze-concurrency-tests
+    ;quick-find-tests
     
     ; Tests for the audit trails:
     ;(make-audit-tests snooze)

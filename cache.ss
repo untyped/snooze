@@ -25,7 +25,8 @@
     ;
     ; For vanilla guids, the cached value is (cons #f struct).
     ; For local guids, the cached value is (cons vanilla-guid struct).
-    (field [data (make-custom-hash guid=? guid=?-hash-code)])
+    ; (field [data (make-weak-hasheq)])
+    (field [data (make-weak-custom-hash guid=? guid=?-hash-code)])
     
     ; Constructor --------------------------------
     
@@ -39,15 +40,6 @@
         (and vanilla+struct
              (cdr vanilla+struct))))
     
-    ; guid -> (U guid #f)
-    (define (vanilla-ref guid)
-      (if (guid-local? guid)
-          (let ([vanilla+struct (dict-ref data guid #f)])
-            (unless vanilla+struct (error "not found in cache" guid))
-            (and vanilla+struct
-                 (car vanilla+struct)))
-          (intern-guid guid)))
-    
     ; guid -> guid struct
     (define (vanilla+struct-ref guid)
       (let ([vanilla+struct (dict-ref data guid #f)])
@@ -59,7 +51,7 @@
     ; Returns a cached local guid pointing to the supplied struct / vanilla guid.
     ; Assumes any vaniila-guid caching is taken care of elsewhere.
     (define (localize-guid struct vanilla-guid)
-      (printf "localize-guid ~s ~s~n" struct vanilla-guid)
+      ;(printf "localize-guid ~s ~s~n" struct vanilla-guid)
       (let ([local-guid (entity-make-local-guid #:snooze snooze (struct-entity struct))])
         (dict-set! data local-guid (cons (and vanilla-guid (intern-guid vanilla-guid)) struct))
         local-guid))
@@ -79,6 +71,24 @@
       data)
     
     ; Referencing the cache ----------------------
+    
+    ; guid -> vanilla-guid
+    (define/public (get-vanilla-guid guid)
+      (if (guid-local? guid)
+          (let ([vanilla+struct (dict-ref data guid #f)])
+            (unless vanilla+struct (error "not found in cache" guid))
+            (and vanilla+struct (car vanilla+struct)))
+          (intern-guid guid)))
+    
+    ; guid -> vanilla-guid
+    (define/public (get-saveable-guid guid)
+      (if (guid-local? guid)
+          (let*-values ([(vanilla struct1) (vanilla+struct-ref guid)]
+                        [(struct2)         (struct-ref vanilla)])
+            (if (and struct1 struct2 (eq? struct1 struct2))
+                (copy-guid vanilla)
+                (error "reference to unsaved struct" struct1)))
+          guid))
     
     ; local-guid -> (U snooze-struct #f)
     ;
@@ -114,7 +124,7 @@
     ;   - if the struct contains an id, it is cached by vanilla and local guid;
     ;   - if the struct's id is #f, it is cached by local guid only.
     (define/public (add-struct! struct)
-      (printf "add-struct! ~s~n" struct)
+      ;(printf "add-struct! ~s~n" struct)
       (let* (; (U vanilla-guid #f)
              [struct-guid  (struct-guid struct)]
              ; (U interned-vanilla-guid)
@@ -126,7 +136,7 @@
     ; Adds a vanilla struct to the cache and its ancestors,
     ; returning the interned local guid used.
     (define (add-vanilla-struct! struct vanilla-guid)
-      (printf "add-vanilla-struct! ~s ~s~n" struct vanilla-guid)
+      ;(printf "add-vanilla-struct! ~s ~s~n" struct vanilla-guid)
       (let ([parent (get-parent)])
         (dict-set! data vanilla-guid (cons #f struct))
         (if parent 
@@ -140,7 +150,7 @@
     ; Searches for guid in this cache (and its ancestors, performing fetches, if applicable).
     ; Returns a local guid pointing to the same struct, or #f if the struct is not in the cache.
     (define/public (get-local-alias guid)
-      (printf "get-local-alias ~s~n" guid)
+      ;(printf "get-local-alias ~s~n" guid)
       (if (guid-local? guid)
           (let-values ([(vanilla struct) (vanilla+struct-ref guid)])
             (localize-guid struct vanilla))

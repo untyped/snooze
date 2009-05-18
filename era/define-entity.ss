@@ -13,6 +13,7 @@
          (except-in "core.ss" make-entity)
          "cached-struct.ss"
          "entity.ss"
+         (prefix-in real: "snooze-struct.ss")
          "syntax-info.ss"
          "pretty.ss"
          (prefix-in sql: "../sql/sql-lang.ss"))
@@ -234,7 +235,7 @@
                                 #,(if (eq? (syntax-local-context) 'module)
                                       #'(list (cons prop:serializable
                                                     (make-serialize-info
-                                                     (lambda (struct) (list->vector (snooze-struct-ref* struct)))
+                                                     (lambda (struct) (list->vector (real:snooze-struct-ref* struct)))
                                                      (quote-syntax deserialize-info)
                                                      #t
                                                      (or (current-load-relative-directory) (current-directory))))

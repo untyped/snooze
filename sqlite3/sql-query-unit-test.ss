@@ -5,7 +5,6 @@
 
 (require "../snooze.ss"
          "../test-base.ss"
-         "../test-data.ss"
          "../generic/sql-query-helpers-sig.ss"
          "../generic/sql-query-sig.ss"
          "sql-data-unit.ss"

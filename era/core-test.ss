@@ -6,7 +6,6 @@
          (only-in srfi/1 take)
          srfi/26
          (unlib-in hash)
-         "../test-data.ss"
          "core.ss"
          (only-in "define-entity.ss" attr))
 

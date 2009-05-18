@@ -5,7 +5,6 @@
          "quick-find.ss"
          "snooze-api.ss"
          "test-base.ss"
-         "test-data.ss"
          "era/era.ss"
          "sql/sql.ss")
 

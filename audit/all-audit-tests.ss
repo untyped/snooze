@@ -9,7 +9,6 @@
          "../snooze.ss"
          "../snooze-syntax.ss"
          "../test-base.ss"
-         "../test-data.ss"
          "audit.ss")
 
 ; Tests ----------------------------------------

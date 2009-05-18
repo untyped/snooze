@@ -1,6 +1,6 @@
 #lang scheme/base
 
-(require "test-base.ss")
+(require "base.ss")
 
 (require "main.ss")
 

@@ -3,7 +3,6 @@
 (require "test-base.ss")
 
 (require "snooze-api.ss"
-         "test-data.ss"
          "era/era.ss"
          "sql/sql.ss")
 

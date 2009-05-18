@@ -3,7 +3,6 @@
 (require (for-syntax scheme/base
                      "sql-syntax-util.ss")
          "../test-base.ss"
-         "../test-data.ss"
          "../era/era.ss"
          "sql.ss")
 

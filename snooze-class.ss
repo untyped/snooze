@@ -123,55 +123,32 @@
     ; guid -> guid
     (define/public (save! guid)
       (auto-connect)
-      (let* ([entity        (guid-entity     guid)]
-             [revision      (struct-revision guid)]
-             [next-revision (if revision (add1 revision) 0)])
+      (let ([entity (guid-entity guid)]
+            [cache  (get-current-cache)])
         (call-with-transaction
          (lambda ()
-           (begin0
-             (if (struct-saved? guid)
-                 (if (and revision (record-exists-with-revision? entity guid revision))
-                     ; Run the update hook:
-                     ((entity-on-save entity)
-                      (lambda (conn guid)
-                        (set-struct-revision! guid next-revision)
-                        (send database update-record conn guid)
-                        ;(recache! guid (guid-id guid) #f)
-                        guid)
-                      (current-connection)
-                      guid)
-                     (raise-exn exn:fail:snooze:revision "cannot save: structure has been revised since it was loaded from the database" guid))
-                 ; Run the insert hook:
-                 ((entity-on-save entity)
-                  (lambda (conn guid)
-                    (set-struct-revision! guid next-revision)
-                    (let ([next-id (send database insert-record conn guid)])
-                      ;(recache! guid next-id #f)
-                      guid))
-                  (current-connection)
-                  guid)))))))
+           ((entity-on-save entity)
+            (lambda (conn guid)
+              (let ([saved-struct (if (struct-saved? guid)
+                                      (send database update-struct conn (guid-ref guid))
+                                      (send database insert-struct conn (guid-ref guid)))])
+                (send cache add-struct! saved-struct)))
+            (current-connection)
+            guid)))))
     
     ; guid -> guid
     (define/public (delete! guid)
       (auto-connect)
-      (let ([entity   (struct-entity guid)]
-            [id       (struct-id guid)]
-            [revision (struct-revision guid)])
-        (begin0
-          (if (struct-saved? guid)
-              (call-with-transaction
-               (lambda ()
-                 (if (and revision (record-exists-with-revision? entity guid revision))
-                     ((entity-on-delete entity)
-                      (lambda (conn guid)
-                        (send database delete-record conn guid)
-                        (set-struct-revision! guid #f)
-                        ;(send (current-cache) recache! guid #f (gensym))
-                        guid)
-                      (current-connection)
-                      guid)
-                     (raise-exn exn:fail:snooze:revision "cannot delete: database has been revised since structure was loaded" guid))))
-              (raise-exn exn:fail:snooze (format "cannot delete: struct has not been saved: ~s" guid))))))
+      (let ([entity (guid-entity guid)]
+            [cache  (get-current-cache)])
+        (call-with-transaction
+         (lambda ()
+           ((entity-on-delete entity)
+            (lambda (conn guid)
+              (let ([deleted-struct (send database delete-struct conn (guid-ref guid))])
+                (send cache add-struct! deleted-struct)))
+            (current-connection)
+            guid)))))
     
     ; guid [((connection guid -> any) connection guid -> any)] -> guid
     (define/public (insert/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])

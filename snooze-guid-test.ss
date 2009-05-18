@@ -3,7 +3,6 @@
 (require "test-base.ss")
 
 (require (planet untyped/unlib:3/gen)
-         "test-data.ss"
          "snooze-api.ss"
          "era/era.ss"
          "sql/sql.ss")

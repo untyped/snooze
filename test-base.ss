@@ -4,8 +4,11 @@
 
 (require srfi/19
          (schemeunit-in test text-ui)
+         (prefix-in sqlite: (sqlite-in sqlite))
          "cache.ss"
          "snooze-class.ss"
+         "test-data.ss"
+         "test-util.ss"
          "era/era.ss"
          "postgresql8/postgresql8.ss"
          "sqlite3/sqlite3.ss")
@@ -24,12 +27,15 @@
                                #:username [username "dave"]
                                #:password [password #f]
                                tests)
-  (parameterize ([current-snooze (make-snooze (make-postgresql8-database
-                                               #:server   server
-                                               #:port     port
-                                               #:database database
-                                               #:username username
-                                               #:password password))])
+  (parameterize ([current-snooze    (make-snooze (make-postgresql8-database
+                                                  #:server   server
+                                                  #:port     port
+                                                  #:database database
+                                                  #:username username
+                                                  #:password password))]
+                 [direct-query-proc (lambda (sql)
+                                      (let ([conn (send (current-snooze) current-connection)])
+                                        (send (connection-back-end conn) map sql list)))])
     (send (current-snooze) call-with-connection (cut run-tests tests))))
 
 ; (U string path ':memory: ':temp:) test-suite -> any
@@ -38,7 +44,11 @@
          [existing? (and file? (file-exists? location))])
     (when (and file? existing?)
       (delete-file location))
-    (parameterize ([current-snooze (make-snooze (make-sqlite3-database location))])
+    (parameterize ([current-snooze    (make-snooze (make-sqlite3-database location))]
+                   [direct-query-proc (lambda (sql)
+                                        (let* ([conn (send (current-snooze) current-connection)]
+                                               [ans  (sqlite:select (connection-back-end conn) sql)])
+                                          (if (null? ans) null (cdr ans))))])
       (run-tests tests))
     (when (and file? (not existing?))
       (delete-file location))))
@@ -53,7 +63,9 @@
 
 ; Provide statements --------------------------- 
 
-(provide (all-from-out "base.ss")
+(provide (all-from-out "base.ss"
+                       "test-data.ss"
+                       "test-util.ss")
          (except-out (schemeunit-out test text-ui)
                      run-tests))
 

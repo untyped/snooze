@@ -2,8 +2,7 @@
 
 (require "../test-base.ss")
 
-(require "../test-data.ss"
-         "era.ss")
+(require "era.ss")
 
 ; Tests ----------------------------------------
 
