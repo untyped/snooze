@@ -24,7 +24,7 @@
 (define (run-tests/postgresql8 #:server   [server   "localhost"]
                                #:port     [port     5432]
                                #:database [database "snoozetest"]
-                               #:username [username "dave"]
+                               #:username [username "snooze"]
                                #:password [password #f]
                                tests)
   (parameterize ([current-snooze    (make-snooze (make-postgresql8-database

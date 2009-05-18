@@ -63,7 +63,7 @@
     ; -> snooze-cache%
     (define/public (get-current-cache)
       (current-cache))
-        
+    
     ; -> database<%>
     (define/public (get-database)
       database)
@@ -132,7 +132,7 @@
               (let ([saved-struct (if (struct-saved? guid)
                                       (send database update-struct conn (guid-ref guid))
                                       (send database insert-struct conn (guid-ref guid)))])
-                (send cache add-struct! saved-struct)))
+                (send cache add-struct-and-update! saved-struct guid)))
             (current-connection)
             guid)))))
     
@@ -146,7 +146,7 @@
            ((entity-on-delete entity)
             (lambda (conn guid)
               (let ([deleted-struct (send database delete-struct conn (guid-ref guid))])
-                (send cache add-struct! deleted-struct)))
+                (send cache add-struct-and-update! deleted-struct guid)))
             (current-connection)
             guid)))))
     
