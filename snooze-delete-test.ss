@@ -14,6 +14,12 @@
 (define snooze-delete-tests
   (test-suite "snooze-delete-tests"
     
+    (test-case "delete! an unsaved struct should cause an error"
+      (let ([per1 (make-person "Jon")])
+        (check-exn exn:fail:snooze? (cut (delete! per1)))))
+    
+    
+    
     ))
 
 ; Provide statements -----------------------------

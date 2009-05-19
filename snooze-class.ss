@@ -138,6 +138,8 @@
     
     ; guid -> guid
     (define/public (delete! guid)
+      (when (guid-local? guid)
+        (raise-exn exn:fail:snooze "Unsaved structs cannot be deleted"))
       (auto-connect)
       (let ([entity (guid-entity guid)]
             [cache  (get-current-cache)])
