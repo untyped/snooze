@@ -27,7 +27,7 @@
     
     #:before
     (lambda ()
-      (recreate-test-tables)
+      (recreate-test-tables/cache)
       (set! c1 (save! (make-course 'course1 "Course 1" 1 1.1 #f (string->time-tai "2001-01-01 01:01:01"))))
       (set! c2 (save! (make-course 'course2 "Course 2" 2 2.2 #t (string->time-tai "2002-02-02 02:02:02"))))
       (set! c3 (save! (make-course 'course3 "Course 3" 3 3.3 #f (string->time-tai "2003-03-03 03:03:03"))))

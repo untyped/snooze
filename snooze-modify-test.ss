@@ -35,6 +35,8 @@
              [vanilla  (send (current-cache) get-vanilla-guid per)]
              [struct2  (send (current-cache) cache-ref/local per2)]
              [vanilla2 (send (current-cache) get-vanilla-guid per2)])
+        (check-equal? (person-name per)  "Per")
+        (check-equal? (person-name per2) "Per2")
         (check-true  (guid-local? per))
         (check-true  (guid-local? per2))
         (check-pred  guid-interned? vanilla)

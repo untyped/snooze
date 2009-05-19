@@ -29,13 +29,22 @@
          (check-pred guid-local?   per2)
          (check-pred struct-saved? per2))))
     
-    (test-case "save! : remaps old guid"
+    (test-case "save!, person-set : remaps guids appropriately"
       (recreate-test-tables/cache)
-      (let* ([per1    (make-person "Dave")]
-             [struct1 (guid-ref per1)]
-             [per2    (save! per1)])
-        (check struct-eq? per1 per2)
-        (check-false (eq? (guid-ref per1) struct1))))
+      (let* ([per1a   (make-person "Dave")]
+             [per1b   (person-set per1a #:name "Noel")]
+             [per2a   (save! per1b)]
+             [per2b   (person-set per2a #:name "Matt")])
+        (check-false (eq? per1a per1b))
+        (check-false (eq? per1b per2a))
+        (check-false (eq? per2a per2b))
+        (check-false (struct-eq? per1a per1b))
+        (check-true  (struct-eq? per1b per2a))
+        (check-false (struct-eq? per2a per2b))
+        (check-equal? (person-name per1a) "Dave")
+        (check-equal? (person-name per1b) "Noel")
+        (check-equal? (person-name per2a) "Noel")
+        (check-equal? (person-name per2b) "Matt")))
     
     (test-case "save! : stores information correctly in the cache"
       (recreate-test-tables/cache)

@@ -5,15 +5,17 @@
 (require scheme/dict
          (unlib-in hash)
          "snooze-api.ss"
-         "era/era.ss")
+         "era/era.ss"
+         (prefix-in real: "era/snooze-struct.ss"))
 
 ; Tests -------------------------------------------
 
 ; test-suite
-(define snooze-concurrency-tests
-  (test-suite "snooze-concurrency-tests"
+(define snooze-delete-tests
+  (test-suite "snooze-delete-tests"
+    
     ))
 
 ; Provide statements -----------------------------
 
-(provide snooze-concurrency-tests)
+(provide snooze-delete-tests)
