@@ -54,30 +54,6 @@
         (check-true  (equal? per per2))
         (check-true  (equal? struct struct2))))
     
-    (test-case "make-person, and save: creates a vanilla GUID and a local GUID, distinct from first."
-      (recreate-test-tables/cache)
-      (let* ([per      (make-person "Per")]
-             [per2     (save! per)]
-             [struct   (send (current-cache) cache-ref/local per)]
-             [vanilla  (send (current-cache) get-vanilla-guid per)]
-             [struct2  (send (current-cache) cache-ref/local per2)]
-             [vanilla2 (send (current-cache) get-vanilla-guid per2)])
-        ; per, having been remapped following save!
-        (check-pred guid-local? per)                           ; still a local guid
-        (check-not-false vanilla)                              ; but it now has a vanilla-guid
-        (check-pred (entity-private-predicate person) struct)  ; still refers to a person, but now it's saved:
-        (check-not-false (real:struct-guid struct))            ; ... it has a valid guid,
-        (check-not-false (real:struct-id struct))              ; ... id,
-        (check-not-false (real:struct-revision struct))        ; ... and revision.
-        ; per2
-        (check-pred guid-local? per2)                          ; per2 is a local guid...
-        (check-pred (entity-private-predicate person) struct2) ; it also points to a saved person...
-        (check-true (struct-eq? per per2))                     ; ... exactly the same one as per.
-        (check-true (eq? struct struct2))                      ; (just to be sure)
-        (check-false (eq? per per2))                           ; However, guids themselves are not eq?
-        (check-not-false vanilla2)                             ; per2 also points to a vanilla guid ...
-        (check-true (eq? vanilla vanilla2))))                  ; ... the same one as per    
-    
     (test-case "make-person and create an identical copy: ensure completely independent copies"
       (recreate-test-tables/cache)
       (let* ([per      (make-person "Per")]
@@ -106,7 +82,17 @@
         (check-true  (equal? per per2))
         (check-true  (equal? struct struct2))))
     
-    ))     
+    (test-case "make-person twice : cache sizes are correct"
+      (recreate-test-tables/cache)
+      (with-cache
+       (let ([per (make-person "Per")])
+         (collect-garbage)
+         (check-cache-size (list 1 0))
+         (let ([per2 (make-person "Per")])
+           (collect-garbage)
+           (check-cache-size (list 2 0)))
+         (collect-garbage)
+         (check-cache-size (list 1 0)))))))
 
 ; Provide statements -----------------------------
 

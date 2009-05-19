@@ -10,6 +10,9 @@
 ; Snooze struct wrappers -------------------------
 
 ; entity symbol (any ... -> snooze-struct) natural -> ([#:snooze snooze<%>] any ... -> guid)
+;
+; The returned constructor has the same number of arguments as (entity-private-constructor entity):
+; it takes a guid and revision as well as regular data attributes.
 (define (make-cached-constructor
          entity
          procedure-name
@@ -23,7 +26,7 @@
                   procedure-name
                   expected-arity
                   args)))
-      (send cache add-struct! (apply struct-constructor #f #f args)))))
+      (send cache add-struct! (apply struct-constructor args)))))
 
 ; (any -> boolean) -> (any -> boolean)
 (define (make-cached-predicate struct-predicate)

@@ -118,13 +118,17 @@
                       [default-maker (in-list attr-defaults)])
              (create-attribute name col pretty pretty-plural type entity index default-maker struct-accessor struct-mutator))))
   
-  ; any ... -> guid
+  ; vanilla-guid revision any ... -> guid
   (define cached-constructor
     (cached:make-cached-constructor
      entity
      (symbol-append 'make- name)
      struct-constructor
-     (- (length attributes) 2)))
+     (length attributes)))
+  
+  ; any ... -> guid
+  (define (public-constructor #:snooze [snooze (current-snooze)]. args)
+    (apply cached-constructor #:snooze snooze #f #f args))
   
   ; any -> boolean
   (define cached-predicate
@@ -140,7 +144,7 @@
   (set-entity-cached-predicate!    entity cached-predicate)
   (set-entity-attributes!          entity attributes)
   
-  (values entity struct-type cached-constructor cached-predicate))
+  (values entity struct-type public-constructor cached-predicate))
 
 ; Helpers ----------------------------------------
 

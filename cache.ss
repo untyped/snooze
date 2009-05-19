@@ -26,7 +26,11 @@
     ; For vanilla guids, the cached value is (cons #f struct).
     ; For local guids, the cached value is (cons vanilla-guid struct).
     ; (field [data (make-weak-hasheq)])
-    (field [data (make-weak-custom-hash guid=? guid=?-hash-code)])
+    ; (field [data (make-weak-custom-hash guid=? guid=?-hash-code)])
+    (field [data (make-custom-hash guid=? guid=?-hash-code)])
+    ; (field [data (if parent
+    ;                  (make-weak-custom-hash guid=? guid=?-hash-code)
+    ;                  (make-custom-hash guid=? guid=?-hash-code))])
     
     ; Constructor --------------------------------
     

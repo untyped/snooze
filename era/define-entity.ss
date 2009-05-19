@@ -261,7 +261,7 @@
                                         (syntax->list #'(attr-kw ...))
                                         (syntax->list #'(attr-private ...))
                                         (syntax->list #'(attr ...))))
-                 ((entity-cached-constructor entity-private) #:snooze snooze attr ...))
+                 ((entity-cached-constructor entity-private) #:snooze snooze #f #f attr ...))
                
                (define (copy-constructor
                         original
@@ -271,7 +271,10 @@
                                        (syntax->list #'(attr-kw ...))
                                        (syntax->list #'(accessor ...))
                                        (syntax->list #'(attr ...))))
-                 ((entity-cached-constructor entity-private) #:snooze snooze attr ...))
+                 (let* ([struct   (guid-ref original)]
+                        [guid     (real:struct-guid struct)]
+                        [revision (real:struct-revision struct)])
+                   ((entity-cached-constructor entity-private) #:snooze snooze guid revision attr ...)))
                
                #,(if (eq? (syntax-local-context) 'module)
                      #'(begin (define deserialize-info

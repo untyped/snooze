@@ -7,10 +7,11 @@
          "snooze-api.ss"
          ;"snooze-concurrency-test.ss"
          ;"snooze-find-test.ss"
+         "snooze-foreign-key-test.ss"
          ;"snooze-guid-test.ss"
          ;"snooze-hook-test.ss"
          "snooze-make-test.ss"
-         ;"snooze-modify-test.ss"
+         "snooze-modify-test.ss"
          ;"snooze-revision-test.ss"
          "snooze-save-test.ss"
          ;"snooze-transaction-test.ss"
@@ -41,7 +42,8 @@
     ; Tests the front end:
     snooze-make-tests
     snooze-save-tests
-    ;snooze-modify-tests
+    snooze-modify-tests
+    snooze-foreign-key-tests
     ;snooze-hook-tests
     ;snooze-find-tests
     ;snooze-revision-tests

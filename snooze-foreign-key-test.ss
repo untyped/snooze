@@ -6,17 +6,14 @@
          "era/era.ss")
 
 ; Tests ------------------------------------------
-; This only tests the functional update process and its effect on structs.
 
+; Tests of foreign key accessors (e.g. pet-owner).
 
 (define snooze-foreign-key-tests
   (test-suite "snooze-foreign-key-tests: (foo-bar foo1) -> bar1"
     
-    #:before recreate-test-tables
-    
-    #:after drop-all-tables
-    
     (test-case "A foreign key relation holds between unsaved structs"
+      (recreate-test-tables/cache)
       (let* ([per1        (make-person "Per1")]
              [pet1        (make-pet per1 "Pet1")])
         (check-true  (guid-local? per1))                           ; both local guids
@@ -28,6 +25,7 @@
         (check-false (send (current-cache) get-vanilla-guid (pet-owner pet1)))))
     
     (test-case "A foreign key relation between unsaved structs is retained under copying"
+      (recreate-test-tables/cache)
       (let* ([per1        (make-person "Per1")]
              [pet1        (make-pet per1 "Pet1")]
              [pet2        (pet-set pet1 #:name "Pet2")])
@@ -39,6 +37,7 @@
         (check-false (eq? (pet-owner pet1) (pet-owner pet2)))))
     
     (test-case "A foreign key relation between unsaved structs can be updated (to create a new copy)"
+      (recreate-test-tables/cache)
       (let* ([per1        (make-person "Per1")]
              [per2        (make-person "Per2")]
              [pet1        (make-pet per1 "Pet1")]
@@ -53,7 +52,18 @@
         (check-false (eq? per2 (pet-owner pet2))) 
         (check-false (eq? (pet-owner pet1) (pet-owner pet2)))))
     
-    ))
+    (test-case "cache sizes are correct"
+      (recreate-test-tables/cache)
+      (with-cache
+       (let* ([per1 (make-person "Per1")]
+              [pet1 (make-pet per1 "Pet1")])
+         (collect-garbage)
+         (check-cache-size (list 2 0))
+         (let ([per2 (pet-owner pet1)])
+           (collect-garbage)
+           (check-cache-size (list 3 0)))
+         (collect-garbage)
+         (check-cache-size (list 2 0)))))))
 
 ; Provide statements -----------------------------
 
