@@ -87,6 +87,22 @@
                              (list (struct-id per2) "Dave")
                              (list (struct-id per4) "Noel"))))))
     
+    (test-case "save! : consecutive saves"
+      (recreate-test-tables/cache)
+      (let* ([per1 (save! (make-person "Jon"))]
+             [per2 (save! (person-set per1 #:name "Lyman"))]
+             [per3 (save! (make-person "Liz"))]
+             [per4 (save! (make-person "Liz"))])
+        (check-equal? (direct-query "select count(id) from people where name = 'Jon';") (list (list 0)))
+        (check-equal? (direct-query "select count(id) from people where name = 'Lyman';") (list (list 1)))
+        (check-equal? (direct-query "select count(id) from people where name = 'Liz';") (list (list 2)))))
+    
+    (test-case "save! : bad data types"
+      (recreate-test-tables/cache)
+      (check-exn exn:fail:snooze? (cut save! (make-person 'R2D2)))
+      (let ([pet1 (save! (make-pet #f "Garfield"))])
+        (check-exn exn:fail:snooze? (cut save! (make-pet pet1 "Odie")))))
+    
     (test-case "save! : creates a vanilla GUID and a local GUID, distinct from first."
       (recreate-test-tables/cache)
       (let* ([per      (make-person "Per")]
@@ -111,15 +127,43 @@
         (check-not-false vanilla2)                             ; per2 also points to a vanilla guid ...
         (check-true (eq? vanilla vanilla2))))                  ; ... the same one as per
     
-    (test-case "save! : cannot save a struct with local-only foreign keys"
+    (test-case "save! : revision incremented on save"
       (recreate-test-tables/cache)
-      (let* ([per (make-person "Jon")]
-             [pet (make-pet per "Garfield")])
-        (check-exn exn:fail:snooze? (cut save! pet)))
+      (let ([per0 (make-person "Dave")])
+        (check-false (struct-revision per0))
+        (let ([per1 (save! per0)])
+          (check-equal? (struct-revision per1) 0)
+          (check-equal? (struct-revision per0) 0)
+          (let ([per2 (save! (person-set per1 #:name "Noel"))])
+            (check-equal? (struct-revision per2) 1)
+            (check-equal? (struct-revision per1) 0)
+            (check-equal? (struct-revision per0) 0))))
+      (check-equal? (direct-query "select count(id) from people where revision = 0;") (list (list 0)))
+      (check-equal? (direct-query "select count(id) from people where revision = 1;") (list (list 1))))
+    
+    (test-case "save! : cannot save an out-of-date struct"
+      (recreate-test-tables/cache)
+      (let* ([per1 (save! (make-person "Dave"))]
+             [per2 (save! (person-set per1 #:name "Noel"))])
+        (check-exn exn:fail:snooze? (cut save! (person-set per1 #:name "Matt")))))
+    
+    (test-case "save! : cannot save a struct with local-only foreign keys"
       (recreate-test-tables/cache)
       (let* ([per (save! (make-person "Jon"))]
              [pet (make-pet per "Garfield")])
         (check-not-exn (cut save! pet)))
+      
+      (recreate-test-tables/cache)
+      (let* ([per (save! (make-person "Jon"))]
+             [pet1 (save! (make-pet per "Garfield"))]
+             [pet2 (save! (make-pet (pet-owner pet1) "Garfield"))])
+        (check-not-exn (cut save! pet2)))
+      
+      (recreate-test-tables/cache)
+      (let* ([per (make-person "Jon")]
+             [pet (make-pet per "Garfield")])
+        (check-exn exn:fail:snooze? (cut save! pet)))
+      
       (recreate-test-tables/cache)
       (let* ([per0 (make-person "Jon")]
              [per1 (save! per0)]
