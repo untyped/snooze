@@ -121,23 +121,11 @@
              [pet (make-pet per "Garfield")])
         (check-not-exn (cut save! pet)))
       (recreate-test-tables/cache)
-      (let*/debug ([per0 (make-person "Jon")])
-                  (parameterize ([in-cache-code? #t])
-                    (debug "complete cache" (cache-lists)))
-                  (let*/debug ([per1 (save! per0)])
-                              (parameterize ([in-cache-code? #t])
-                                (debug "complete cache" (cache-lists)))
-                              (let*/debug ([per2 (person-set per1 #:name "Lyman")])
-                                          (parameterize ([in-cache-code? #t])
-                                            (debug "complete cache" (cache-lists)))
-                                          (let*/debug ([pet  (make-pet per2 "Garfield")])
-                                                      (parameterize ([in-cache-code? #t])
-                                                        (debug "complete cache" (cache-lists)))
-                                                      (debug-location)
-                                                      (check-exn exn:fail:snooze? (cut save! pet))
-                                                      (debug-location))))))
-    
-    ))
+      (let* ([per0 (make-person "Jon")]
+             [per1 (save! per0)]
+             [per2 (person-set per1 #:name "Lyman")]
+             [pet  (make-pet per2 "Garfield")])
+        (check-exn exn:fail:snooze? (cut save! pet))))))
 
 ; Provide statements -----------------------------
 

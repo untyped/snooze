@@ -86,12 +86,12 @@
     ; guid -> vanilla-guid
     (define/public (get-saveable-guid guid)
       (if (guid-local? guid)
-          (let*-values/debug ([(original)        guid]
-                              [(vanilla struct1) (vanilla+struct-ref guid)]
-                              [(struct2)         (and vanilla (struct-ref vanilla))])
-                             (if (and struct1 struct2 (eq? struct1 struct2))
-                                 (copy-guid vanilla)
-                                 (error "struct contains reference to unsaved struct" struct1)))
+          (let*-values ([(original)        guid]
+                        [(vanilla struct1) (vanilla+struct-ref guid)]
+                        [(struct2)         (and vanilla (struct-ref vanilla))])
+            (if (and struct1 struct2 (eq? struct1 struct2))
+                (copy-guid vanilla)
+                (error "struct contains reference to unsaved struct" struct1)))
           guid))
     
     ; local-guid -> (U snooze-struct #f)
@@ -191,7 +191,7 @@
     ; Searches for guid in this cache (and its ancestors, performing fetches, if applicable).
     ; Returns a local guid pointing to the same struct, or #f if the struct is not in the cache.
     (define/public (get-local-alias guid)
-      (printf "get-local-alias ~s~n" guid)
+      ;(printf "get-local-alias ~s~n" guid)
       (if (guid-local? guid)
           (let-values ([(vanilla struct) (vanilla+struct-ref guid)])
             (localize-guid struct vanilla))

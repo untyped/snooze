@@ -71,7 +71,6 @@
     ; The procedure returns two values: the struct, and the rest of the row following
     ; the struct's attributes.
     (define (row->struct row entity)
-      (printf "row->struct~n")
       (let* ([cache     (send (get-snooze) get-current-cache)]
              [guid      (car row)]
              [num-attrs (length (entity-attributes entity))])
