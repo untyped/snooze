@@ -47,7 +47,7 @@
     ;snooze-hook-tests
     ;snooze-transaction-tests
     ;snooze-concurrency-tests
-    ;snooze-find-tests
+    snooze-find-tests
     ;quick-find-tests
     
     ; Tests for the audit trails:
