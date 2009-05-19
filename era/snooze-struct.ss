@@ -107,12 +107,12 @@
 ; Provide statements -----------------------------
 
 (define attr-value-list/c
-  (cons/c (or/c (and/c guid? (not/c guid-local?)) #f) any/c))
+  (cons/c (or/c vanilla-guid? #f) any/c))
 
 (provide/contract
  [snooze-struct?              (-> any/c boolean?)]
  [struct-entity               (-> (or/c snooze-struct? prop:entity-set?) entity?)]
- [struct-guid                 (-> (or/c snooze-struct? prop:entity-set?) (or/c (and/c guid? (not/c guid-local?)) #f))]
+ [struct-guid                 (-> (or/c snooze-struct? prop:entity-set?) (or/c vanilla-guid? #f))]
  [struct-id                   (-> snooze-struct? (or/c natural-number/c #f))]
  [struct-saved?               (-> snooze-struct? boolean?)]
  [struct-revision             (-> snooze-struct? (or/c natural-number/c #f))]

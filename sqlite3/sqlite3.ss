@@ -51,28 +51,28 @@
     
     ; -> connection
     (define/public (connect)
-      (with-snooze-reraise (sqlite:exn:sqlite? "Could not connect to database")
+      (with-snooze-reraise (sqlite:exn:sqlite? "could not connect to database")
         (make-connection (sqlite:open path) #f)))
     
     ; connection -> void
     (define/public (disconnect conn)
-      (with-snooze-reraise (sqlite:exn:sqlite? "Could not disconnect from database")
+      (with-snooze-reraise (sqlite:exn:sqlite? "could not disconnect from database")
         (sqlite:close (connection-back-end conn))))
     
     ; connection entity -> void
     (define/public (create-table conn entity)
-      (with-snooze-reraise (sqlite:exn:sqlite? (format "Could not create table for ~a" entity))
+      (with-snooze-reraise (sqlite:exn:sqlite? (format "could not create table for ~a" entity))
         (sqlite:exec/ignore (connection-back-end conn) (create-table-sql entity))))
     
     ; connection entity -> void
     (define/public (drop-table conn entity)
-      (with-snooze-reraise (sqlite:exn:sqlite? (format "Could not drop table for ~a" entity))
+      (with-snooze-reraise (sqlite:exn:sqlite? (format "could not drop table for ~a" entity))
         (sqlite:exec/ignore (connection-back-end conn) (drop-table-sql entity))))
     
     ; connection snooze-struct -> snooze-struct
     ; Inserts a new database record for the supplied struct.
     (define/public (insert-struct conn old-struct)
-      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" old-struct))
+      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
         (let* ([cache        (send (get-snooze) get-current-cache)]
                [entity       (struct-entity old-struct)]
                [guid-type    (attribute-type (car (entity-attributes entity)))]
@@ -95,7 +95,7 @@
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Updates the existing database record for the supplied struct.
     (define/public (update-struct conn old-struct [check-revision? #t])
-      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" old-struct))
+      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
         (let ([cache    (send (get-snooze) get-current-cache)]
               [entity   (struct-entity old-struct)]
               [guid     (struct-guid old-struct)]
@@ -115,7 +115,7 @@
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Deletes the database record for the supplied struct.
     (define/public (delete-struct conn old-struct [check-revision? #t])
-      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" old-struct))
+      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
         (let ([cache    (send (get-snooze) get-current-cache)]
               [entity   (struct-entity old-struct)]
               [guid     (struct-guid old-struct)]
@@ -135,7 +135,7 @@
     ; connection vanilla-guid -> void
     ; Deletes the database record for the supplied guid.
     (define/public (delete-guid conn guid)
-      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" guid))
+      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" guid))
         (sqlite:exec/ignore (connection-back-end conn) (delete-sql guid))
         (void)))
     
@@ -154,7 +154,7 @@
           null
           (let ([sql    (direct-find-sql guids)]
                 [entity (guid-entity (car guids))])
-            (with-snooze-reraise (exn:fail? (format "Could not execute SELECT query:~n~a" sql))
+            (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
               (g:collect
                (g:map (make-single-item-extractor entity)
                       (g:map (make-parser (map attribute-type (entity-attributes entity)))
@@ -162,7 +162,7 @@
     
     ; snooze<%> connection query -> result-generator
     (define/public (g:find snooze conn query)
-      (with-snooze-reraise (sqlite:exn:sqlite? (format "Could not execute SELECT query: ~a" (query-sql query)))
+      (with-snooze-reraise (sqlite:exn:sqlite? (format "could not execute SELECT query: ~a" (query-sql query)))
         (let ([results (sqlite:select (connection-back-end conn) (query-sql query))])
           (g:map (make-query-extractor query)
                  (g:map (make-parser (map expression-type (query-what query)))

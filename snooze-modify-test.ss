@@ -25,7 +25,8 @@
         (check-pred guid-interned? vanilla)
         (check-pred guid-interned? vanilla2)
         (check-true (eq? vanilla vanilla2))   ; same vanilla GUID
-        (check-false (struct-eq? per per2)))) ; different structs in memory
+        (check-false (struct-eq? per per2))   ; different structs in memory
+        ))
     
     (test-case "saving a copy of a struct updates the original struct, so that they refer to the same struct"
       (recreate-test-tables/cache)

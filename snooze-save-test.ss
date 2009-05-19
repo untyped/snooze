@@ -77,7 +77,6 @@
     
     (test-case "save! : stores information correctly in the database"
       (recreate-test-tables/cache)
-      (pretty-print (cache-lists))
       (with-cache
        (let* ([per1 (save! (make-person "Dave"))]
               [per2 (save! (make-person "Dave"))]
@@ -110,7 +109,35 @@
         (check-true (eq? struct struct2))                      ; (just to be sure)
         (check-false (eq? per per2))                           ; However, guids themselves are not eq?
         (check-not-false vanilla2)                             ; per2 also points to a vanilla guid ...
-        (check-true (eq? vanilla vanilla2))))))                ; ... the same one as per    
+        (check-true (eq? vanilla vanilla2))))                  ; ... the same one as per
+    
+    (test-case "save! : cannot save a struct with local-only foreign keys"
+      (recreate-test-tables/cache)
+      (let* ([per (make-person "Jon")]
+             [pet (make-pet per "Garfield")])
+        (check-exn exn:fail:snooze? (cut save! pet)))
+      (recreate-test-tables/cache)
+      (let* ([per (save! (make-person "Jon"))]
+             [pet (make-pet per "Garfield")])
+        (check-not-exn (cut save! pet)))
+      (recreate-test-tables/cache)
+      (let*/debug ([per0 (make-person "Jon")])
+                  (parameterize ([in-cache-code? #t])
+                    (debug "complete cache" (cache-lists)))
+                  (let*/debug ([per1 (save! per0)])
+                              (parameterize ([in-cache-code? #t])
+                                (debug "complete cache" (cache-lists)))
+                              (let*/debug ([per2 (person-set per1 #:name "Lyman")])
+                                          (parameterize ([in-cache-code? #t])
+                                            (debug "complete cache" (cache-lists)))
+                                          (let*/debug ([pet  (make-pet per2 "Garfield")])
+                                                      (parameterize ([in-cache-code? #t])
+                                                        (debug "complete cache" (cache-lists)))
+                                                      (debug-location)
+                                                      (check-exn exn:fail:snooze? (cut save! pet))
+                                                      (debug-location))))))
+    
+    ))
 
 ; Provide statements -----------------------------
 

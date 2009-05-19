@@ -67,6 +67,18 @@
 (define (guid-local? guid)
   (and (guid-serial guid) #t))
 
+; guid -> boolean
+(define (guid-vanilla? guid)
+  (not (guid-serial guid)))
+
+; any -> boolean
+(define (local-guid? guid)
+  (and (guid? guid) (guid-local? guid)))
+
+; any -> boolean
+(define (vanilla-guid? guid)
+  (and (guid? guid) (guid-vanilla? guid)))
+
 ; (_ id entity)
 (define-syntax (define-guid-type stx)
   (syntax-case stx ()
@@ -137,6 +149,10 @@
 (define (guid-interned? guid)
   (let ([box (dict-ref interned-guids guid #f)])
     (and box (eq? (weak-box-value box) guid))))
+
+; any -> boolean
+(define (interned-guid? guid)
+  (and (guid? guid) (guid-interned? guid)))
 
 ; guid -> guid
 (define (intern-guid guid)
@@ -414,6 +430,9 @@
  [guid=?                               (-> guid? guid? boolean?)]
  [guid=?-hash-code                     (-> guid? number?)]
  [guid-local?                          (-> guid? boolean?)]
+ [guid-vanilla?                        (-> guid? boolean?)]
+ [local-guid?                          (-> any/c boolean?)]
+ [vanilla-guid?                        (-> any/c boolean?)]
  [guid-snooze                          (-> guid? (is-a?/c snooze<%>))]
  [copy-guid                            (-> guid? guid?)]
  [guid-id                              (-> guid? (or/c natural-number/c #f))]
@@ -422,6 +441,7 @@
  [guid-entity                          (-> guid? entity?)]
  [guid-ref                             (-> guid? snooze-struct?)]
  [guid-interned?                       (-> guid? boolean?)]
+ [interned-guid?                       (-> any/c boolean?)]
  [intern-guid                          (-> (and/c guid? (not/c guid-local?)) guid?)]
  [struct type                          ([allows-null? boolean?])]
  [struct (guid-type type)              ([allows-null? boolean?] [entity entity?])]

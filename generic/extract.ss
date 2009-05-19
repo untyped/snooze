@@ -28,8 +28,7 @@
             (make-multiple-item-extractor
              (list (and (entity? extract-info) extract-info)))
             (make-single-item-extractor
-             (map (lambda (item) (and (entity? item) item))
-                  (list extract-info))))))
+             (and (entity? extract-info) extract-info)))))
     
     ; (U entity #f) -> single-item-extractor
     ; where single-item-extractor : (U (listof scheme-primitive) #f) -> (U snooze-struct scheme-primitive)
@@ -76,11 +75,11 @@
       (let* ([cache     (send (get-snooze) get-current-cache)]
              [guid      (car row)]
              [num-attrs (length (entity-attributes entity))])
-        (unless (or (not guid) (and (guid? guid) (not (guid-local? guid))))
+        (unless (or (not guid) (vanilla-guid? guid))
           (raise-type-error 'row->struct "(U vanilla-guid #f)" guid))
         (values (and guid                                  ; if id is #f, struct is null
                      (or (send cache get-local-alias guid) ; if struct is cached (locally or in an ancestor cache), return a new local guid
-                         (send cache add-struct!           ; else add the new struct to the cache, and return a new local guid
+                         (send cache add-extracted-struct! ; else add the new struct to the cache, and return a new local guid
                                (apply (entity-private-constructor entity)
                                       guid
                                       (cdr (take row num-attrs))))))

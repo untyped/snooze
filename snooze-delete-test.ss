@@ -17,7 +17,7 @@
     (test-case "find-one returns a local GUID"
         (recreate-test-tables/cache)
         (let* ([per1    (begin0 (save! (make-person "Jon"))
-                                (read-line))]
+                                (debug-location))]
                [per2    (select-one #:from person)])
           (check-pred guid-local? per2)))
     

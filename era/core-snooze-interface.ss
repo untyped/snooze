@@ -18,11 +18,30 @@
     ; Returns the mapped struct, or #f if the guid was not found in any cache.
     cache-ref/vanilla
     
-    ; snooze-struct -> local-guid
-    ; Adds a struct to the cache and returns a new local guid that points to it:
-    ;   - if the struct contains an id, it is cached by vanilla and local guid;
-    ;   - if the struct's id is #f, it is cached by local guid only.
-    add-struct!
+    ; snooze-struct -> new-local-guid
+    ; - creates a new local-guid -> (cons (U vanilla-guid #f) struct) entry;
+    ; - returns local-guid.
+    add-copied-struct!
+    
+    ; snooze-struct -> new-local-guid
+    ; - creates new vanilla-guid -> (cons #f struct) entries in all ancestor caches;
+    ; - creates a new local-guid -> (cons vanilla-guid struct) entry;
+    ; - returns local-guid.
+    add-extracted-struct!
+    
+    ; snooze-struct old-local-guid -> new-local-guid
+    ; - creates new vanilla-guid -> (cons #f struct) entries in all ancestor caches;
+    ; - creates a new local-guid -> (cons vanilla-guid struct) entry;
+    ; - remaps old-guid -> (cons vanilla-guid struct);
+    ; - returns the new local-guid.
+    add-saved-struct!
+    
+    ; snooze-struct old-local-guid -> new-local-guid
+    ; - creates new vanilla-guid -> (cons #f #f) entries in all ancestor caches;
+    ; - creates a new local-guid -> (cons vanilla-guid struct) entry;
+    ; - remaps old-guid -> (cons vanilla-guid struct);
+    ; - returns the new local-guid.
+    add-deleted-struct!
     
     ; guid -> (U local-guid #f)
     ; Searches for guid in this cache (and its ancestors, performing fetches, if applicable).

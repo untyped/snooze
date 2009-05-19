@@ -64,7 +64,7 @@
 (define (cache-list [cache (current-cache)])
   (for/list ([item (in-dict-pairs (cache-data cache))])
     (list (car item)
-          #;(cadr item)
+          (cadr item)
           (cddr item))))
 
 ; [cache%] -> (listof (alistof guid cached-data))

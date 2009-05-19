@@ -78,7 +78,7 @@
     
     ; -> connection
     (define/public (connect)
-      (with-snooze-reraise (exn:fail? "Could not connect to database")
+      (with-snooze-reraise (exn:fail? "could not connect to database")
         (define conn (postgresql:connect '#:server      server
                                          '#:port        port
                                          '#:database    database
@@ -86,7 +86,7 @@
                                          '#:password    password
                                          '#:ssl         ssl
                                          '#:ssl-encrypt ssl-encrypt))
-        (send conn exec "SET client_min_messages = 'WARNING';")
+        (send conn exec "SET client_min_messages = 'ERROR';")
         (send conn exec "SET datestyle = iso;")
         (send conn exec "SET regex_flavor = extended;")
         ;(send conn exec "SET standard_conforming_strings = on;")
@@ -94,19 +94,19 @@
     
     ; connection -> void
     (define/public (disconnect conn)
-      (with-snooze-reraise (exn:fail? "Could not disconnect from database")
+      (with-snooze-reraise (exn:fail? "could not disconnect from database")
         (send (connection-back-end conn) disconnect)))
     
     ; connection entity -> void
     (define/public (create-table conn entity)
-      (with-snooze-reraise (exn:fail? (format "Could not create table for ~a" entity))
+      (with-snooze-reraise (exn:fail? (format "could not create table for ~a" entity))
         (for-each (cut send (connection-back-end conn) exec <>)
                   (map (cut string-append <> ";")
                        (regexp-split #px";" (create-table-sql entity))))))
     
     ; connection entity -> void
     (define/public (drop-table conn entity)
-      (with-snooze-reraise (exn:fail? (format "Could not drop table for ~a" entity))
+      (with-snooze-reraise (exn:fail? (format "could not drop table for ~a" entity))
         (for-each (cut send (connection-back-end conn) exec <>)
                   (map (cut string-append <> ";")
                        (regexp-split #px";" (drop-table-sql entity))))))
@@ -114,7 +114,7 @@
     ; connection snooze-struct -> snooze-struct
     ; Inserts a new database record for the supplied struct.
     (define/public (insert-struct conn old-struct)
-      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" old-struct))
+      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
         (let* ([cache        (send (get-snooze) get-current-cache)]
                [entity       (struct-entity old-struct)]
                [guid-type    (attribute-type (car (entity-attributes entity)))]
@@ -138,7 +138,7 @@
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Updates the existing database record for the supplied struct.
     (define/public (update-struct conn old-struct [check-revision? #t])
-      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" old-struct))
+      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
         (let ([cache    (send (get-snooze) get-current-cache)]
               [entity   (struct-entity old-struct)]
               [guid     (struct-guid old-struct)]
@@ -158,7 +158,7 @@
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Deletes the database record for the supplied struct.
     (define/public (delete-struct conn old-struct [check-revision? #t])
-      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" old-struct))
+      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
         (let ([cache    (send (get-snooze) get-current-cache)]
               [entity   (struct-entity old-struct)]
               [guid     (struct-guid old-struct)]
@@ -178,7 +178,7 @@
     ; connection vanilla-guid -> void
     ; Deletes the database record for the supplied guid.
     (define/public (delete-guid conn guid)
-      (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" guid))
+      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" guid))
         (send (connection-back-end conn) exec (delete-sql guid))
         (void)))
     
@@ -197,7 +197,7 @@
           null
           (let ([sql    (direct-find-sql guids)]
                 [entity (guid-entity (car guids))])
-            (with-snooze-reraise (exn:fail? (format "Could not execute SELECT query:~n~a" sql))
+            (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
               (g:collect
                (g:map (make-single-item-extractor entity)
                       (g:map (make-parser (map attribute-type (entity-attributes entity)))
@@ -227,10 +227,12 @@
     ;          ...))
     (define/public (g:find conn query)
       (let ([sql (query-sql query)])
-        (with-snooze-reraise (exn:fail? (format "Could not execute SELECT query:~n~a" sql))
-          (g:map (make-query-extractor query)
-                 (g:map (make-parser (map expression-type (query-what query)))
-                        (g:list (send (connection-back-end conn) map sql list)))))))
+        (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
+          (g:debug "extracted"
+                   (g:map (make-query-extractor query)
+                          (g:debug "parsed"
+                                   (g:map (make-parser (map expression-type (query-what query)))
+                                          (g:list (send (connection-back-end conn) map sql list)))))))))
     
     ; connection -> boolean
     (define/public (transaction-allowed? conn)

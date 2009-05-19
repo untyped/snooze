@@ -132,7 +132,7 @@
               (let ([saved-struct (if (struct-saved? guid)
                                       (send database update-struct conn (guid-ref guid))
                                       (send database insert-struct conn (guid-ref guid)))])
-                (send cache add-struct-and-update! saved-struct guid)))
+                (send cache add-saved-struct! saved-struct guid)))
             (current-connection)
             guid)))))
     
@@ -149,7 +149,7 @@
            ((entity-on-delete entity)
             (lambda (conn guid)
               (let ([deleted-struct (send database delete-struct conn (guid-ref guid))])
-                (send cache add-struct-and-update! deleted-struct guid)))
+                (send cache add-delete-struct! deleted-struct guid)))
             (current-connection)
             guid)))))
     
