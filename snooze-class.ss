@@ -138,7 +138,6 @@
     
     ; guid -> guid
     (define/public (delete! guid)
-      (debug "deleting" guid)
       (unless (struct-saved? guid)
         (raise-exn exn:fail:snooze "Unsaved structs cannot be deleted"))
       (auto-connect)
@@ -149,7 +148,7 @@
            ((entity-on-delete entity)
             (lambda (conn guid)
               (let ([deleted-struct (send database delete-struct conn (guid-ref guid))])
-                (send cache add-delete-struct! deleted-struct guid)))
+                (send cache add-deleted-struct! deleted-struct guid)))
             (current-connection)
             guid)))))
     
