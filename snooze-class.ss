@@ -138,6 +138,7 @@
     
     ; guid -> guid
     (define/public (delete! guid)
+      (debug "deleting" guid)
       (unless (struct-saved? guid)
         (raise-exn exn:fail:snooze "Unsaved structs cannot be deleted"))
       (auto-connect)
