@@ -44,7 +44,7 @@
   ; Attributes:
   (define attr-stxs null)                 ; (gender age name)
   (define attr-private-stxs null)         ; (attr:person-gender attr:person-age attr:person-name attr:person-revision attr:person-guid)
-  (define attr-type-stxs null)            ; ((make-symbol-type #t) (make-integer-type #f) ...)
+  (define attr-type-expr-stxs null)       ; ((make-symbol-type #t) (make-integer-type #f) ...)
   (define attr-default-stxs null)         ; (#t 123 ...)
   (define attr-kw-stxs null)              ; (#:person-gender #:person-age #:person-name #:person-revision #:person-guid)
   (define attr-column-stxs null)          ; ('gender 'age 'name)
@@ -84,7 +84,7 @@
     (define my-allows-null-stx   #'#t)
     (define my-max-length-stx    #'#f)
     (define my-default-stx       #'(lambda (snooze) #f))
-    (define my-type-stx          #f)
+    (define my-type-expr-stx     #f)
     (define my-kw-stx            #f)
     (define my-accessor-stx      #f)
     (define my-mutator-stx       #f)
@@ -95,16 +95,16 @@
     (define (parse-attr-type stx)
       (with-syntax ([allows-null? my-allows-null-stx])
         (syntax-case stx (boolean integer real symbol string time-tai time-utc)
-          [boolean  (set! my-type-stx #'(make-boolean-type allows-null?))]
-          [integer  (set! my-type-stx #'(make-integer-type allows-null?))]
-          [real     (set! my-type-stx #'(make-real-type allows-null?))]
-          [symbol   (set! my-type-stx (with-syntax ([max-length my-max-length-stx])
+          [boolean  (set! my-type-expr-stx #'(make-boolean-type allows-null?))]
+          [integer  (set! my-type-expr-stx #'(make-integer-type allows-null?))]
+          [real     (set! my-type-expr-stx #'(make-real-type allows-null?))]
+          [symbol   (set! my-type-expr-stx (with-syntax ([max-length my-max-length-stx])
                                         #'(make-symbol-type allows-null? max-length)))]
-          [string   (set! my-type-stx (with-syntax ([max-length my-max-length-stx])
+          [string   (set! my-type-expr-stx (with-syntax ([max-length my-max-length-stx])
                                         #`(make-string-type allows-null? max-length)))]
-          [time-tai (set! my-type-stx #'(make-time-tai-type allows-null?))]
-          [time-utc (set! my-type-stx #'(make-time-utc-type allows-null?))]
-          [entity   (set! my-type-stx #'(make-guid-type allows-null? entity))])))
+          [time-tai (set! my-type-expr-stx #'(make-time-tai-type allows-null?))]
+          [time-utc (set! my-type-expr-stx #'(make-time-utc-type allows-null?))]
+          [entity   (set! my-type-expr-stx #'(make-guid-type allows-null? entity))])))
     
     (define (parse-attr-kws stx)
       (syntax-case stx ()
@@ -133,7 +133,7 @@
     (define (finish-attr)
       (set! attr-stxs               (cons my-name-stx          attr-stxs))
       (set! attr-private-stxs       (cons my-private-stx       attr-private-stxs))
-      (set! attr-type-stxs          (cons my-type-stx          attr-type-stxs))
+      (set! attr-type-expr-stxs     (cons my-type-expr-stx          attr-type-expr-stxs))
       (set! attr-default-stxs       (cons my-default-stx       attr-default-stxs))
       (set! attr-kw-stxs            (cons my-kw-stx            attr-kw-stxs))
       (set! attr-accessor-stxs      (cons my-accessor-stx      attr-accessor-stxs))
@@ -198,7 +198,7 @@
                   [(guid-kw revision-kw attr-kw ...)                (list* '#:guid
                                                                            '#:revision
                                                                            (reverse attr-kw-stxs))]
-                  [(attr-type ...)                                  (reverse attr-type-stxs)]
+                  [(attr-type-expr ...)                             (reverse attr-type-expr-stxs)]
                   [(attr-default ...)                               (reverse attr-default-stxs)]
                   [(attr-pretty ...)                                (reverse attr-pretty-stxs)]
                   [(attr-pretty-plural ...)                         (reverse attr-pretty-plural-stxs)]
@@ -221,7 +221,7 @@
                         [attr-pretty-names-plural (map (lambda (proc arg) (proc arg))
                                                        (list attr-pretty-plural ...)
                                                        attr-pretty-names)]
-                        [make-attr-types          (lambda (entity) (list attr-type ...))])
+                        [make-attr-types          (lambda (entity) (list attr-type-expr ...))])
                    (make-entity 'entity
                                 attr-names
                                 make-attr-types

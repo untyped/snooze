@@ -27,7 +27,8 @@
          (check-pred guid-local?          per1)
          (check-pred snooze-struct-saved? per1)
          (check-pred guid-local?          per2)
-         (check-pred snooze-struct-saved? per2))))
+         (check-pred snooze-struct-saved? per2)
+         (list per1 per2)))) ; safe for space
     
     (test-case "save!, person-set : remaps guids appropriately"
       (recreate-test-tables/cache)
@@ -73,7 +74,7 @@
                             (collect-garbage)
                             (collect-garbage)
                             (check-cache-size (list 7 3)))])
-         (void))))
+         (list per1 per2 per3 per4)))) ; safe for space
     
     (test-case "save! : stores information correctly in the database"
       (recreate-test-tables/cache)

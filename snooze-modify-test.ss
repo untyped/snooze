@@ -54,7 +54,7 @@
               [per2 (begin0 (person-set per #:name "Per2")
                             (collect-garbage)
                             (check-cache-size (list 2 0)))])
-         (void))))
+         (list per per2)))) ; safe for space
     
     (test-case "copying a saved struct : cache sizes are correct"
       (recreate-test-tables/cache)
@@ -65,7 +65,7 @@
               [per2 (begin0 (person-set per #:name "Per2")
                             (collect-garbage)
                             (check-cache-size (list 3 1)))])
-         (void))))))
+         (list per per2)))))) ; safe for space
 
 ; Provide statements -----------------------------
 

@@ -61,9 +61,11 @@
          (check-cache-size (list 2 0))
          (let ([per2 (pet-owner pet1)])
            (collect-garbage)
-           (check-cache-size (list 3 0)))
+           (check-cache-size (list 3 0))
+           per2) ; safe for space
          (collect-garbage)
-         (check-cache-size (list 2 0)))))))
+         (check-cache-size (list 2 0))
+         (list per1 pet1)))))) ; safe for space
 
 ; Provide statements -----------------------------
 

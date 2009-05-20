@@ -26,11 +26,13 @@
        (let ([per1 (save! (make-person "Jon"))])
          (collect-garbage)
          (check-cache-size (list 2 1))
-         (let ([per2 (delete! per1)])
+         (let ([per2 (delete! per1)]) ; vanilla GUID still present - points to #f
            (collect-garbage)
-           (check-cache-size (list 2 0))) ; vanilla GUID still present - points to #f
+           (check-cache-size (list 3 1))
+           per2) ; safe for space
          (collect-garbage)
-         (check-cache-size (list 0 0)))))
+         (check-cache-size (list 2 1))
+         per1))) ; safe for space
     
     (test-case "delete! a saved struct : deleted struct should have same contents"
       (recreate-test-tables/cache)

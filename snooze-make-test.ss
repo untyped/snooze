@@ -91,20 +91,17 @@
          (let ([per2 (make-person "Per2")])
            (collect-garbage)
            (check-cache-size (list 2 0))
-           ;(list per2)
-           )
+           (list per2)) ; safe for space
          (collect-garbage)
          (check-cache-size (list 1 0))
-         ;(list per)
-         )))
+         (list per)))) ; safe for space
     
     (test-case "make-person : minimal test case for Matthew Flatt"
       (recreate-test-tables/cache)
       (let ([per (make-person "Per")])
          (collect-garbage)
          (check-cache-size (list 1))
-         ;per
-         ))))
+         per)))) ; safe for space
 
 ; Provide statements -----------------------------
 

@@ -42,7 +42,8 @@
          (let* ([per1 (save! (make-person "Jon"))]
                 [per2 (select-one #:from person)])
            (collect-garbage)
-           (check-cache-size (list 3 1))))) ; currently fails as GC doesn't remove (make-person ...) local-guid
+           (check-cache-size (list 3 1))
+           (list per1 per2)))) ; safe for space
       
       (test-case "find-one uncached struct : returns a local GUID"
         (recreate-test-tables/cache)
@@ -60,7 +61,8 @@
            (cache-clear!)
            (check-cache-size (list 0 0))
            (let ([per2 (select-one #:from person)])
-             (check-cache-size (list 2 1))))))
+             (check-cache-size (list 2 1))
+             (list per1 per2))))) ; safe for space
       
       (test-case "g:find generates local GUIDs"
         (recreate-test-tables/cache)
@@ -79,8 +81,8 @@
                 [per3  (save! (make-person "Noel"))])
            (cache-clear!)
            (check-cache-size (list 0 0))
-           (let ([peeps (g:find (sql (select #:from person)))])
-             (check-cache-size (list 0 0)) ; shouldn't grab anything yet!
+           (let ([peeps (g:select #:from person)])
+             (check-cache-size (list 0 0))
              (for ([pers (in-gen peeps)]
                    [i    (in-naturals 1)])
                (check-cache-size (list (* 2 i) i))
@@ -116,10 +118,11 @@
                 [per2  (save! (make-person "David"))])
            (cache-clear!)
            (let ([per3  (save! (make-person "Noel"))]
-                 [peeps (find-all (sql (select #:from person)))])
+                 [peeps (select-all #:from person)])
              ; list length correct
              (collect-garbage)
-             (check-cache-size (list 7 3))))))) ; fails because GC misses (make-person "Noel")
+             (check-cache-size (list 7 3))
+             (list per1 per2 per3 peeps)))))) ; safe for space
     
     
     
