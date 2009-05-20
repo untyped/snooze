@@ -142,7 +142,7 @@
     ; connection entity vanilla-guid natural -> void
     (define (check-revision conn entity guid expected)
       (let ([actual (send (connection-back-end conn) query-value
-                          (format "SELECT revision FROM ~a WHERE id = ~a;"
+                          (format "SELECT revision FROM ~a WHERE guid = ~a;"
                                   (escape-sql-name (entity-table-name entity))
                                   (guid-id guid)))])
         (unless (equal? actual expected)

@@ -241,13 +241,13 @@ ENDSQL
     (test-case "display-what"
       (check-equal? (what-sql (list (sql p1.guid) (sql p1.revision) (sql p1.name)) (list (sql p1.name)))
                     #<<ENDSQL
-"p1"."id" AS "p1-guid", "p1"."revision" AS "p1-revision", "p1-name"
+"p1"."guid" AS "p1-guid", "p1"."revision" AS "p1-revision", "p1-name"
 ENDSQL
                     "attribute aliases")
       
       (check-equal? (what-sql (list count-star count-p1 count-p1-id count-p2-id sum-revisions) (list count-p2-id))
                     #<<ENDSQL
-count(*) AS "count-star", count("p1".*) AS "count-p1", count("p1"."id") AS "count-p1-id", "count-p2-id", ("p1"."revision" + "p2"."revision") AS "sum-revisions"
+count(*) AS "count-star", count("p1".*) AS "count-p1", count("p1"."guid") AS "count-p1-id", "count-p2-id", ("p1"."revision" + "p2"."revision") AS "sum-revisions"
 ENDSQL
                     "expression aliases"))
     
@@ -260,14 +260,14 @@ ENDSQL
       
       (check-equal? (from-sql (sql:alias 'subq (sql:select #:from p1)) null)
                     #<<ENDSQL
-(SELECT "p1"."id" AS "p1-guid", "p1"."revision" AS "p1-revision", "p1"."name" AS "p1-name" FROM "people" AS "p1") AS "subq"
+(SELECT "p1"."guid" AS "p1-guid", "p1"."revision" AS "p1-revision", "p1"."name" AS "p1-name" FROM "people" AS "p1") AS "subq"
 ENDSQL
                     "subquery")
       
       (check-equal? (from-sql (sql:inner p1 (sql:alias 'subq (sql:select #:from p2)) (sql:= (sql p1.guid) (sql p2.guid)))
                               (list (sql p2.guid) (sql p2.revision) (sql p2.name)))
                     #<<ENDSQL
-("people" AS "p1" INNER JOIN (SELECT "p2"."id" AS "p2-guid", "p2"."revision" AS "p2-revision", "p2"."name" AS "p2-name" FROM "people" AS "p2") AS "subq" ON ("p1"."id" = "p2-guid"))
+("people" AS "p1" INNER JOIN (SELECT "p2"."guid" AS "p2-guid", "p2"."revision" AS "p2-revision", "p2"."name" AS "p2-name" FROM "people" AS "p2") AS "subq" ON ("p1"."guid" = "p2-guid"))
 ENDSQL
                     "inner join"))
     
@@ -287,7 +287,7 @@ ENDSQL
     (test-case "display-order"
       (check-equal? (order-sql (list (sql:asc (sql p1.guid)) (sql:desc (sql p1.revision)) (sql:order (sql p1.name) 'asc)) (list (sql p1.name)))
                     #<<ENDSQL
-"p1"."id" ASC, "p1"."revision" DESC, "p1-name" ASC
+"p1"."guid" ASC, "p1"."revision" DESC, "p1-name" ASC
 ENDSQL
                     "attribute aliases")
       
@@ -307,7 +307,7 @@ ENDSQL
       (check-equal? (expression-sql (sql:and (sql:= (sql p1.guid) 123) 
                                              (sql:= (sql:string-append (sql p1.name) " of Loxley") "Robin of Loxley"))
                                     (list (sql p1.name)))
-                    "((\"p1\".\"id\" = 123) AND ((\"p1-name\" || ' of Loxley') = 'Robin of Loxley'))"
+                    "((\"p1\".\"guid\" = 123) AND ((\"p1-name\" || ' of Loxley') = 'Robin of Loxley'))"
                     "nested expressions")
       (check-equal? (expression-sql (sql:and) null) "true" "argumentless and")
       (check-equal? (expression-sql (sql:or) null) "false" "argumentless or")
@@ -315,7 +315,7 @@ ENDSQL
       (check-equal? (expression-sql (sql:*) null) "1" "argumentless *")
       (check-equal? (expression-sql (sql:-) null) "0" "argumentless -")
       (check-equal? (expression-sql (sql:in (sql p1.guid) (sql:select #:what (sql p1.guid) #:from p1)) null)
-                    "(\"p1\".\"id\" IN (SELECT \"p1\".\"id\" AS \"p1-guid\" FROM \"people\" AS \"p1\"))"
+                    "(\"p1\".\"guid\" IN (SELECT \"p1\".\"guid\" AS \"p1-guid\" FROM \"people\" AS \"p1\"))"
                     "sql:in")
       (check-equal? (expression-sql (sql:regexp-replace     "a" "b" "c") null)    "(regexp_replace('a', 'b', 'c'))"       "sql:regexp-replace")
       (check-equal? (expression-sql (sql:regexp-replace-ci  "a" "b" "c") null)    "(regexp_replace('a', 'b', 'c', 'i'))"  "sql:regexp-replace-ci")
@@ -354,19 +354,19 @@ ENDSQL
         
         (define sql1
           #<<ENDSQL
-SELECT "a"."id" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", "b"."id" AS "b-guid", "b"."revision" AS "b-revision", "b"."owner" AS "b-owner", "b"."name" AS "b-name" FROM ("people" AS "a" INNER JOIN "pets" AS "b" ON ("a"."id" = "b"."owner")) WHERE ("a"."name" = 'Jon Arbuckle') ORDER BY "a-name" ASC, "b-name" ASC LIMIT 10 OFFSET 20
+SELECT "a"."guid" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", "b"."guid" AS "b-guid", "b"."revision" AS "b-revision", "b"."owner" AS "b-owner", "b"."name" AS "b-name" FROM ("people" AS "a" INNER JOIN "pets" AS "b" ON ("a"."guid" = "b"."owner")) WHERE ("a"."name" = 'Jon Arbuckle') ORDER BY "a-name" ASC, "b-name" ASC LIMIT 10 OFFSET 20
 ENDSQL
           )
         
         (define sql2
           #<<ENDSQL
-SELECT "a-guid", "a-revision", "a-name", "b"."id" AS "b-guid", "b"."revision" AS "b-revision", "b"."owner" AS "b-owner", "b"."name" AS "b-name" FROM ((SELECT "a"."id" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name" FROM "people" AS "a") AS "subq" INNER JOIN "pets" AS "b" ON ("a-guid" = "b"."owner")) WHERE ("a-name" = "b"."name") ORDER BY "a-name" ASC, "b-name" ASC
+SELECT "a-guid", "a-revision", "a-name", "b"."guid" AS "b-guid", "b"."revision" AS "b-revision", "b"."owner" AS "b-owner", "b"."name" AS "b-name" FROM ((SELECT "a"."guid" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name" FROM "people" AS "a") AS "subq" INNER JOIN "pets" AS "b" ON ("a-guid" = "b"."owner")) WHERE ("a-name" = "b"."name") ORDER BY "a-name" ASC, "b-name" ASC
 ENDSQL
           )
         
         (define sql3
           #<<ENDSQL
-SELECT "a"."id" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", count("b".*) AS "expr" FROM ("people" AS "a" INNER JOIN "pets" AS "b" ON ("a"."id" = "b"."owner")) GROUP BY "a-guid", "a-revision", "a-name"
+SELECT "a"."guid" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", count("b".*) AS "expr" FROM ("people" AS "a" INNER JOIN "pets" AS "b" ON ("a"."guid" = "b"."owner")) GROUP BY "a-guid", "a-revision", "a-name"
 ENDSQL
           )
         

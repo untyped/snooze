@@ -90,7 +90,7 @@
   
   (define guid-attribute
     (let* ([name             'guid]
-           [col              'id]
+           [col              'guid]
            [type             (make-guid-type #f entity)]
            [default-maker    (lambda (snooze) #f)]
            [index            0])

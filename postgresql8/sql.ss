@@ -55,7 +55,7 @@
         (format "CREATE SEQUENCE ~a; CREATE TABLE ~a (~a);"
                 (escape-sql-name sequence-name)
                 (escape-sql-name table-name)
-                (string-join (list* (string-append (escape-sql-name 'id) " INTEGER PRIMARY KEY " "DEFAULT nextval('" (escape-sql-name sequence-name) "')")
+                (string-join (list* (string-append (escape-sql-name 'guid) " INTEGER PRIMARY KEY DEFAULT nextval('" (escape-sql-name sequence-name) "')")
                                     (string-append (escape-sql-name 'revision) "INTEGER NOT NULL DEFAULT 0")
                                     (map (cut column-definition-sql <>) (cddr (entity-attributes entity))))
                              ", "))))

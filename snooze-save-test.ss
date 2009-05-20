@@ -83,7 +83,7 @@
               [per2 (save! (make-person "Dave"))]
               [per3 (save! per1)]
               [per4 (save! (make-person "Noel"))])
-         (check-equal? (direct-query "select id,name from people order by id asc;")
+         (check-equal? (direct-query "select guid,name from people order by guid asc;")
                        (list (list (snooze-struct-id per1) "Dave")
                              (list (snooze-struct-id per2) "Dave")
                              (list (snooze-struct-id per4) "Noel"))))))
@@ -94,9 +94,9 @@
              [per2 (save! (person-set per1 #:name "Lyman"))]
              [per3 (save! (make-person "Liz"))]
              [per4 (save! (make-person "Liz"))])
-        (check-equal? (direct-query "select count(id) from people where name = 'Jon';") (list (list 0)))
-        (check-equal? (direct-query "select count(id) from people where name = 'Lyman';") (list (list 1)))
-        (check-equal? (direct-query "select count(id) from people where name = 'Liz';") (list (list 2)))))
+        (check-equal? (direct-query "select count(guid) from people where name = 'Jon';") (list (list 0)))
+        (check-equal? (direct-query "select count(guid) from people where name = 'Lyman';") (list (list 1)))
+        (check-equal? (direct-query "select count(guid) from people where name = 'Liz';") (list (list 2)))))
     
     (test-case "save! : bad data types"
       (recreate-test-tables/cache)
@@ -139,8 +139,8 @@
             (check-equal? (snooze-struct-revision per2) 1)
             (check-equal? (snooze-struct-revision per1) 0)
             (check-equal? (snooze-struct-revision per0) 0))))
-      (check-equal? (direct-query "select count(id) from people where revision = 0;") (list (list 0)))
-      (check-equal? (direct-query "select count(id) from people where revision = 1;") (list (list 1))))
+      (check-equal? (direct-query "select count(guid) from people where revision = 0;") (list (list 0)))
+      (check-equal? (direct-query "select count(guid) from people where revision = 1;") (list (list 1))))
     
     (test-case "save! : cannot save an out-of-date struct"
       (recreate-test-tables/cache)

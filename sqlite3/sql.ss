@@ -53,7 +53,7 @@
     (define/public (create-table-sql entity)
       (format "CREATE TABLE ~a (~a);"
               (escape-sql-name (entity-table-name entity)) 
-              (string-join (list* (string-append (escape-sql-name 'id) " INTEGER PRIMARY KEY")
+              (string-join (list* (string-append (escape-sql-name 'guid) " INTEGER PRIMARY KEY")
                                   (string-append (escape-sql-name 'revision) " INTEGER NOT NULL DEFAULT 0")
                                   (map (cut column-definition-sql <>)
                                        (cddr (entity-attributes entity))))
@@ -68,7 +68,7 @@
          (match type
            [(? guid-type?)      (format " INTEGER REFERENCES ~a.~a" 
                                         (escape-sql-name (entity-name (guid-type-entity type)))
-                                        (escape-sql-name 'id))]
+                                        (escape-sql-name (attribute-column-name (car (entity-attributes (guid-type-entity type))))))]
            [(? boolean-type?)   " INTEGER"]
            [(? integer-type?)   " INTEGER"]
            [(? real-type?)      " REAL"]

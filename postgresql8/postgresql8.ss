@@ -138,7 +138,7 @@
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Updates the existing database record for the supplied struct.
     (define/public (update-struct conn old-struct [check-revision? #t])
-      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
+      (with-snooze-reraise (exn:fail? (format "could not update database record for ~a" old-struct))
         (let ([cache    (send (get-snooze) get-current-cache)]
               [entity   (snooze-struct-entity old-struct)]
               [guid     (snooze-struct-guid old-struct)]
@@ -185,7 +185,7 @@
     ; connection entity vanilla-guid natural -> void
     (define (check-revision conn entity guid expected)
       (let ([actual (send (connection-back-end conn) query-value
-                          (format "SELECT revision FROM ~a WHERE id = ~a;"
+                          (format "SELECT revision FROM ~a WHERE guid = ~a;"
                                   (escape-sql-name (entity-table-name entity))
                                   (guid-id guid)))])
         (unless (equal? actual expected)
