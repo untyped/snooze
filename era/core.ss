@@ -51,8 +51,8 @@
 (define (guid=? guid1 guid2)
   (and (eq? (guid-id+serial guid1)
             (guid-id+serial guid2))
-       (eq? (entity-name (guid-entity guid1))
-            (entity-name (guid-entity guid2)))
+       (eq? (guid-entity guid1)
+            (guid-entity guid2))
        (eq? (guid-snooze guid1)
             (guid-snooze guid2))))
 
@@ -60,7 +60,7 @@
 (define (guid=?-hash-code guid)
   (equal-hash-code
    (list (guid-id+serial guid)
-         (entity-name (guid-entity guid))
+         (guid-entity guid)
          (guid-snooze guid))))
 
 ; guid -> boolean

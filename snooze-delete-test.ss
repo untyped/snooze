@@ -37,11 +37,11 @@
       (let* ([per1 (save! (make-person "Jon"))]
              [per2 (delete! per1)])
         (check-equal? per1 per2)
-        (check-true (struct-eq? per1 per2))
+        (check-true (snooze-struct-eq? per1 per2))
         (check-false (eq? per1 per2))
         (check-equal? (person-name per2) "Jon")
-        (check-false (struct-saved? per1))
-        (check-false (struct-saved? per2))))
+        (check-false (snooze-struct-saved? per1))
+        (check-false (snooze-struct-saved? per2))))
     
     (test-case "delete! a saved struct : falsifies id and revision"
       (recreate-test-tables/cache)
@@ -49,12 +49,12 @@
              [per2    (delete! per1)]
              [struct1 (send (current-cache) cache-ref/local per1)]
              [struct2 (send (current-cache) cache-ref/local per2)])
-        (check-false (struct-saved? per1))
-        (check-false (real:struct-id struct1))
-        (check-false (real:struct-revision struct1))
-        (check-false (struct-saved? per2))
-        (check-false (real:struct-id struct2))
-        (check-false (real:struct-revision struct2))))
+        (check-false (snooze-struct-saved? per1))
+        (check-false (real:snooze-struct-id struct1))
+        (check-false (real:snooze-struct-revision struct1))
+        (check-false (snooze-struct-saved? per2))
+        (check-false (real:snooze-struct-id struct2))
+        (check-false (real:snooze-struct-revision struct2))))
     
     
     (test-case "delete! an uncached struct : should return a new local GUID"
@@ -63,9 +63,9 @@
              [per2    (delete! (select-one #:from person))]
              [struct2 (send (current-cache) cache-ref/local per2)]) ; per1
         (check-equal? (person-name per2) "Jon")
-        (check-false (struct-saved? per2))
-        (check-false (real:struct-id struct2))
-        (check-false (real:struct-revision struct2))))
+        (check-false (snooze-struct-saved? per2))
+        (check-false (real:snooze-struct-id struct2))
+        (check-false (real:snooze-struct-revision struct2))))
     
     (test-case "delete! a copy of a struct, then resaving original causes revision error"
       (recreate-test-tables/cache)
@@ -74,13 +74,13 @@
              [per3 (save! per2)])
         (check-false (equal? per1 per3))                    ; revision is different
         (check-true (equal? per2 per3))
-        (check-false (struct-eq? per1 per3))
-        (check-true (struct-eq? per2 per3))
+        (check-false (snooze-struct-eq? per1 per3))
+        (check-true (snooze-struct-eq? per2 per3))
         (check-exn exn:fail:snooze? (cut (delete! per1))))) ; revision exception
     
     (test-case "delete! has the correct effect on the database"
       (let* ([per1    (save! (make-person "per1"))]
-             [per1-id (real:struct-id (send (current-cache) cache-ref/local per1))] 
+             [per1-id (real:snooze-struct-id (send (current-cache) cache-ref/local per1))] 
              [per2    (delete! per1)])
         (check-equal? (direct-query (format "select * from people where id=~a;" per1-id)) null)))))
 

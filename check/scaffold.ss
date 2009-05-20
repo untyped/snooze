@@ -24,7 +24,7 @@
     (attribute-type attr))
   ; any
   (define value
-    (struct-attribute struct attr))
+    (snooze-struct-ref struct attr))
   ; check-result
   (if (type-valid? type value)
       (check-pass)

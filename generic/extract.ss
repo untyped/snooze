@@ -26,7 +26,9 @@
       (let ([extract-info (query-extract-info query)])
         (if (or (pair? extract-info) (null? extract-info))
             (make-multiple-item-extractor
-             (list (and (entity? extract-info) extract-info)))
+             (map (lambda (item)
+                    (and (entity? item) item))
+                  extract-info))
             (make-single-item-extractor
              (and (entity? extract-info) extract-info)))))
     
@@ -73,6 +75,7 @@
     (define (row->struct row entity)
       (let* ([cache     (send (get-snooze) get-current-cache)]
              [guid      (car row)]
+             [revision  (cadr row)]
              [num-attrs (length (entity-attributes entity))])
         (unless (or (not guid) (vanilla-guid? guid))
           (raise-type-error 'row->struct "(U vanilla-guid #f)" guid))

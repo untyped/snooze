@@ -5,7 +5,7 @@
 (require srfi/19
          (schemeunit-in test text-ui)
          (prefix-in sqlite: (sqlite-in sqlite))
-         "cache.ss"
+         "snooze-cache.ss"
          "snooze-class.ss"
          "test-data.ss"
          "test-util.ss"

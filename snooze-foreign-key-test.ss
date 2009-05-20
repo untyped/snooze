@@ -19,7 +19,7 @@
         (check-true  (guid-local? per1))                           ; both local guids
         (check-true  (guid-local? pet1))
         (check-false (eq? (pet-owner pet1) per1))                  ; refer to same struct, but guids are different
-        (check-true  (struct-eq? (pet-owner pet1) per1))
+        (check-true  (snooze-struct-eq? (pet-owner pet1) per1))
         (check-false (send (current-cache) get-vanilla-guid per1)) ; no vanilla guids
         (check-false (send (current-cache) get-vanilla-guid pet1))
         (check-false (send (current-cache) get-vanilla-guid (pet-owner pet1)))))
@@ -31,8 +31,8 @@
              [pet2        (pet-set pet1 #:name "Pet2")])
         (check-equal? (pet-owner pet1) (pet-owner pet2))            ; structs are equal? ...
         (check-equal? per1 (pet-owner pet2))
-        (check-true (struct-eq? (pet-owner pet1) (pet-owner pet2))) ; ... and struct-eq? ...
-        (check-true (struct-eq? per1 (pet-owner pet2)))
+        (check-true (snooze-struct-eq? (pet-owner pet1) (pet-owner pet2))) ; ... and struct-eq? ...
+        (check-true (snooze-struct-eq? per1 (pet-owner pet2)))
         (check-false (eq? per1 (pet-owner pet2)))                   ; ... but not eq?
         (check-false (eq? (pet-owner pet1) (pet-owner pet2)))))
     
@@ -45,9 +45,9 @@
         (check-equal? per1 (pet-owner pet1))                         ; equality
         (check-false (equal? (pet-owner pet1) (pet-owner pet2)))            
         (check-equal? per2 (pet-owner pet2))
-        (check-true  (struct-eq? per1 (pet-owner pet1)))             ; struct-eq?ity ...
-        (check-false (struct-eq? (pet-owner pet1) (pet-owner pet2))) 
-        (check-true  (struct-eq? per2 (pet-owner pet2)))
+        (check-true  (snooze-struct-eq? per1 (pet-owner pet1)))             ; struct-eq?ity ...
+        (check-false (snooze-struct-eq? (pet-owner pet1) (pet-owner pet2))) 
+        (check-true  (snooze-struct-eq? per2 (pet-owner pet2)))
         (check-false (eq? per1 (pet-owner pet1)))                    ; eq?ity
         (check-false (eq? per2 (pet-owner pet2))) 
         (check-false (eq? (pet-owner pet1) (pet-owner pet2)))))

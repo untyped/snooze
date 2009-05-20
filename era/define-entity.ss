@@ -272,8 +272,8 @@
                                        (syntax->list #'(accessor ...))
                                        (syntax->list #'(attr ...))))
                  (let* ([struct   (guid-ref original)]
-                        [guid     (real:struct-guid struct)]
-                        [revision (real:struct-revision struct)])
+                        [guid     (real:snooze-struct-guid struct)]
+                        [revision (real:snooze-struct-revision struct)])
                    ((entity-cached-constructor entity-private) #:snooze snooze guid revision attr ...)))
                
                #,(if (eq? (syntax-local-context) 'module)

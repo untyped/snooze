@@ -5,8 +5,7 @@
 (require srfi/26
          (unlib-in symbol)
          "../generic/connection.ss"
-         (prefix-in cached: "cached-struct.ss")
-         (prefix-in real: "snooze-struct.ss")
+         "snooze-struct.ss"
          "core.ss"
          "pretty.ss")
 
@@ -120,7 +119,7 @@
   
   ; vanilla-guid revision any ... -> guid
   (define cached-constructor
-    (cached:make-cached-constructor
+    (make-cached-constructor
      entity
      (symbol-append 'make- name)
      struct-constructor
@@ -132,7 +131,7 @@
   
   ; any -> boolean
   (define cached-predicate
-    (cached:make-cached-predicate struct-predicate))
+    (make-cached-predicate struct-predicate))
   
   ; Patch the entity:
   (set-entity-struct-type! entity struct-type)
@@ -156,8 +155,8 @@
 (define (create-attribute name col pretty pretty-plural type entity index default-maker struct-accessor struct-mutator)
   (let* ([private-accessor (make-struct-field-accessor struct-accessor index name)]
          [private-mutator  (make-struct-field-mutator  struct-mutator index name)]
-         [cached-accessor  (cached:make-cached-accessor private-accessor)]
-         [cached-mutator   (cached:make-cached-mutator  private-mutator)])
+         [cached-accessor  (make-cached-accessor private-accessor)]
+         [cached-mutator   (make-cached-mutator  private-mutator)])
     (make-attribute name col pretty pretty-plural
                     type entity index
                     default-maker
@@ -170,8 +169,8 @@
 (define (snooze-struct-custom-write struct out write?)
   (parameterize ([in-cache-code? #t])
     (let* ([show   (if write? write display)]
-           [entity (real:struct-entity struct)]
-           [vals   (real:snooze-struct-ref* struct)]
+           [entity (snooze-struct-entity struct)]
+           [vals   (snooze-struct-ref* struct)]
            [guid   (car vals)]
            [rev    (cadr vals)])
       (display "#(struct:" out)
@@ -204,6 +203,43 @@
           (recur struct))
         (lambda (struct recur)
           (recur struct))))
+
+; entity symbol (any ... -> snooze-struct) natural -> ([#:snooze snooze<%>] any ... -> guid)
+;
+; The returned constructor has the same number of arguments as (entity-private-constructor entity):
+; it takes a guid and revision as well as regular data attributes.
+(define (make-cached-constructor
+         entity
+         procedure-name
+         struct-constructor
+         expected-arity)
+  (lambda (#:snooze [snooze (current-snooze)] . args)
+    (let ([cache (send snooze get-current-cache)])
+      (unless (= (length args) expected-arity)
+        (raise-exn exn:fail:contract
+          (format "~a: expected ~a non-keyword argument(s), received ~s"
+                  procedure-name
+                  expected-arity
+                  args)))
+      (send cache add-copied-struct! (apply struct-constructor args)))))
+
+; (any -> boolean) -> (any -> boolean)
+(define (make-cached-predicate struct-predicate)
+  (lambda (guid)
+    (struct-predicate (guid-ref guid))))
+
+; (struct -> any) -> (guid -> any)
+(define (make-cached-accessor struct-accessor)
+  (lambda (guid)
+    (let ([ans (struct-accessor (guid-ref guid))])
+      (if (guid? ans)
+          (send (send (guid-snooze ans) get-current-cache) get-local-alias ans)
+          ans))))
+
+; (struct any -> void) -> (guid any -> void)
+(define (make-cached-mutator struct-mutator)
+  (lambda (guid val)
+    (struct-mutator (guid-ref guid) val)))
 
 ; Provide statements -----------------------------
 

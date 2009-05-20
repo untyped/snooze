@@ -44,7 +44,6 @@
            (collect-garbage)
            (check-cache-size (list 3 1))))) ; currently fails as GC doesn't remove (make-person ...) local-guid
       
-      
       (test-case "find-one uncached struct : returns a local GUID"
         (recreate-test-tables/cache)
         (let ([per1 (save! (make-person "Jon"))])
@@ -183,8 +182,8 @@
       
       ;(test-case "find-by-id works as expected"
       ;  (check-equal? (find-by-id course 1000) #f)
-      ;  (check-equal? (find-by-id course (struct-id c1)) c1)
-      ;  (check-equal? (find-by-id course (struct-id c2)) c2))
+      ;  (check-equal? (find-by-id course (snooze-struct-id c1)) c1)
+      ;  (check-equal? (find-by-id course (snooze-struct-id c2)) c2))
       
       (test-case "g:find in multi-item mode"
         (check-equal? (g:collect (g:find (sql (select #:what  (course)
@@ -228,7 +227,7 @@
           (with-check-info (['index index])
                            (check-not-eq? actual expected)
                            (check-equal? actual expected)
-                           (check-true (struct-eq? actual expected)))))
+                           (check-true (snooze-struct-eq? actual expected)))))
       
       (test-case "find-all"
         (check-equal? (find-all (sql (select #:from  course

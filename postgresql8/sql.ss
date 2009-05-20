@@ -92,8 +92,8 @@
     
     ; snooze-struct -> string
     (define/public (insert-sql struct)
-      (let* ([include-id? (and (struct-guid struct) #t)]
-             [entity      (struct-entity struct)]
+      (let* ([include-id? (and (snooze-struct-guid struct) #t)]
+             [entity      (snooze-struct-entity struct)]
              [attrs       (entity-attributes entity)]
              [vals        (snooze-struct-ref* struct)]
              [table-name  (escape-sql-name (entity-table-name entity))]
@@ -108,13 +108,13 @@
     
     ; snooze-struct -> string
     (define/public (update-sql struct)
-      (let* ([entity (struct-entity struct)]
+      (let* ([entity (snooze-struct-entity struct)]
              [exprs  (for/list ([attr (in-list (entity-attributes entity))]
                                 [val  (in-list (snooze-struct-ref* struct))])
                        (string-append (escape-sql-name (attribute-column-name attr))
                                       " = "
                                       (escape-sql-value (attribute-type attr) val)))])
-        (if (struct-saved? struct)
+        (if (snooze-struct-saved? struct)
             (format "UPDATE ~a SET ~a WHERE ~a;"
                     (escape-sql-name (entity-table-name entity))
                     (string-join (cdr exprs) ", ")

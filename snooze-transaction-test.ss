@@ -38,7 +38,7 @@
     (lambda ()
       (recreate-test-tables)
       (set! c1 (save! (make-course 'code "Name" 12345 1234.5 #t time-tai1)))
-      (set! c1-revision (struct-revision c1)))
+      (set! c1-revision (snooze-struct-revision c1)))
     
     ; delete test data from transaction tests
     #:after
@@ -51,10 +51,10 @@
          (set-course-value! c1 54321)
          (save! c1)))
       ; Revision number should have increased by 1:
-      (check-equal? (struct-revision c1) (add1 c1-revision))
+      (check-equal? (snooze-struct-revision c1) (add1 c1-revision))
       (check-not-false (find-course-by-value 54321) "Postcondition failed.")
       ; Need to reset the c1-revision variable for subsequent tests:
-      (set! c1-revision (struct-revision c1)))
+      (set! c1-revision (snooze-struct-revision c1)))
     
     (test-case "call-with-transaction: transaction aborted"
       (check-not-false (find-course-by-value 54321) "Precondition failed.")
@@ -64,7 +64,7 @@
            (set-course-value! c1 12345)
            (save! c1)
            (error "aborting transaction"))))
-      (check-equal? (struct-revision c1) c1-revision "check 1")
+      (check-equal? (snooze-struct-revision c1) c1-revision "check 1")
       (check-not-false (find-course-by-value 54321) "Postcondition failed."))
     
     (test-case "call-with-transaction: nested transactions aborted"
@@ -80,7 +80,7 @@
               (set-course-value! c1 13579)
               (save! c1)
               (error "aborting transaction"))))))
-      (check-equal? (struct-revision c1) c1-revision "check 3")
+      (check-equal? (snooze-struct-revision c1) c1-revision "check 3")
       (check-equal? (course-value c1) 54321 "check 4")
       (check-not-false (find-course-by-value 54321) "check 5 - postcondition"))
     
@@ -110,18 +110,18 @@
         (set-course-value! c1 12345)
         (save! c1)
         (set-course-value! c1 23456)
-        (check-equal? (struct-revision c1) 0)
+        (check-equal? (snooze-struct-revision c1) 0)
         (check-equal? (course-value c1) 23456)
         (with-handlers ([exn? void]) ; Should roll back to here, where value is 23456
           (call-with-transaction
            (lambda ()
              (set-course-value! c1 54321)
              (save! c1)
-             (check-equal? (struct-revision c1) 1)
+             (check-equal? (snooze-struct-revision c1) 1)
              (check-equal? (course-value c1) 54321)
              (error "aborting transaction"))))
-        (check-equal? (struct-revision (find-by-id course (struct-id c1))) 0)
-        (check-equal? (struct-revision c1) 0)
+        (check-equal? (snooze-struct-revision (find-by-id course (snooze-struct-id c1))) 0)
+        (check-equal? (snooze-struct-revision c1) 0)
         (check-equal? (course-value c1) 23456)
         (check-not-exn (cut save! c1))
         (check-not-exn (cut delete! c1))))
@@ -163,7 +163,7 @@
             (check-exn exn:fail:snooze:revision? (cut save! c1))
             (check-exn exn:fail:snooze:revision? (cut delete! c1))
             ; Have to delete the test record by loading/deleting it:
-            (check-not-exn (cut delete! (find-by-id course (struct-id c1)))))))
+            (check-not-exn (cut delete! (find-by-id course (snooze-struct-id c1)))))))
     
     (test-case "cannot make full continuation jumps into or out of transactions"
       ; General continuation jump out:

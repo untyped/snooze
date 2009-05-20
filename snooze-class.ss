@@ -7,7 +7,7 @@
          (planet untyped/unlib:3/gen)
          (planet untyped/unlib:3/parameter)
          (prefix-in real: (only-in "era/snooze-struct.ss" make-snooze-struct))
-         "cache.ss"
+         "snooze-cache.ss"
          "era/era.ss"
          "generic/generic.ss"
          "sql/sql.ss")
@@ -129,7 +129,7 @@
          (lambda ()
            ((entity-on-save entity)
             (lambda (conn guid)
-              (let ([saved-struct (if (struct-saved? guid)
+              (let ([saved-struct (if (snooze-struct-saved? guid)
                                       (send database update-struct conn (guid-ref guid))
                                       (send database insert-struct conn (guid-ref guid)))])
                 (send cache add-saved-struct! saved-struct guid)))
@@ -138,8 +138,8 @@
     
     ; guid -> guid
     (define/public (delete! guid)
-      (unless (struct-saved? guid)
-        (raise-exn exn:fail:snooze "Unsaved structs cannot be deleted"))
+      (unless (snooze-struct-saved? guid)
+        (raise-exn exn:fail:snooze "unsaved structs cannot be deleted"))
       (auto-connect)
       (let ([entity (guid-entity guid)]
             [cache  (get-current-cache)])

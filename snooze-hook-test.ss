@@ -82,9 +82,9 @@
     (test-case "saving is aborted when on-save throws an exception"
       (set-hooked-value! test-hooked 1)
       (debug "test-hooked" test-hooked)
-      (check-false (struct-saved? test-hooked))
+      (check-false (snooze-struct-saved? test-hooked))
       (check-exn exn:unhooked? (lambda () (save! test-hooked)))
-      (check-false (struct-saved? test-hooked))
+      (check-false (snooze-struct-saved? test-hooked))
       (check-pred null? (find-all (sql (select #:from hooked))))
       ; Check which hooks were run successfully:
       (check-eq? (unbox saved)    #f)

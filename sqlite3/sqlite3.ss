@@ -74,11 +74,11 @@
     (define/public (insert-struct conn old-struct)
       (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
         (let* ([cache        (send (get-snooze) get-current-cache)]
-               [entity       (struct-entity old-struct)]
+               [entity       (snooze-struct-entity old-struct)]
                [guid-type    (attribute-type (car (entity-attributes entity)))]
                [seq-name     (symbol-append (entity-table-name entity) '_seq)]
-               [guid         (struct-guid old-struct)]
-               [revision     (struct-revision old-struct)]
+               [guid         (snooze-struct-guid old-struct)]
+               [revision     (snooze-struct-revision old-struct)]
                [new-struct   (apply (entity-private-constructor entity)
                                     guid
                                     (or revision 0)
@@ -97,9 +97,9 @@
     (define/public (update-struct conn old-struct [check-revision? #t])
       (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
         (let ([cache    (send (get-snooze) get-current-cache)]
-              [entity   (struct-entity old-struct)]
-              [guid     (struct-guid old-struct)]
-              [revision (struct-revision old-struct)])
+              [entity   (snooze-struct-entity old-struct)]
+              [guid     (snooze-struct-guid old-struct)]
+              [revision (snooze-struct-revision old-struct)])
           (when check-revision?
             (check-revision conn entity guid revision))
           (let ([new-struct (apply (entity-private-constructor entity)
@@ -117,9 +117,9 @@
     (define/public (delete-struct conn old-struct [check-revision? #t])
       (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
         (let ([cache    (send (get-snooze) get-current-cache)]
-              [entity   (struct-entity old-struct)]
-              [guid     (struct-guid old-struct)]
-              [revision (struct-revision old-struct)])
+              [entity   (snooze-struct-entity old-struct)]
+              [guid     (snooze-struct-guid old-struct)]
+              [revision (snooze-struct-revision old-struct)])
           (when check-revision?
             (check-revision conn entity guid revision))
           (let ([new-struct (apply (entity-private-constructor entity)
@@ -129,7 +129,7 @@
                                      (if (guid? val)
                                          (send cache get-saveable-guid val)
                                          val)))])
-            (send (connection-back-end conn) exec (delete-sql (struct-guid old-struct)))
+            (send (connection-back-end conn) exec (delete-sql (snooze-struct-guid old-struct)))
             new-struct))))
     
     ; connection vanilla-guid -> void

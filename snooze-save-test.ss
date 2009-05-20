@@ -24,10 +24,10 @@
               [per2 (save! per1)])
          (collect-garbage)
          (check-cache-size (list 3 1))
-         (check-pred guid-local?   per1)
-         (check-pred struct-saved? per1)
-         (check-pred guid-local?   per2)
-         (check-pred struct-saved? per2))))
+         (check-pred guid-local?          per1)
+         (check-pred snooze-struct-saved? per1)
+         (check-pred guid-local?          per2)
+         (check-pred snooze-struct-saved? per2))))
     
     (test-case "save!, person-set : remaps guids appropriately"
       (recreate-test-tables/cache)
@@ -38,9 +38,9 @@
         (check-false (eq? per1a per1b))
         (check-false (eq? per1b per2a))
         (check-false (eq? per2a per2b))
-        (check-false (struct-eq? per1a per1b))
-        (check-true  (struct-eq? per1b per2a))
-        (check-false (struct-eq? per2a per2b))
+        (check-false (snooze-struct-eq? per1a per1b))
+        (check-true  (snooze-struct-eq? per1b per2a))
+        (check-false (snooze-struct-eq? per2a per2b))
         (check-equal? (person-name per1a) "Dave")
         (check-equal? (person-name per1b) "Noel")
         (check-equal? (person-name per2a) "Noel")
@@ -83,9 +83,9 @@
               [per3 (save! per1)]
               [per4 (save! (make-person "Noel"))])
          (check-equal? (direct-query "select id,name from people order by id asc;")
-                       (list (list (struct-id per1) "Dave")
-                             (list (struct-id per2) "Dave")
-                             (list (struct-id per4) "Noel"))))))
+                       (list (list (snooze-struct-id per1) "Dave")
+                             (list (snooze-struct-id per2) "Dave")
+                             (list (snooze-struct-id per4) "Noel"))))))
     
     (test-case "save! : consecutive saves"
       (recreate-test-tables/cache)
@@ -115,13 +115,13 @@
         (check-pred guid-local? per)                           ; still a local guid
         (check-not-false vanilla)                              ; but it now has a vanilla-guid
         (check-pred (entity-private-predicate person) struct)  ; still refers to a person, but now it's saved:
-        (check-not-false (real:struct-guid struct))            ; ... it has a valid guid,
-        (check-not-false (real:struct-id struct))              ; ... id,
-        (check-not-false (real:struct-revision struct))        ; ... and revision.
+        (check-not-false (real:snooze-struct-guid struct))     ; ... it has a valid guid,
+        (check-not-false (real:snooze-struct-id struct))       ; ... id,
+        (check-not-false (real:snooze-struct-revision struct)) ; ... and revision.
         ; per2
         (check-pred guid-local? per2)                          ; per2 is a local guid...
         (check-pred (entity-private-predicate person) struct2) ; it also points to a saved person...
-        (check-true (struct-eq? per per2))                     ; ... exactly the same one as per.
+        (check-true (snooze-struct-eq? per per2))              ; ... exactly the same one as per.
         (check-true (eq? struct struct2))                      ; (just to be sure)
         (check-false (eq? per per2))                           ; However, guids themselves are not eq?
         (check-not-false vanilla2)                             ; per2 also points to a vanilla guid ...
@@ -130,14 +130,14 @@
     (test-case "save! : revision incremented on save"
       (recreate-test-tables/cache)
       (let ([per0 (make-person "Dave")])
-        (check-false (struct-revision per0))
+        (check-false (snooze-struct-revision per0))
         (let ([per1 (save! per0)])
-          (check-equal? (struct-revision per1) 0)
-          (check-equal? (struct-revision per0) 0)
+          (check-equal? (snooze-struct-revision per1) 0)
+          (check-equal? (snooze-struct-revision per0) 0)
           (let ([per2 (save! (person-set per1 #:name "Noel"))])
-            (check-equal? (struct-revision per2) 1)
-            (check-equal? (struct-revision per1) 0)
-            (check-equal? (struct-revision per0) 0))))
+            (check-equal? (snooze-struct-revision per2) 1)
+            (check-equal? (snooze-struct-revision per1) 0)
+            (check-equal? (snooze-struct-revision per0) 0))))
       (check-equal? (direct-query "select count(id) from people where revision = 0;") (list (list 0)))
       (check-equal? (direct-query "select count(id) from people where revision = 1;") (list (list 1))))
     

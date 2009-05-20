@@ -22,9 +22,9 @@
         (check-pred guid-local? per)                          ; local guid
         (check-false vanilla)                                 ; no vanilla-guid
         (check-pred (entity-private-predicate person) struct) ; points to an unsaved person
-        (check-false (real:struct-guid struct))               ; ... with no guid,
-        (check-false (real:struct-id struct))                 ; ... no id,
-        (check-false (real:struct-revision struct))))         ; ... and no revision
+        (check-false (real:snooze-struct-guid struct))        ; ... with no guid,
+        (check-false (real:snooze-struct-id struct))          ; ... no id,
+        (check-false (real:snooze-struct-revision struct))))  ; ... and no revision
     
     (test-case "make-person twice, same contents: check independence"
       (recreate-test-tables/cache)
@@ -38,18 +38,18 @@
         (check-pred guid-local? per)                           ; local guid
         (check-false vanilla)                                  ; no vanilla-guid
         (check-pred (entity-private-predicate person) struct)  ; points to an unsaved person
-        (check-false (real:struct-guid struct))                ; ... with no guid,
-        (check-false (real:struct-id struct))                  ; ... no id,
-        (check-false (real:struct-revision struct))            ; ... and no revision
+        (check-false (real:snooze-struct-guid struct))         ; ... with no guid,
+        (check-false (real:snooze-struct-id struct))           ; ... no id,
+        (check-false (real:snooze-struct-revision struct))     ; ... and no revision
         ; per2
         (check-pred guid-local? per2)                          ; also a local guid
         (check-false vanilla2)                                 ; no vanilla-guid
         (check-pred (entity-private-predicate person) struct2) ; points to an unsaved person
-        (check-false (real:struct-guid struct2))               ; ... with no guid,
-        (check-false (real:struct-id struct2))                 ; ... no id,
-        (check-false (real:struct-revision struct2))           ; ... and no revision
+        (check-false (real:snooze-struct-guid struct2))        ; ... with no guid,
+        (check-false (real:snooze-struct-id struct2))          ; ... no id,
+        (check-false (real:snooze-struct-revision struct2))    ; ... and no revision
         ; DISTINCT! but with same contents
-        (check-false (struct-eq? per per2))
+        (check-false (snooze-struct-eq? per per2))
         (check-false (eq? struct struct2))
         (check-true  (equal? per per2))
         (check-true  (equal? struct struct2))))
@@ -66,18 +66,18 @@
         (check-pred guid-local? per)                           ; local guid
         (check-false vanilla)                                  ; no vanilla-guid
         (check-pred (entity-private-predicate person) struct)  ; points to an unsaved person
-        (check-false (real:struct-guid struct))                ; ... with no guid,
-        (check-false (real:struct-id struct))                  ; ... no id,
-        (check-false (real:struct-revision struct))            ; ... and no revision
+        (check-false (real:snooze-struct-guid struct))         ; ... with no guid,
+        (check-false (real:snooze-struct-id struct))           ; ... no id,
+        (check-false (real:snooze-struct-revision struct))     ; ... and no revision
         ; per2
         (check-pred guid-local? per2)                          ; also a local guid
         (check-false vanilla2)                                 ; no vanilla-guid
         (check-pred (entity-private-predicate person) struct2) ; points to an unsaved person
-        (check-false (real:struct-guid struct2))               ; ... with no guid,
-        (check-false (real:struct-id struct2))                 ; ... no id,
-        (check-false (real:struct-revision struct2))           ; ... and no revision
+        (check-false (real:snooze-struct-guid struct2))        ; ... with no guid,
+        (check-false (real:snooze-struct-id struct2))          ; ... no id,
+        (check-false (real:snooze-struct-revision struct2))    ; ... and no revision
         ; DISTINCT! but with same contents
-        (check-false (struct-eq? per per2))
+        (check-false (snooze-struct-eq? per per2))
         (check-false (eq? struct struct2))
         (check-true  (equal? per per2))
         (check-true  (equal? struct struct2))))
@@ -88,11 +88,23 @@
        (let ([per (make-person "Per")])
          (collect-garbage)
          (check-cache-size (list 1 0))
-         (let ([per2 (make-person "Per")])
+         (let ([per2 (make-person "Per2")])
            (collect-garbage)
-           (check-cache-size (list 2 0)))
+           (check-cache-size (list 2 0))
+           ;(list per2)
+           )
          (collect-garbage)
-         (check-cache-size (list 1 0)))))))
+         (check-cache-size (list 1 0))
+         ;(list per)
+         )))
+    
+    (test-case "make-person : minimal test case for Matthew Flatt"
+      (recreate-test-tables/cache)
+      (let ([per (make-person "Per")])
+         (collect-garbage)
+         (check-cache-size (list 1))
+         ;per
+         ))))
 
 ; Provide statements -----------------------------
 

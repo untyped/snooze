@@ -26,11 +26,8 @@
     ; For vanilla guids, the cached value is (cons #f struct).
     ; For local guids, the cached value is (cons vanilla-guid struct).
     ; (field [data (make-weak-hasheq)])
-    ; (field [data (make-weak-custom-hash guid=? guid=?-hash-code)])
-    (field [data (make-custom-hash guid=? guid=?-hash-code)])
-    ; (field [data (if parent
-    ;                  (make-weak-custom-hash guid=? guid=?-hash-code)
-    ;                  (make-custom-hash guid=? guid=?-hash-code))])
+    (field [data (make-weak-custom-hash guid=? guid=?-hash-code)])
+    ; (field [data (make-custom-hash guid=? guid=?-hash-code)])
     
     ; Constructor --------------------------------
     
@@ -55,7 +52,7 @@
     ; Returns a cached local guid pointing to the supplied struct / vanilla guid.
     ; Assumes any vanilla-guid caching is taken care of elsewhere.
     (define (localize-guid struct vanilla-guid)
-      (let ([local-guid (entity-make-local-guid #:snooze snooze (struct-entity struct))])
+      (let ([local-guid (entity-make-local-guid #:snooze snooze (snooze-struct-entity struct))])
         (dict-set! data local-guid (cons (and vanilla-guid (intern-guid vanilla-guid)) struct))
         local-guid))
     
@@ -125,19 +122,21 @@
     ; snooze-struct -> local-guid
     (define/public (add-copied-struct! struct)
       (parameterize ([in-cache-code? #t])
-        (let ([local-guid   (entity-make-local-guid #:snooze snooze (struct-entity struct))]
-              [vanilla-guid (and (struct-guid struct) (intern-guid (struct-guid struct)))])
+        (let* ([local-guid   (entity-make-local-guid #:snooze snooze (snooze-struct-entity struct))]
+               [struct-guid  (snooze-struct-guid struct)]
+               [vanilla-guid (and struct-guid (intern-guid struct-guid))])
           (dict-set! data local-guid (cons vanilla-guid struct))
           local-guid)))
     
     ; snooze-struct -> local-guid
     (define/public (add-extracted-struct! struct)
       (parameterize ([in-cache-code? #t])
-        (unless (struct-guid struct)
+        (unless (snooze-struct-guid struct)
           (raise-type-error 'add-extracted-struct! "struct-with-guid" struct))
         
-        (let ([local-guid   (entity-make-local-guid #:snooze snooze (struct-entity struct))]
-              [vanilla-guid (and (struct-guid struct) (intern-guid (struct-guid struct)))])
+        (let* ([local-guid   (entity-make-local-guid #:snooze snooze (snooze-struct-entity struct))]
+               [struct-guid  (snooze-struct-guid struct)]
+               [vanilla-guid (and struct-guid (intern-guid struct-guid))])
           (store-vanilla-struct! vanilla-guid struct)
           (dict-set! data local-guid   (cons vanilla-guid struct))
           local-guid)))
@@ -145,14 +144,15 @@
     ; snooze-struct local-guid -> local-guid
     (define/public (add-saved-struct! struct old-guid)
       (parameterize ([in-cache-code? #t])
-        (unless (struct-guid struct)
+        (unless (snooze-struct-guid struct)
           (raise-type-error 'add-saved-struct! "struct-with-guid" struct))
         
         (unless (local-guid? old-guid)
           (raise-type-error 'add-saved-struct! "local-guid" old-guid))
         
-        (let ([local-guid   (entity-make-local-guid #:snooze snooze (struct-entity struct))]
-              [vanilla-guid (and (struct-guid struct) (intern-guid (struct-guid struct)))])
+        (let* ([local-guid   (entity-make-local-guid #:snooze snooze (snooze-struct-entity struct))]
+               [struct-guid  (snooze-struct-guid struct)]
+               [vanilla-guid (and struct-guid (intern-guid struct-guid))])
           (store-vanilla-struct! vanilla-guid struct)
           (dict-set! data old-guid     (cons vanilla-guid struct))
           (dict-set! data local-guid   (cons vanilla-guid struct))
@@ -161,13 +161,13 @@
     ; snooze-struct local-guid -> local-guid
     (define/public (add-deleted-struct! struct old-guid)
       (parameterize ([in-cache-code? #t])
-        (when (struct-guid struct)
+        (when (snooze-struct-guid struct)
           (raise-type-error 'add-saved-struct! "struct-with-no-guid" struct))
         
         (unless (local-guid? old-guid)
           (raise-type-error 'add-deleted-struct! "local-guid" old-guid))
         
-        (let ([local-guid       (entity-make-local-guid #:snooze snooze (struct-entity struct))]
+        (let ([local-guid       (entity-make-local-guid #:snooze snooze (snooze-struct-entity struct))]
               [old-vanilla-guid (get-vanilla-guid old-guid)])
           
           (unless (interned-guid? old-vanilla-guid)
@@ -191,11 +191,10 @@
     ; Searches for guid in this cache (and its ancestors, performing fetches, if applicable).
     ; Returns a local guid pointing to the same struct, or #f if the struct is not in the cache.
     (define/public (get-local-alias guid)
-      ;(printf "get-local-alias ~s~n" guid)
       (if (guid-local? guid)
           (let-values ([(vanilla struct) (vanilla+struct-ref guid)])
             (localize-guid struct vanilla))
-          (let ([struct (cache-ref/vanilla guid)])
+          (let ([struct (cache-ref/vanilla (intern-guid guid))])
             (and struct (localize-guid struct guid)))))))
 
 ; Provide statements -----------------------------
