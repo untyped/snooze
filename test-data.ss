@@ -66,9 +66,10 @@
   
 ; Provide statements -----------------------------
 
-(provide (entity-out person)
-         (entity-out pet)
-         (entity-out course))
+(provide-entity/contract person)
+(provide-entity/contract pet)
+(provide-entity/contract course)
+(provide-entity/contract tree-node)
 
 (provide/contract
  [drop-all-tables      (-> void?)]

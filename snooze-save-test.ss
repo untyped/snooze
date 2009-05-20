@@ -100,9 +100,9 @@
     
     (test-case "save! : bad data types"
       (recreate-test-tables/cache)
-      (check-exn exn:fail:snooze? (cut save! (make-person 'R2D2)))
+      (check-exn exn:fail:snooze? (cut save! ((entity-cached-constructor person) #f #f 'R2D2)))
       (let ([pet1 (save! (make-pet #f "Garfield"))])
-        (check-exn exn:fail:snooze? (cut save! (make-pet pet1 "Odie")))))
+        (check-exn exn:fail:snooze? (cut save! ((entity-cached-constructor pet) #f #f pet1 "Odie")))))
     
     (test-case "save! : creates a vanilla GUID and a local GUID, distinct from first."
       (recreate-test-tables/cache)

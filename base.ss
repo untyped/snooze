@@ -2,6 +2,7 @@
 
 (require (planet untyped/unlib:3/require))
 
+(define-library-aliases cce-scheme (planet cce/scheme:4:1)          #:provide)
 (define-library-aliases schemeunit (planet schematics/schemeunit:3) #:provide)
 (define-library-aliases spgsql     (planet schematics/spgsql:2)     #:provide)
 (define-library-aliases sqlite     (planet jaymccarthy/sqlite:4:1)  #:provide)

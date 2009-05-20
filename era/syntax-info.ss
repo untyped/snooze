@@ -22,7 +22,7 @@
   private-id)
 
 (define-struct attribute-info
-  (id private-id accessor-id mutator-id)
+  (id private-id type-id accessor-id mutator-id)
   #:transparent)
 
 (define info-cache (make-module-identifier-mapping))

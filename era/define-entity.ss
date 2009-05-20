@@ -7,6 +7,7 @@
                      scheme/provide-transform
                      scheme/struct-info
                      (only-in srfi/1 append-map)
+                     (cce-scheme-in syntax)
                      (unlib-in syntax)
                      "syntax-info.ss")
          scheme/serialize
@@ -44,6 +45,7 @@
   ; Attributes:
   (define attr-stxs null)                 ; (gender age name)
   (define attr-private-stxs null)         ; (attr:person-gender attr:person-age attr:person-name attr:person-revision attr:person-guid)
+  (define attr-type-stxs null)            ; (boolean integer person ...)
   (define attr-type-expr-stxs null)       ; ((make-symbol-type #t) (make-integer-type #f) ...)
   (define attr-default-stxs null)         ; (#t 123 ...)
   (define attr-kw-stxs null)              ; (#:person-gender #:person-age #:person-name #:person-revision #:person-guid)
@@ -84,6 +86,7 @@
     (define my-allows-null-stx   #'#t)
     (define my-max-length-stx    #'#f)
     (define my-default-stx       #'(lambda (snooze) #f))
+    (define my-type-stx          #f)
     (define my-type-expr-stx     #f)
     (define my-kw-stx            #f)
     (define my-accessor-stx      #f)
@@ -94,14 +97,15 @@
     
     (define (parse-attr-type stx)
       (with-syntax ([allows-null? my-allows-null-stx])
+        (set! my-type-stx stx)
         (syntax-case stx (boolean integer real symbol string time-tai time-utc)
           [boolean  (set! my-type-expr-stx #'(make-boolean-type allows-null?))]
           [integer  (set! my-type-expr-stx #'(make-integer-type allows-null?))]
           [real     (set! my-type-expr-stx #'(make-real-type allows-null?))]
           [symbol   (set! my-type-expr-stx (with-syntax ([max-length my-max-length-stx])
-                                        #'(make-symbol-type allows-null? max-length)))]
+                                             #'(make-symbol-type allows-null? max-length)))]
           [string   (set! my-type-expr-stx (with-syntax ([max-length my-max-length-stx])
-                                        #`(make-string-type allows-null? max-length)))]
+                                             #`(make-string-type allows-null? max-length)))]
           [time-tai (set! my-type-expr-stx #'(make-time-tai-type allows-null?))]
           [time-utc (set! my-type-expr-stx #'(make-time-utc-type allows-null?))]
           [entity   (set! my-type-expr-stx #'(make-guid-type allows-null? entity))])))
@@ -133,7 +137,8 @@
     (define (finish-attr)
       (set! attr-stxs               (cons my-name-stx          attr-stxs))
       (set! attr-private-stxs       (cons my-private-stx       attr-private-stxs))
-      (set! attr-type-expr-stxs     (cons my-type-expr-stx          attr-type-expr-stxs))
+      (set! attr-type-stxs          (cons my-type-stx          attr-type-stxs))
+      (set! attr-type-expr-stxs     (cons my-type-expr-stx     attr-type-expr-stxs))
       (set! attr-default-stxs       (cons my-default-stx       attr-default-stxs))
       (set! attr-kw-stxs            (cons my-kw-stx            attr-kw-stxs))
       (set! attr-accessor-stxs      (cons my-accessor-stx      attr-accessor-stxs))
@@ -198,6 +203,7 @@
                   [(guid-kw revision-kw attr-kw ...)                (list* '#:guid
                                                                            '#:revision
                                                                            (reverse attr-kw-stxs))]
+                  [(attr-type ...)                                  (reverse attr-type-stxs)]
                   [(attr-type-expr ...)                             (reverse attr-type-expr-stxs)]
                   [(attr-default ...)                               (reverse attr-default-stxs)]
                   [(attr-pretty ...)                                (reverse attr-pretty-stxs)]
@@ -324,16 +330,19 @@
                      (list (make-attribute-info
                             (certify #'guid-attr)
                             (certify #'guid-private)
+                            (certify #'entity)
                             (certify #'guid-accessor)
                             #f)
                            (make-attribute-info
                             (certify #'revision-attr)
                             (certify #'revision-private)
+                            (certify #'integer)
                             (certify #'revision-accessor)
                             (certify #'revision-mutator))
                            (make-attribute-info
                             (certify #'attr)
                             (certify #'attr-private)
+                            (certify #'attr-type)
                             (certify #'accessor)
                             (certify #'mutator))
                            ...)))))))))
@@ -344,7 +353,7 @@
     [(_ arg ...)
      (parse-name #'(arg ...))]))
 
-; (_ struct-id (attr-id ...))
+; (_ struct-id)
 (define-syntax entity-out
   (make-provide-transformer
    (lambda (stx modes)
@@ -353,6 +362,70 @@
        [(_ id)
         (append (expand-export #'(struct-out id) modes)
                 (expand-export #'(entity-extras-out id) modes))]))))
+
+; (_ struct-id)
+(define-syntax (provide-entity/contract stx)
+  
+  ;  (list a1 a2 ...)
+  ;  (list b1 b2 ...)
+  ;  ...
+  ; ->
+  ;  (list a1 b1 ... a2 b2 ...)
+  (define (interleave . lists)
+    (if (ormap null? lists)
+        null
+        (append (map car lists)
+                (apply interleave (map cdr lists)))))
+  
+  (syntax-case stx ()
+    [(_ id)
+     (let* ([info      (entity-info-ref #'id)]
+            [attr-info (entity-info-attribute-info info)])
+       (with-syntax* ([struct-type          (entity-info-struct-type-id          info)]
+                      [predicate            (entity-info-predicate-id            info)]
+                      [guid-predicate       (entity-info-guid-predicate-id       info)]
+                      [constructor          (entity-info-constructor-id          info)]
+                      [defaults-constructor (entity-info-defaults-constructor-id info)]
+                      [copy-constructor     (entity-info-copy-constructor-id     info)]
+                      [guid-accessor        (attribute-info-accessor-id (car attr-info))]
+                      [guid-contract        #'(or/c predicate #f)]
+                      [revision-accessor    (attribute-info-accessor-id (cadr attr-info))]
+                      [revision-contract    #'(or/c natural-number/c #f)]
+                      [([attr-kw attr-accessor attr-contract] ...)
+                       (for/list ([info (in-list (cddr attr-info))])
+                         (list (string->keyword (symbol->string (syntax->datum (attribute-info-id info))))
+                               (attribute-info-accessor-id info)
+                               (syntax-case (attribute-info-type-id info) (boolean integer real symbol string time-tai time-utc)
+                                 [boolean  #'boolean?]
+                                 [integer  #'(or/c integer? #f)]
+                                 [real     #'(or/c number? #f)]
+                                 [symbol   #'(or/c symbol? #f)]
+                                 [string   #'(or/c string? #f)]
+                                 [time-tai #'(or/c time-tai? #f)]
+                                 [time-utc #'(or/c time-utc? #f)]
+                                 [entity   #`(or/c #,(entity-info-guid-predicate-id (entity-info-ref #'entity)) #f)])))])
+         (quasisyntax/loc stx
+           (begin (provide id)
+                  (provide/contract
+                   [struct-type          struct-type?]
+                   [predicate            (-> any/c boolean?)]
+                   [constructor          (->* (attr-contract ...)
+                                              (#:snooze (is-a?/c snooze<%>))
+                                              guid-predicate)]
+                   [defaults-constructor (->* ()
+                                              (#:snooze (is-a?/c snooze<%>)
+                                                        #,@(interleave (syntax->list #'(attr-kw ...))
+                                                                       (syntax->list #'(attr-contract ...))))
+                                              guid-predicate)]
+                   [copy-constructor     (->* (guid-predicate)
+                                              (#:snooze (is-a?/c snooze<%>)
+                                                        #,@(interleave (syntax->list #'(attr-kw ...))
+                                                                       (syntax->list #'(attr-contract ...))))
+                                              guid-predicate)]
+                   [guid-accessor        (-> guid-predicate guid-contract)]
+                   [revision-accessor    (-> guid-predicate revision-contract)]
+                   [attr-accessor        (-> guid-predicate attr-contract)]
+                   ...)))))]))
 
 ; (_ id id) -> attribute
 (define-syntax (attr stx)
@@ -394,4 +467,5 @@
 
 (provide define-entity
          entity-out
+         provide-entity/contract
          attr)
