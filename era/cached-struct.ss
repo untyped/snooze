@@ -35,11 +35,14 @@
 
 ; guid (U symbol attribute) -> any
 (define (snooze-struct-ref guid name+attr)
-  (if (or (eq? name+attr 'guid)
-          (and (attribute? name+attr)
-               (eq? (attribute-name name+attr) 'guid)))
-      guid
-      (real:snooze-struct-ref (guid-ref guid) name+attr)))
+  (let ([ans (if (or (eq? name+attr 'guid)
+                     (and (attribute? name+attr)
+                          (eq? (attribute-name name+attr) 'guid)))
+                 guid
+                 (real:snooze-struct-ref (guid-ref guid) name+attr))])
+    (if (guid? ans)
+        (send (guid-snooze ans) find-by-guid ans)
+        ans)))
 
 ; guid -> any
 (define (snooze-struct-ref* guid)
@@ -78,7 +81,7 @@
   (let ([cache  (send (guid-snooze original) get-current-cache)]
         [entity (snooze-struct-entity original)])
     (send cache add-copied-struct! (apply (entity-private-constructor entity)
-                                   (real:snooze-struct-ref* (guid-ref original))))))
+                                          (real:snooze-struct-ref* (guid-ref original))))))
 
 ; guid any ... -> string
 (define (format-snooze-struct guid . rest)

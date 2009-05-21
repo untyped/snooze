@@ -191,7 +191,7 @@
         (unless (equal? actual expected)
           (error (format "revision mismatch: database ~a, struct ~a" actual expected)))))
     
-    ; (listof vanilla-guid) -> (listof interned-vanilla-guid)
+    ; (listof vanilla-guid) -> (listof local-guid)
     (define/public (direct-find conn guids)
       (if (null? guids)
           null

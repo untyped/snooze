@@ -39,8 +39,8 @@
       (check-equal? (pet-name  (pet-set test-pet #:name "Odie")) "Odie"))
     
     (test-case "snooze-struct-ref"
-      (check guid=? (snooze-struct-ref test-pet 'guid) test-pet)
-      (check guid=? (snooze-struct-ref test-pet (attr pet guid)) test-pet)
+      (check-pred local-guid? (snooze-struct-ref test-pet 'guid))
+      (check-pred local-guid? (snooze-struct-ref test-pet (attr pet guid)))
       (check-equal? (snooze-struct-ref test-pet 'revision) #f)
       (check-equal? (snooze-struct-ref test-pet (attr pet revision)) #f)
       (check-equal? (snooze-struct-ref test-pet 'owner) test-person)

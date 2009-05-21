@@ -193,6 +193,16 @@
       (auto-connect)
       (send database g:find (current-connection) select))
     
+    ; entity natural -> local-guid
+    (define/public (find-by-id entity id)
+      (find-by-guid (entity-make-vanilla-guid #:snooze this entity id)))
+
+    ; guid -> local-guid
+    (define/public (find-by-guid guid)
+      (auto-connect)
+      (or (send (get-current-cache) get-local-alias guid)
+          (car (send (get-database) direct-find (current-connection) (list guid)))))
+    
     ; thunk any ... -> any
     ;
     ; If the database allows it, a transaction is started and the thunk argument
@@ -248,21 +258,7 @@
     ;
     ; Prints an SQL string to stdout as a side effect.
     (define/public (debug-sql query [format "~a~n"] [output-port (current-output-port)])
-      (send database debug-sql query output-port format))
-    
-    ; Helpers ------------------------------------
-    
-    ; entity integer integer -> boolean
-    (define (record-exists-with-revision? entity guid revision)
-      ; entity-alias
-      ; attribute-alias
-      ; attribute-alias
-      (let-alias ([x entity])
-        ; boolean
-        (and (find-one (sql (select #:what  x.guid
-                                    #:from  x
-                                    #:where (and (= x.guid ,guid) (= x.revision ,revision)))))
-             #t)))))
+      (send database debug-sql query output-port format))))
 
 ; Provide statements -----------------------------
 

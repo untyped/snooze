@@ -233,7 +233,7 @@
   (lambda (guid)
     (let ([ans (struct-accessor (guid-ref guid))])
       (if (guid? ans)
-          (send (send (guid-snooze ans) get-current-cache) get-local-alias ans)
+          (send (guid-snooze ans) find-by-guid ans)
           ans))))
 
 ; (struct any -> void) -> (guid any -> void)
