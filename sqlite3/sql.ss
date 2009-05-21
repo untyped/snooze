@@ -129,7 +129,7 @@
                 (escape-sql-value (attribute-type attr) guid))))
     
     ; type string -> any
-    (define/public (parse-value type value)
+    (define (private-parse-value type value)
       (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
         (cond [(guid-type? type)     (entity-make-vanilla-guid #:snooze (get-snooze) (guid-type-entity type) (inexact->exact value))]
               [(boolean-type? type)  (equal? value "1")]
@@ -138,12 +138,12 @@
               [(real-type? type)     (string->number value)]
               [(string-type? type)   value]
               [(symbol-type? type)   (string->symbol value)]
-              [(time-tai-type? type) (parse-time time-tai value)]
-              [(time-utc-type? type) (parse-time time-utc value)]
+              [(time-tai-type? type) (private-parse-time time-tai value)]
+              [(time-utc-type? type) (private-parse-time time-utc value)]
               [else                  (raise-type-error 'parse-value "unrecognised type" type)])))
     
     ; srfi19-time-type string -> (U time-tai time-utc)
-    (define/public (parse-time time-type value)
+    (define (private-parse-time time-type value)
       (if (> (string-length value) 9)
           (let* ([sec  (string->number (string-drop-right value 9))]
                  [nano (string->number (string-take-right value 9))])
@@ -151,10 +151,14 @@
           (let* ([nano (string->number value)])
             (make-time time-type (if nano nano 0) 0))))
 
+    ; type string -> any
+    (define/public (parse-value type value)
+      (private-parse-value type value))
+    
     ; snooze (listof type) -> ((U (listof database-value) #f) -> (U (listof scheme-value) #f))
     (define/public (make-parser types)
       (lambda (vals)
-        (and vals (map (cut parse-value <> <>) types vals))))))
+        (and vals (map private-parse-value types vals))))))
 
 ; Modifications to default query SQL -------------
 

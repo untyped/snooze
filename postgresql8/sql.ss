@@ -133,7 +133,8 @@
                 (escape-sql-value (attribute-type attr) guid))))
     
     ; type (U string sql-null) -> any
-    (define/public (parse-value type value)
+    ; This is factored out as a procedure because it increases the speed of the map in make-parser by 5-50%.
+    (define (private-parse-value type value)
       (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
         (cond [(guid-type? type)     (entity-make-vanilla-guid #:snooze (get-snooze) (guid-type-entity type) (inexact->exact value))]
               [(sql-null? value)     #f]
@@ -146,10 +147,14 @@
               [(time-utc-type? type) (date->time-utc (sql-datetime->srfi-date value))]
               [else                  (raise-exn exn:fail:snooze (format "unrecognised type: ~a" type))])))
     
+    ; type (U string sql-null) -> any
+    (define/public (parse-value type value)
+      (private-parse-value type value))
+
     ; (listof type) -> ((U (listof database-value) #f) -> (U (listof scheme-value) #f))
     (define/public (make-parser types)
       (lambda (vals)
-        (and vals (map (cut parse-value <> <>) types vals))))))
+        (and vals (map private-parse-value types vals))))))
 
 ; Helpers --------------------------------------
 

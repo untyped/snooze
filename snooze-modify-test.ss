@@ -22,8 +22,8 @@
              [vanilla2 (send (current-cache) get-vanilla-guid per2)])
         (check-true (guid-local? per))
         (check-true (guid-local? per2))
-        (check-pred guid-interned? vanilla)
-        (check-pred guid-interned? vanilla2)
+        (check-pred interned-guid? vanilla)
+        (check-pred interned-guid? vanilla2)
         (check-true (eq? vanilla vanilla2))   ; same vanilla GUID
         (check-false (snooze-struct-eq? per per2))   ; different structs in memory
         ))
@@ -40,8 +40,8 @@
         (check-equal? (person-name per2) "Per2")
         (check-true  (guid-local? per))
         (check-true  (guid-local? per2))
-        (check-pred  guid-interned? vanilla)
-        (check-pred  guid-interned? vanilla2)
+        (check-pred  interned-guid? vanilla)
+        (check-pred  interned-guid? vanilla2)
         (check-true  (eq? vanilla vanilla2))  ; same vanilla GUID
         (check-false (snooze-struct-eq? per per2)))) ; different structs in memory
     

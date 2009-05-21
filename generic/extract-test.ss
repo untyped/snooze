@@ -121,13 +121,13 @@
     (test-case "make-multiple-item-extractor : extracting multiple structs"
       (recreate-test-tables/cache)
       (let* ([input   (list (list (make-person-guid 1) 2 "Dave" #f #f #f #f)
-                            (list (make-person-guid 3) 4 "Noel" (make-pet-guid 5) 6 (make-person-guid 3) "William")
-                            (list (make-person-guid 3) 4 "Noel" (make-pet-guid 7) 8 (make-person-guid 3) "Henry"))]
+                            (list (make-person-guid 3) 4 "Noel" (intern-guid (make-pet-guid 5)) 6 (intern-guid (make-person-guid 3)) "William")
+                            (list (make-person-guid 3) 4 "Noel" (intern-guid (make-pet-guid 7)) 8 (intern-guid (make-person-guid 3)) "Henry"))]
              [extract (make-multiple-item-extractor (list person pet))]
              [do-row  (g:map extract (g:list input))])
         (check-extracted (do-row) (list (test-person 1 2 "Dave") #f))
-        (check-extracted (do-row) (list (test-person 3 4 "Noel") (test-pet 5 6 (make-person-guid 3) "William")))
-        (check-extracted (do-row) (list (test-person 3 4 "Noel") (test-pet 7 8 (make-person-guid 3) "Henry")))
+        (check-extracted (do-row) (list (test-person 3 4 "Noel") (test-pet 5 6 (intern-guid (make-person-guid 3)) "William")))
+        (check-extracted (do-row) (list (test-person 3 4 "Noel") (test-pet 7 8 (intern-guid (make-person-guid 3)) "Henry")))
         (check-pred g:end? (do-row))
         (check-pred g:end? (do-row))))
     

@@ -39,13 +39,15 @@
 
 ; guid -> (U integer #f)
 (define (guid-id guid)
-  (and (number? (guid-id+serial guid))
-       (guid-id+serial guid)))
+  (let ([id+serial (guid-id+serial guid)])
+    (and (number? id+serial)
+         id+serial)))
 
 ; guid -> (U symbol #f)
 (define (guid-serial guid)
-  (and (symbol? (guid-id+serial guid))
-       (guid-id+serial guid)))
+  (let ([id+serial (guid-id+serial guid)])
+    (and (symbol? id+serial)
+         id+serial)))
 
 ; guid guid -> boolean
 (define (guid=? guid1 guid2)
@@ -60,7 +62,7 @@
 (define (guid=?-hash-code guid)
   (equal-hash-code
    (list (guid-id+serial guid)
-         (guid-entity guid)
+         (entity-name (guid-entity guid))
          (guid-snooze guid))))
 
 ; guid -> boolean
@@ -152,7 +154,8 @@
 
 ; any -> boolean
 (define (interned-guid? guid)
-  (and (guid? guid) (guid-interned? guid)))
+  (and (guid? guid)
+       (guid-interned? guid)))
 
 ; guid -> guid
 (define (intern-guid guid)

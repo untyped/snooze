@@ -115,6 +115,9 @@
         [(#:allow-null? val other ...)
          (begin (set! my-allows-null-stx #'val)
                 (parse-attr-kws #'(other ...)))]
+        [(#:max-length val other ...)
+         (begin (set! my-max-length-stx #'val)
+                (parse-attr-kws #'(other ...)))]
         [(#:default val other ...)
          (begin (set! my-default-stx #'(lambda (snooze) val))
                 (parse-attr-kws #'(other ...)))]
