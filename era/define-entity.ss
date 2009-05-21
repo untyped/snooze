@@ -36,6 +36,12 @@
   (define entity-guid-struct-type-stx #f) ; struct:guid:person
   (define entity-guid-constructor-stx #f) ; make-guid:person
   (define entity-guid-predicate-stx #f)   ; guid:person?
+  
+  (define id-accessor-stx #f)             ; person-id
+  (define saved-predicate-stx #f)         ; person-saved?
+  (define vanilla-predicate-stx #f)       ; person-vanilla?
+  (define local-predicate-stx #f)         ; person-local?
+  (define pretty-formatter-stx #f)        ; format-person
   (define defaults-constructor-stx #f)    ; make-person/defaults
   (define copy-constructor-stx #f)        ; person-set
   (define deserialize-info-stx #f)        ; deserialize-info:person
@@ -69,6 +75,11 @@
               (set! entity-guid-struct-type-stx (make-id #'name 'struct:guid: #'name))
               (set! entity-guid-constructor-stx (make-id #'name 'make-guid: #'name))
               (set! entity-guid-predicate-stx   (make-id #'name 'guid: #'name '?))
+              (set! id-accessor-stx             (make-id #'name #'name '-id))
+              (set! saved-predicate-stx         (make-id #'name #'name '-saved?))
+              (set! vanilla-predicate-stx       (make-id #'name #'name '-vanilla?))
+              (set! local-predicate-stx         (make-id #'name #'name '-local?))
+              (set! pretty-formatter-stx        (make-id #'name 'format- #'name))
               (set! defaults-constructor-stx    (make-id #'name 'make- #'name '/defaults))
               (set! copy-constructor-stx        (make-id #'name #'name '-set))
               (set! deserialize-info-stx        (make-id #'name 'deserialize-info: #'name '-v0))
@@ -191,6 +202,12 @@
                   [entity-guid-struct-type  entity-guid-struct-type-stx]
                   [entity-guid-constructor  entity-guid-constructor-stx]
                   [entity-guid-predicate    entity-guid-predicate-stx]
+                  
+                  [id-accessor              id-accessor-stx]
+                  [saved-predicate          saved-predicate-stx]
+                  [vanilla-predicate        vanilla-predicate-stx]
+                  [local-predicate          local-predicate-stx]
+                  [pretty-formatter         pretty-formatter-stx]
                   [defaults-constructor     defaults-constructor-stx]
                   [copy-constructor         copy-constructor-stx]
                   [deserialize-info         deserialize-info-stx]
@@ -242,14 +259,16 @@
                                 #:attr-pretty-names-plural attr-pretty-names-plural
                                 #:properties   
                                 #,(if (eq? (syntax-local-context) 'module)
-                                      #'(list (cons prop:serializable
+                                      (syntax/loc entity-stx
+                                        (list (cons prop:serializable
                                                     (make-serialize-info
                                                      (lambda (struct) (list->vector (real:snooze-struct-ref* struct)))
                                                      (quote-syntax deserialize-info)
                                                      #t
                                                      (or (current-load-relative-directory) (current-directory))))
-                                              property ...)
-                                      #'(list property ...))
+                                              property ...))
+                                      (syntax/loc entity-stx
+                                        (list property ...)))
                                 entity-kw ...)))
                
                (set-box! (guid-entity-box entity-guid-struct-type) entity-private)
@@ -262,6 +281,12 @@
                
                (define-values (revision-mutator mutator ...)
                  (apply values (map attribute-cached-mutator (cdr (entity-attributes entity-private)))))
+               
+               (define id-accessor snooze-struct-id)
+               (define saved-predicate snooze-struct-saved?)
+               (define vanilla-predicate guid-vanilla?)
+               (define local-predicate guid-local?)
+               (define pretty-formatter format-snooze-struct)
                
                (define (defaults-constructor
                          #:snooze   [snooze   (current-snooze)]
@@ -286,7 +311,8 @@
                    ((entity-cached-constructor entity-private) #:snooze snooze guid revision attr ...)))
                
                #,(if (eq? (syntax-local-context) 'module)
-                     #'(begin (define deserialize-info
+                     (syntax/loc entity-stx
+                       (begin (define deserialize-info
                                 (make-deserialize-info
                                  ; maker
                                  (lambda args
@@ -296,7 +322,7 @@
                                  ; cycle-maker
                                  (lambda ()
                                    (values defaults-constructor copy-constructor))))
-                              (provide deserialize-info))
+                              (provide deserialize-info)))
                      #'(begin))
                
                (define default-alias (sql:alias 'entity entity-private))
@@ -324,6 +350,11 @@
                      (certify #'struct-type)
                      (certify #'constructor)
                      (certify #'predicate)
+                     (certify #'id-accessor)
+                     (certify #'saved-predicate)
+                     (certify #'vanilla-predicate)
+                     (certify #'local-predicate)
+                     (certify #'pretty-formatter)
                      (certify #'defaults-constructor)
                      (certify #'copy-constructor)
                      (certify #'entity-guid)
@@ -388,6 +419,11 @@
                       [predicate            (entity-info-predicate-id            info)]
                       [guid-predicate       (entity-info-guid-predicate-id       info)]
                       [constructor          (entity-info-constructor-id          info)]
+                      [id-accessor          (entity-info-id-accessor-id          info)]
+                      [saved-predicate      (entity-info-saved-predicate-id      info)]
+                      [vanilla-predicate    (entity-info-vanilla-predicate-id    info)]
+                      [local-predicate      (entity-info-local-predicate-id      info)]
+                      [pretty-formatter     (entity-info-pretty-formatter-id     info)]
                       [defaults-constructor (entity-info-defaults-constructor-id info)]
                       [copy-constructor     (entity-info-copy-constructor-id     info)]
                       [guid-accessor        (attribute-info-accessor-id (car attr-info))]
@@ -415,6 +451,11 @@
                    [constructor          (->* (attr-contract ...)
                                               (#:snooze (is-a?/c snooze<%>))
                                               guid-predicate)]
+                   [id-accessor          (-> guid-predicate (or/c natural-number/c #f))]
+                   [saved-predicate      (-> guid-predicate boolean?)]
+                   [vanilla-predicate    (-> guid-predicate boolean?)]
+                   [local-predicate      (-> guid-predicate boolean?)]
+                   [pretty-formatter     (->* (guid-predicate) () #:rest any/c string?)]
                    [defaults-constructor (->* ()
                                               (#:snooze (is-a?/c snooze<%>)
                                                         #,@(interleave (syntax->list #'(attr-kw ...))
@@ -456,7 +497,12 @@
      (syntax-case stx ()
        [(_ id)
         (let ([info (entity-info-ref #'id)])
-          (map create-export (list (entity-info-defaults-constructor-id info)
+          (map create-export (list (entity-info-id-accessor-id          info)
+                                   (entity-info-saved-predicate-id      info)
+                                   (entity-info-vanilla-predicate-id    info)
+                                   (entity-info-local-predicate-id      info)
+                                   (entity-info-pretty-formatter-id     info)
+                                   (entity-info-defaults-constructor-id info)
                                    (entity-info-copy-constructor-id     info))))]))))
 
 ; (listof (cons property any)) -> boolean

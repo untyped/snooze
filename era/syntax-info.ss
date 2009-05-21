@@ -12,6 +12,11 @@
    struct-type-id
    constructor-id
    predicate-id
+   id-accessor-id
+   saved-predicate-id
+   vanilla-predicate-id
+   local-predicate-id
+   pretty-formatter-id
    defaults-constructor-id
    copy-constructor-id
    guid-id

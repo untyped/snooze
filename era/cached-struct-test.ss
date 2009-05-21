@@ -107,15 +107,11 @@
     (test-case "copy-snooze-struct"
       (check-equal? test-person (copy-snooze-struct test-person)))
     
-    (test-case "snooze-struct-format"
-      (check-equal? (snooze-struct-format test-person)
-                    "Jon")
-      (check-equal? (snooze-struct-format test-pet)
-                    "Garfield")
-      (check-equal? (snooze-struct-format test-pet #t)
-                    "Jon's pet Garfield")
-      (check-equal? (snooze-struct-format (make-pet #f "Topcat") #t)
-                    "Stray animal Topcat"))))
+    (test-case "format-snooze-struct"
+      (check-equal? (format-snooze-struct test-person) "Jon")
+      (check-equal? (format-snooze-struct test-pet) "Garfield")
+      (check-equal? (format-snooze-struct test-pet #t) "Jon's pet Garfield")
+      (check-equal? (format-snooze-struct (make-pet #f "Topcat") #t) "Stray animal Topcat"))))
 
 ; Provide statements -----------------------------
 

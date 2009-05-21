@@ -81,7 +81,7 @@
                                    (real:snooze-struct-ref* (guid-ref original))))))
 
 ; guid any ... -> string
-(define (snooze-struct-format guid . rest)
+(define (format-snooze-struct guid . rest)
   (apply (entity-pretty-formatter (snooze-struct-entity guid)) guid rest))
 
 ; Provide statements -----------------------------
@@ -99,4 +99,4 @@
  [make-snooze-struct              (->* (entity?) () #:rest any/c guid?)]
  [make-snooze-struct/defaults     (->* (entity?) () #:rest attr/value-list? guid?)]
  [copy-snooze-struct              (-> guid? guid?)]
- [snooze-struct-format            (->* (guid?) () #:rest any/c string?)])
+ [format-snooze-struct            (->* (guid?) () #:rest any/c string?)])
