@@ -136,8 +136,8 @@
     ; This is factored out as a procedure because it increases the speed of the map in make-parser by 5-50%.
     (define (private-parse-value type value)
       (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
-        (cond [(guid-type? type)     (entity-make-vanilla-guid #:snooze (get-snooze) (guid-type-entity type) (inexact->exact value))]
-              [(sql-null? value)     #f]
+        (cond [(sql-null? value)     #f]
+              [(guid-type? type)     (entity-make-vanilla-guid #:snooze (get-snooze) (guid-type-entity type) (inexact->exact value))]
               [(boolean-type? type)  value]
               [(integer-type? type)  (inexact->exact value)]
               [(real-type? type)     value]
