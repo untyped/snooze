@@ -39,7 +39,7 @@
                        #:table-name               [table-name               name]
                        #:pretty-name              [pretty-name              (name->pretty-name name)]
                        #:pretty-name-plural       [pretty-name-plural       (pluralize-pretty-name pretty-name)]
-                       #:pretty-formatter         [pretty-formatter         display]
+                       #:pretty-formatter         [pretty-formatter         (cut format "~a" <>)]
                        #:attr-column-names        [attr-column-names        attr-names]
                        #:attr-pretty-names        [attr-pretty-names        (map name->pretty-name attr-names)]
                        #:attr-pretty-names-plural [attr-pretty-names-plural (map pluralize-pretty-name attr-pretty-names)]
