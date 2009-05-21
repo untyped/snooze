@@ -46,7 +46,11 @@
 
 ; guid -> any
 (define (snooze-struct-ref* guid)
-  (cons guid (cdr (real:snooze-struct-ref* (guid-ref guid)))))
+  (cons guid
+        (for/list ([ans (in-list (cdr (real:snooze-struct-ref* (guid-ref guid))))])
+          (if (guid? ans)
+              (send (guid-snooze ans) find-by-guid ans)
+              ans))))
 
 ; guid <attr any> ... -> guid
 (define (snooze-struct-set original . args)

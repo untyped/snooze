@@ -19,6 +19,16 @@
         (let ([pet2 (select-one #:from pet)])
           (check-pred local-guid? (snooze-struct-ref pet2 (attr pet owner))))))
     
+    (test-case "snooze-struct-ref* : loads struct from database"
+      (recreate-test-tables/cache)
+      (let ([pet1 (save! (make-pet (save! (make-person "Per1")) "Pet1"))])
+        (cache-clear!)
+        (let ([pet2 (select-one #:from pet)])
+          (match (snooze-struct-ref* pet2)
+            [(list guid revision owner name)
+             (check-pred local-guid? guid)
+             (check-pred local-guid? owner)]))))
+    
     (test-case "pet-owner : loads struct from database"
       (recreate-test-tables/cache)
       (let ([pet1 (save! (make-pet (save! (make-person "Per1")) "Pet1"))])
