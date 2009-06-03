@@ -57,17 +57,19 @@ All you need to do to complete @filepath{db.ss} is fill in the arguments to @sch
                                 #:port     <<PORT>>
                                 #:database "<<DATABASE>>"
                                 #:username "<<USERNAME>>"
-                                #:password "<<PASSWORD>>")]
+                                #:password "<<PASSWORD>>"
+                                #:ssl      <<SSL>>)]
         
     where:
     
     @itemize{
-      @item{@litchar{<<SERVER>>} is the hostname of your database server (e.g. @litchar{localhost});}
+      @item{@litchar{<<SERVER>>} is the hostname of your database server (e.g. @scheme["localhost"]);}
       @item{@litchar{<<PORT>>} is the port number to connect on (usually 5432; note that this is an integer - not a string);}
       @item{@litchar{<<DATABASE>>} the name of the relevant database on your server;}
       @item{@litchar{<<USERNAME>>} is the username you want to connect with;}
-      @item{@litchar{<<PASSWORD>>} is the password for this username (this is an optional argument).}}}}
-      
+      @item{@litchar{<<PASSWORD>>} is the password for this username (this is an optional argument);}
+      @item{@litchar{<<SSL>>>} is one of the symbols @scheme['yes], @scheme['no] (recommended for localhost connections) or @scheme['optional] (the default, allowing PostgreSQL to make the decision). Note that using SSL imposes a significant overhead on query time.}}}}
+
 Note: the PostgreSQL version of @schemeid[make-database] has additional keyword arguments to configure SSL if you need it.
 
 @section{Start using Snooze}
