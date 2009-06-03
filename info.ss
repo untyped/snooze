@@ -19,7 +19,10 @@
                     (tt "attr:entity-attr-id") ";")))
         (li "enhancements to the quick-find system:"
             (ul (li "quick-find procedures now accept " (tt "#:what") ", " (tt "#:order") ", " 
-                    (tt "#:limit") " and " (tt "#:offset") " arguments."))))))
+                    (tt "#:limit") " and " (tt "#:offset") " arguments;")))
+        (li "documented the " (tt "#:ssl") " option for PostgreSQL in the Quick Start, "
+            "including a note about the lower speed of SSL-enabled connections;")
+        (li "removed extraneous provides from " (tt "snooze.ss") "."))))
 
 (define primary-file "main.ss")
 
