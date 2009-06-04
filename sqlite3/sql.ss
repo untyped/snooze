@@ -11,7 +11,7 @@
 
 (define sqlite3-sql-mixin
   (mixin (generic-database<%>) (sql-escape<%> parse<%> sql-create<%> sql-drop<%> sql-insert<%> sql-update<%> sql-delete<%>)
-
+    
     (inspect #f)
     
     (inherit get-snooze)
@@ -30,12 +30,19 @@
     (define/public (escape-sql-value type value)
       (cond [(boolean-type? type)  (guard type value boolean?  "boolean")         (if value "1" "0")]
             [(not value)           "NULL"]
-            [(guid-type? type)     (guard type value guid?     "(U guid #f)")     (cond [(not (eq? (guid-entity value) (guid-type-entity type)))
-                                                                                         (error (format "wrong guid entity: expected ~a, received ~a."
-                                                                                                        (entity-name (guid-entity value))
-                                                                                                        (entity-name (guid-type-entity type))))]
+            [(guid-type? type)     (guard type value guid? "(U guid #f)")         (cond [(not (eq? (guid-entity value) (guid-type-entity type)))
+                                                                                         (raise-exn exn:fail:snooze:query
+                                                                                           (format "wrong guid entity: expected ~a, received ~a."
+                                                                                                   (entity-name (guid-entity value))
+                                                                                                   (entity-name (guid-type-entity type))))]
                                                                                         [(guid-id value) => number->string]
-                                                                                        [else "NULL"])]
+                                                                                        [(with-handlers ([exn? #f])
+                                                                                           (and (guid? value) (guid-ref value)))
+                                                                                         => (lambda (struct)
+                                                                                              (number->string (snooze-struct-id struct)))]
+                                                                                        [else (raise-exn exn:fail:snooze:query
+                                                                                                (format "cannot use unsaved struct in a query: ~s" value)
+                                                                                                #f)])]
             [(integer-type? type)  (guard type value integer?  "(U integer #f)")  (number->string value)]
             [(real-type? type)     (guard type value real?     "(U real #f)")     (number->string value)]
             [(string-type? type)   (guard type value string?   "(U string #f)")   (string-append "'" (regexp-replace* #rx"'" value "''") "'")]
@@ -48,7 +55,7 @@
     (define/public (escape-time time-type time)
       (string-append (number->string (time-second time))
                      (string-pad (number->string (time-nanosecond time)) 9 #\0)))
-        
+    
     ; entity -> string
     (define/public (create-table-sql entity)
       (format "CREATE TABLE ~a (~a);"
@@ -150,7 +157,7 @@
             (make-time time-type nano sec))
           (let* ([nano (string->number value)])
             (make-time time-type (if nano nano 0) 0))))
-
+    
     ; type string -> any
     (define/public (parse-value type value)
       (private-parse-value type value))
@@ -176,6 +183,8 @@
 (define sqlite3-sql-query-mixin
   (mixin (generic-database<%> sql-escape<%> sql-query<%>) (sql-query<%>)
     
+    (inspect #f)
+    
     (inherit escape-sql-name
              escape-sql-value
              display-distinct
@@ -183,6 +192,12 @@
              display-expression
              display-group
              display-order)
+    
+    ; Constructor --------------------------------
+    
+    (super-new)
+    
+    ; Methods ------------------------------------
     
     ; query output-port -> void
     (define/override (display-query query out)

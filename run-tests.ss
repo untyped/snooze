@@ -41,9 +41,9 @@ ENDOUTPUT
      (let ([tests (make-snooze-tests all-sqlite3-tests)])
        (match rest
          [(list)
-          (run-tests/sqlite3 "snooze-sqlite3-test.db")]
+          (run-tests/sqlite3 ':memory: tests)]
          [(list location)
-          (run-tests/sqlite3 location)]
+          (run-tests/sqlite3 location tests)]
          [_ (error "bad sqlite3 options")]))]
     [(list-rest "postgresql8" rest)
      (let ([tests (make-snooze-tests all-postgresql8-tests)])

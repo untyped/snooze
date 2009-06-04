@@ -109,7 +109,7 @@
     (define (parse-attr-type stx)
       (with-syntax ([allows-null? my-allows-null-stx])
         (set! my-type-stx stx)
-        (syntax-case stx (boolean integer real symbol string time-tai time-utc)
+        (syntax-case* stx (boolean integer real symbol string time-tai time-utc) symbolic-identifier=?
           [boolean  (set! my-type-expr-stx #'(make-boolean-type allows-null?))]
           [integer  (set! my-type-expr-stx #'(make-integer-type allows-null?))]
           [real     (set! my-type-expr-stx #'(make-real-type allows-null?))]
@@ -146,7 +146,7 @@
                 (parse-attr-kws #'(other ...)))]
         [(kw other ...)
          (raise-syntax-error #f "unrecognised attribute keyword" complete-stx #'kw)]
-        [() (finish-attr)]))
+        [() (void)]))
     
     (define (finish-attr)
       (set! attr-stxs               (cons my-name-stx          attr-stxs))
@@ -171,8 +171,9 @@
               (set! my-accessor-stx      (make-id entity-stx entity-stx '- #'name))
               (set! my-mutator-stx       (make-id entity-stx 'set- entity-stx '- #'name '!))
               (set! my-column-stx        #''name)
+              (parse-attr-kws #'(arg ...))
               (parse-attr-type #'type)
-              (parse-attr-kws #'(arg ...)))]))
+              (finish-attr))]))
   
   (define (parse-entity-kws stx)
     (syntax-case stx ()

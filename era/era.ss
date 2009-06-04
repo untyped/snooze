@@ -4,6 +4,9 @@
 
 (require "cached-struct.ss"
          "check.ss"
+         "check-annotation.ss"
+         "check-result.ss"
+         "check-syntax.ss"
          (except-in "core.ss"
                     make-entity
                     make-numeric-type
@@ -22,6 +25,9 @@
 
 (provide (all-from-out "cached-struct.ss"
                        "check.ss"
+                       "check-annotation.ss"
+                       "check-result.ss"
+                       "check-syntax.ss"
                        "core.ss"
                        "define-entity.ss"
                        "syntax-info.ss"))

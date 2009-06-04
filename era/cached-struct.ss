@@ -91,6 +91,14 @@
 (define (format-snooze-struct guid . rest)
   (apply (entity-pretty-formatter (snooze-struct-entity guid)) guid rest))
 
+; guid any ... -> (listof check-result)
+(define (check-snooze-struct guid . rest)
+  (apply (entity-save-check (snooze-struct-entity guid)) guid rest))
+
+; guid any ... -> (listof check-result)
+(define (check-old-snooze-struct guid . rest)
+  (apply (entity-delete-check (snooze-struct-entity guid)) guid rest))
+
 ; Provide statements -----------------------------
 
 (provide/contract
@@ -106,4 +114,6 @@
  [make-snooze-struct              (->* (entity?) () #:rest any/c guid?)]
  [make-snooze-struct/defaults     (->* (entity?) () #:rest attr/value-list? guid?)]
  [copy-snooze-struct              (-> guid? guid?)]
- [format-snooze-struct            (->* (guid?) () #:rest any/c string?)])
+ [format-snooze-struct            (->* (guid?) () #:rest any/c string?)]
+ [check-snooze-struct             (->* (guid?) () #:rest any/c (listof check-result?))]
+ [check-old-snooze-struct         (->* (guid?) () #:rest any/c (listof check-result?))])

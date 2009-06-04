@@ -6,6 +6,7 @@
          (unlib-in symbol)
          "../generic/connection.ss"
          "snooze-struct.ss"
+         "check-default.ss"
          "core.ss"
          "pretty.ss")
 
@@ -146,10 +147,10 @@
   (set-entity-cached-constructor!  entity cached-constructor)
   (set-entity-cached-predicate!    entity cached-predicate)
   (set-entity-attributes!          entity attributes)
-  (set-entity-save-check!          entity (or save-check (make-default-save-check   entity)))
-  (set-entity-delete-check!        entity (or save-check (make-default-delete-check entity)))
-  (set-entity-on-save!             entity (or on-save    (make-default-save-hook    entity)))
-  (set-entity-on-delete!           entity (or on-delete  (make-default-delete-hook  entity)))
+  (set-entity-save-check!          entity (or save-check   default-check-snooze-struct))
+  (set-entity-delete-check!        entity (or delete-check default-check-old-snooze-struct))
+  (set-entity-on-save!             entity (or on-save      (make-default-save-hook    entity)))
+  (set-entity-on-delete!           entity (or on-delete    (make-default-delete-hook  entity)))
   
   (values entity struct-type public-constructor cached-predicate))
 
@@ -248,22 +249,6 @@
 (define (make-cached-mutator struct-mutator)
   (lambda (guid val)
     (struct-mutator (guid-ref guid) val)))
-
-; entity -> (guid -> (listof check-result))
-(define (make-default-save-check entity)
-  (lambda (guid) null))
-
-; entity -> (guid -> (listof check-result))
-(define (make-default-delete-check entity)
-  (lambda (guid) null))
-
-; entity -> ((connection guid -> guid) connection guid -> guid)
-(define (make-default-save-hook entity)
-  (lambda (continue conn guid) (continue conn guid)))
-
-; entity -> ((connection guid -> guid) connection guid -> guid)
-(define (make-default-delete-hook entity)
-  (lambda (continue conn guid) (continue conn guid)))
 
 ; Provide statements -----------------------------
 

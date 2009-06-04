@@ -47,6 +47,9 @@
 ; Raised when Snooze cannot retrieve data from the cache.
 (define-struct (exn:fail:snooze:cache exn:fail:snooze) () #:transparent)
 
+; Raised when a struct cannot be saved/deleted because of failed checks.
+(define-struct (exn:fail:snooze:check exn:fail:snooze) (results) #:transparent)
+
 ; Provide statements --------------------------- 
 
 (provide (all-from-out scheme/class

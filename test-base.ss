@@ -40,18 +40,12 @@
 
 ; (U string path ':memory: ':temp:) test-suite -> any
 (define (run-tests/sqlite3 location tests)
-  (let* ([file?     (or (path? location) (string? location))]
-         [existing? (and file? (file-exists? location))])
-    (when (and file? existing?)
-      (delete-file location))
-    (parameterize ([current-snooze    (make-snooze (make-sqlite3-database location))]
-                   [direct-query-proc (lambda (sql)
-                                        (let* ([conn (send (current-snooze) current-connection)]
-                                               [ans  (sqlite:select (connection-back-end conn) sql)])
-                                          (if (null? ans) null (cdr ans))))])
-      (run-tests tests))
-    (when (and file? (not existing?))
-      (delete-file location))))
+  (parameterize ([current-snooze    (make-snooze (make-sqlite3-database location))]
+                 [direct-query-proc (lambda (sql)
+                                      (let* ([conn (send (current-snooze) current-connection)]
+                                             [ans  (sqlite:select (connection-back-end conn) sql)])
+                                        (if (null? ans) null (cdr ans))))])
+    (send (current-snooze) call-with-connection (cut run-tests tests))))
 
 ; string -> time-tai
 (define (string->time-tai str)

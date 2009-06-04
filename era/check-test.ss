@@ -5,6 +5,7 @@
 (require "check.ss"
          "check-annotation.ss"
          "check-result.ss"
+         "check-syntax.ss"
          (except-in "core.ss"
                     make-check-success
                     make-check-problem

@@ -5,6 +5,7 @@
          scheme/unit
          "quick-find-test.ss"
          "snooze-api.ss"
+         "snooze-check-test.ss"
          "snooze-concurrency-test.ss"
          "snooze-delete-test.ss"
          "snooze-find-test.ss"
@@ -43,6 +44,7 @@
     snooze-delete-tests
     snooze-modify-tests
     snooze-foreign-key-tests
+    snooze-check-tests
     ;snooze-hook-tests
     ;snooze-transaction-tests
     ;snooze-concurrency-tests

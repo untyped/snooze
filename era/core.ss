@@ -512,8 +512,8 @@
                                         [attributes          (listof attribute?)]
                                         [on-save             (-> (-> connection? guid? guid?) connection? guid? guid?)]
                                         [on-delete           (-> (-> connection? guid? guid?) connection? guid? guid?)]
-                                        [save-check          (-> guid? (listof check-result?))]
-                                        [delete-check        (-> guid? (listof check-result?))])]
+                                        [save-check          procedure?]
+                                        [delete-check        procedure?])]
  [make-vanilla-entity                  (-> symbol?
                                            symbol?
                                            string?

@@ -2,7 +2,8 @@
 
 (require "base.ss")
 
-(require "main.ss")
+(require (prefix-in srfi: srfi/19)
+         "main.ss")
 
 (define-entity person
   ([name     string])
@@ -28,14 +29,21 @@
         (pet-name pet))))
 
 (define-entity course
-  ([code     symbol]
-   [name     string]
-   [value    integer]
+  ([code     symbol
+             #:max-length  8
+             #:allow-null? #f
+             #:default 'code]
+   [name     string
+             #:max-length  128
+             #:default "name"]
+   [value    integer
+             #:default 1]
    [rating   real]
    [active?  boolean
              #:column-name 'active
              #:pretty-name "active flag"]
-   [start    time-tai])
+   [start    time-tai
+             #:default (srfi:current-time srfi:time-tai)])
   #:table-name 'courses)
 
 (define-entity tree-node

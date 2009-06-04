@@ -2,7 +2,8 @@
 
 (require "../base.ss")
 
-(require "core.ss")
+(require (for-syntax scheme/base)
+         "core.ss")
 
 ; Variables --------------------------------------
 
@@ -19,15 +20,33 @@
 
 ; Syntax -----------------------------------------
 
+; procedure -> procedure | exn:fail:contract
+(define (check-arity annote-id proc-id proc n)
+  (if (and (procedure? proc) (procedure-arity-includes? proc n))
+      proc
+      (raise-syntax-error #f
+                          (format "~a: expected procedure of arity ~a, received ~a"
+                                  proc-id n proc))))
+
 ; (_ id (annotated -> any) (annotated any any -> any))
-(define-syntax define-annotation
-  (syntax-rules ()
+(define-syntax (define-annotation stx)
+  (syntax-case stx ()
     [(_ id default combinator)
-     (define id
-       (let ([ans #s(annotation (gensym 'id))])
-         (hash-set! default-value-procedures ans (check-arity 'id 'default-value-procedure default 1))
-         (hash-set! value-combinators ans (check-arity 'id 'value-combinator combinator 3))
-         ans))]))
+     #'(define id
+         (let ([ans #s(annotation (gensym 'id))])
+           (hash-set! default-value-procedures ans (check-arity 'id 'default-value-procedure default 1))
+           (hash-set! value-combinators ans (check-arity 'id 'value-combinator combinator 3))
+           ans))]))
+
+; annotation
+(define-annotation ann:struct
+  (lambda (result) #f)
+  (lambda (result old new) new))
+
+; annotation
+(define-annotation ann:attrs
+  (lambda (result) null)
+  (lambda (result old new) (append old new)))
 
 ; Procedures -------------------------------------
 
@@ -39,19 +58,11 @@
 (define (annotation-compose annotation result old new)
   ((hash-ref value-combinators annotation) result old new))
 
-; Helpers ----------------------------------------
-
-; procedure -> procedure | exn:fail:contract
-(define (check-arity annote-id proc-id proc n)
-  (if (and (procedure? proc) (procedure-arity-includes? proc n))
-      proc
-      (raise-exn exn:fail:contract
-        (format "define-annotation ~a: ~a: expected procedure of arity ~a, received ~a"
-                annote-id proc-id n proc))))
-
 ; Provide statements -----------------------------
 
-(provide define-annotation)
+(provide define-annotation
+         ann:struct
+         ann:attrs)
 
 (provide/contract
  [struct annotation  ([id symbol?])]

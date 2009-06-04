@@ -132,24 +132,7 @@
          results
          (apply check-until-problems tail))]))
 
-; Syntax ---------------------------------------
-
-; (_ ([annotation any] ...) expr ...) -> (listof check-result)
-(define-syntax check/annotate
-  (syntax-rules ()
-    [(_ ([ann val] ...) expr ...)
-     (check-with-annotations
-      (list (cons ann val) ...)
-      (lambda ()
-        (check-with-handlers
-         (lambda ()
-           expr ...))))]))
-
 ; Provide statements -----------------------------
-
-(provide (all-from-out "check-annotation.ss"
-                       "check-result.ss")
-         check/annotate)
 
 (provide/contract
  [check-pass                     (->* () (string?) (list/c check-success?))]
