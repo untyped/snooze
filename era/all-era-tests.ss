@@ -2,6 +2,9 @@
   
 (require "../test-base.ss"
          "cached-struct-test.ss"
+         "check-annotation-test.ss"
+         "check-result-test.ss"
+         "check-test.ss"
          "core-test.ss"
          "define-entity-test.ss"
          "pretty-test.ss"
@@ -16,7 +19,10 @@
     snooze-struct-tests
     cached-struct-tests
     define-entity-tests
-    pretty-tests))
+    pretty-tests
+    check-result-tests
+    check-annotation-tests
+    check-tests))
 
 ; Provide statements -----------------------------
 

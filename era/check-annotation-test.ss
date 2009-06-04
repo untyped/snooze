@@ -1,10 +1,17 @@
 #lang scheme/base
 
-(require "../test-base.ss"
-         "annotation.ss"
-         "check-combinator.ss"
-         "check-combinator-syntax.ss"
-         "result.ss")
+(require "../test-base.ss")
+
+(require "check.ss"
+         "check-annotation.ss"
+         "check-result.ss"
+         (except-in "core.ss"
+                    make-check-success
+                    make-check-problem
+                    make-check-warning
+                    make-check-error
+                    make-check-failure
+                    make-check-fatal))
 
 ; annotation
 (define-annotation ann:num 
@@ -18,8 +25,8 @@
 
 ; Tests ------------------------------------------
 
-(define annotation-tests
-  (test-suite "annotation.ss"
+(define check-annotation-tests
+  (test-suite "check-annotation.ss"
     
     (test-case "check-result-annotation"
       (let ([result (car (check/annotate ([ann:num 123]) (check-pass)))])
@@ -42,4 +49,4 @@
 
 ; Provide statements -----------------------------
 
-(provide annotation-tests)
+(provide check-annotation-tests)

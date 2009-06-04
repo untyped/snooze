@@ -21,8 +21,10 @@
 ;   [#:attr-column-names        (listof symbol)]
 ;   [#:attr-pretty-names        (listof string)]
 ;   [#:attr-pretty-names-plural (listof string)]
-;   [#:on-save                  ((struct -> struct) struct -> struct)]
-;   [#:on-delete                ((struct -> struct) struct -> struct)]
+;   [#:on-save                  (U ((struct -> struct) struct -> struct) #f)]
+;   [#:on-delete                (U ((struct -> struct) struct -> struct) #f)]
+;   [#:save-check               (U (struct -> (listof check-result)) #f)]
+;   [#:delete-check             (U (struct -> (listof check-result)) #f)]
 ;   [#:properties               (alistof property any)]
 ;   [#:pretty-formatter         (guid any ... -> string)]
 ; -> 
@@ -43,13 +45,15 @@
                        #:attr-column-names        [attr-column-names        attr-names]
                        #:attr-pretty-names        [attr-pretty-names        (map name->pretty-name attr-names)]
                        #:attr-pretty-names-plural [attr-pretty-names-plural (map pluralize-pretty-name attr-pretty-names)]
-                       #:on-save                  [on-save                  (lambda (continue conn struct) (continue conn struct))]
-                       #:on-delete                [on-delete                (lambda (continue conn struct) (continue conn struct))]
+                       #:on-save                  [on-save                  #f]
+                       #:on-delete                [on-delete                #f]
+                       #:save-check               [save-check               #f]
+                       #:delete-check             [delete-check             #f]
                        #:properties               [properties               null])
   
   ; entity
   (define entity
-    (make-vanilla-entity name table-name pretty-name pretty-name-plural pretty-formatter guid-constructor guid-predicate on-save on-delete))
+    (make-vanilla-entity name table-name pretty-name pretty-name-plural pretty-formatter guid-constructor guid-predicate))
   
   ; (listof type)
   (define attr-types (make-attr-types entity))
@@ -142,6 +146,10 @@
   (set-entity-cached-constructor!  entity cached-constructor)
   (set-entity-cached-predicate!    entity cached-predicate)
   (set-entity-attributes!          entity attributes)
+  (set-entity-save-check!          entity (or save-check (make-default-save-check   entity)))
+  (set-entity-delete-check!        entity (or save-check (make-default-delete-check entity)))
+  (set-entity-on-save!             entity (or on-save    (make-default-save-hook    entity)))
+  (set-entity-on-delete!           entity (or on-delete  (make-default-delete-hook  entity)))
   
   (values entity struct-type public-constructor cached-predicate))
 
@@ -240,6 +248,22 @@
 (define (make-cached-mutator struct-mutator)
   (lambda (guid val)
     (struct-mutator (guid-ref guid) val)))
+
+; entity -> (guid -> (listof check-result))
+(define (make-default-save-check entity)
+  (lambda (guid) null))
+
+; entity -> (guid -> (listof check-result))
+(define (make-default-delete-check entity)
+  (lambda (guid) null))
+
+; entity -> ((connection guid -> guid) connection guid -> guid)
+(define (make-default-save-hook entity)
+  (lambda (continue conn guid) (continue conn guid)))
+
+; entity -> ((connection guid -> guid) connection guid -> guid)
+(define (make-default-delete-hook entity)
+  (lambda (continue conn guid) (continue conn guid)))
 
 ; Provide statements -----------------------------
 

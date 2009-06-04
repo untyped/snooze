@@ -1,16 +1,10 @@
 #lang scheme/base
 
-(require scheme/dict
-         (planet untyped/unlib:3/contract)
-         "base.ss")
+(require "../base.ss")
 
-; Check results can be decorated with one or more "annotations", which
-; are mappings from an annotation struct to an arbitrary value.
-; 
-; An "annotation" is a structure that acts as a key in the check-result
-; annotations hash and contains code to create and combine annotated values.
+(require "core.ss")
 
-; Structure types --------------------------------
+; Variables --------------------------------------
 
 ; (struct symbol)
 (define-struct annotation (id) #:prefab)
@@ -30,20 +24,20 @@
   (syntax-rules ()
     [(_ id default combinator)
      (define id
-       (let ([ans #s(annotation 'id)])
+       (let ([ans #s(annotation (gensym 'id))])
          (hash-set! default-value-procedures ans (check-arity 'id 'default-value-procedure default 1))
          (hash-set! value-combinators ans (check-arity 'id 'value-combinator combinator 3))
          ans))]))
 
 ; Procedures -------------------------------------
 
-; annotation -> (annotated -> any)
-(define (annotation-default annotation)
-  (hash-ref default-value-procedures annotation))
+; annotation check-result -> any
+(define (annotation-default annotation result)
+  ((hash-ref default-value-procedures annotation) result))
 
-; annotation -> (annotated old-any new-any -> any)
-(define (annotation-combinator annotation)
-  (hash-ref value-combinators annotation))
+; annotation check-result any any -> any
+(define (annotation-compose annotation result old new)
+  ((hash-ref value-combinators annotation) result old new))
 
 ; Helpers ----------------------------------------
 
@@ -60,6 +54,6 @@
 (provide define-annotation)
 
 (provide/contract
- [struct annotation     ([id symbol?])]
- [annotation-default    (-> annotation? (arity/c 1))]
- [annotation-combinator (-> annotation? (arity/c 3))])
+ [struct annotation  ([id symbol?])]
+ [annotation-default (-> annotation? check-result? any)]
+ [annotation-compose (-> annotation? check-result? any/c any/c any)])

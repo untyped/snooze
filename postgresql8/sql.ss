@@ -37,6 +37,10 @@
                                                                                                    (entity-name (guid-entity value))
                                                                                                    (entity-name (guid-type-entity type))))]
                                                                                         [(guid-id value) => number->string]
+                                                                                        [(with-handlers ([exn? #f])
+                                                                                           (and (guid? value) (guid-ref value)))
+                                                                                         => (lambda (struct)
+                                                                                              (number->string (snooze-struct-id struct)))]
                                                                                         [else (raise-exn exn:fail:snooze:query
                                                                                                 (format "cannot use unsaved struct in a query: ~s" value)
                                                                                                 #f)])]

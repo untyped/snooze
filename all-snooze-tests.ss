@@ -16,7 +16,6 @@
          ;"snooze-transaction-test.ss"
          "test-base.ss"
          ;"audit/all-audit-tests.ss"
-         "check/all-check-tests.ss"
          "era/all-era-tests.ss"
          "generic/all-generic-tests.ss"
          "sql/all-sql-tests.ss")
@@ -48,13 +47,10 @@
     ;snooze-transaction-tests
     ;snooze-concurrency-tests
     snooze-find-tests
-    ;quick-find-tests
+    quick-find-tests
     
     ; Tests for the audit trails:
-    ;(make-audit-tests snooze)
-    
-    ; Tests for the check library:
-    all-check-tests))
+    #;(make-audit-tests snooze)))
 
 ; Provide statements -----------------------------
 

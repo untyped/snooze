@@ -4,7 +4,6 @@
 
 (require scheme/unit
          (unlib-in gen)
-         "annotation.ss"
          "quick-find.ss"
          "snooze-api.ss"
          "snooze-class.ss"
@@ -14,8 +13,7 @@
 ; Provide statements -----------------------------
 
 (provide (unlib-out gen)
-         (all-from-out "annotation.ss"
-                       "snooze-api.ss"
+         (all-from-out "snooze-api.ss"
                        "snooze-class.ss"
                        "quick-find.ss"
                        "era/era.ss"

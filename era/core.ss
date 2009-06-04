@@ -274,6 +274,8 @@
 ;         (listof attribute)
 ;         ((struct -> struct) struct -> struct)
 ;         ((struct -> struct) struct -> struct))
+;         (struct -> (listof check-result))
+;         (struct -> (listof check-result))
 (define-struct entity 
   (name
    table-name
@@ -291,7 +293,9 @@
    guid-predicate
    attributes
    on-save
-   on-delete)
+   on-delete
+   save-check
+   delete-check)
   #:transparent
   #:mutable
   #:property 
@@ -306,8 +310,6 @@
 ;  (guid any ... -> string)
 ;  ((U natural #f) -> guid)
 ;  ((U guid any) -> boolean)
-;  ((struct -> struct) struct -> struct)
-;  ((struct -> struct) struct -> struct)
 ; ->
 ;  entity
 ;
@@ -315,15 +317,19 @@
 ; We can't mutate struct types, so we have to create them first and then patch
 ; the entity. This procedure gets around the field contracts on entity during
 ; the creation process.
-(define (make-vanilla-entity name table-name pretty-name pretty-name-plural pretty-formatter guid-constructor guid-predicate on-save on-delete)
-  (make-entity name table-name pretty-name pretty-name-plural pretty-formatter
-               #f                       ; struct type
-               #f #f #f #f #f #f        ; constructors and predicates
-               guid-constructor         ; guid constructor
-               guid-predicate           ; guid predicate
-               null                     ; attributes
-               on-save                  ; hooks
-               on-delete))              ;
+(define (make-vanilla-entity name table-name pretty-name pretty-name-plural pretty-formatter guid-constructor guid-predicate)
+  (let ([empty-hook  (lambda (continue conn guid) (continue conn guid))]
+        [empty-check (lambda (guid) null)])
+    (make-entity name table-name pretty-name pretty-name-plural pretty-formatter
+                 #f                       ; struct type
+                 #f #f #f #f #f #f        ; constructors and predicates
+                 guid-constructor         ; guid constructor
+                 guid-predicate           ; guid predicate
+                 null                     ; attributes
+                 empty-hook               ; hooks
+                 empty-hook               ;
+                 empty-check              ; validation
+                 empty-check)))           ;
 
 ; entity [#:snooze snooze] natural -> guid
 (define (entity-make-vanilla-guid #:snooze [snooze (current-snooze)] entity id)
@@ -420,6 +426,23 @@
   (and (struct? struct)
        (prop:entity-set? struct)))
 
+; Check results ----------------------------------
+
+; (struct string (hasheqof symbol any))
+(define-serializable-struct check-result (message annotations) #:transparent)
+(define-serializable-struct (check-success check-result) () #:transparent)    ; okay
+(define-serializable-struct (check-problem check-result) () #:transparent)    ; problem
+(define-serializable-struct (check-warning check-problem) () #:transparent)   ; problem, can save/delete anyway
+(define-serializable-struct (check-error   check-problem) () #:transparent)   ; problem, cannot save/delete
+(define-serializable-struct (check-failure check-error) () #:transparent)     ; problem, cannot save/delete, caused by user
+
+; (struct string (hasheqof symbol any) exn)
+(define-serializable-struct (check-fatal check-error) (exn) #:transparent)    ; problem, cannot save/delete, caused by exn
+
+; contract
+(define annotations/c
+  (and/c hash? hash-eq?))
+
 ; Provide statements -----------------------------
 
 (provide (all-from-out "core-snooze-interface.ss")
@@ -488,13 +511,13 @@
                                         [guid-predicate      (-> any/c boolean?)]
                                         [attributes          (listof attribute?)]
                                         [on-save             (-> (-> connection? guid? guid?) connection? guid? guid?)]
-                                        [on-delete           (-> (-> connection? guid? guid?) connection? guid? guid?)])]
+                                        [on-delete           (-> (-> connection? guid? guid?) connection? guid? guid?)]
+                                        [save-check          (-> guid? (listof check-result?))]
+                                        [delete-check        (-> guid? (listof check-result?))])]
  [make-vanilla-entity                  (-> symbol?
                                            symbol?
                                            string?
                                            string?
-                                           procedure?
-                                           procedure?
                                            procedure?
                                            procedure?
                                            procedure?
@@ -520,4 +543,11 @@
  [attribute-default                    (->* (attribute?) (#:snooze (is-a?/c snooze<%>)) any/c)]
  [prop:entity                          struct-type-property?]
  [prop:entity-set?                     (-> any/c boolean?)]
- [prop:entity-ref                      (-> any/c entity?)])
+ [prop:entity-ref                      (-> any/c entity?)]
+ [struct check-result                  ([message string?] [annotations annotations/c])]
+ [struct (check-success check-result)  ([message string?] [annotations annotations/c])]
+ [struct (check-problem check-result)  ([message string?] [annotations annotations/c])]
+ [struct (check-warning check-problem) ([message string?] [annotations annotations/c])]
+ [struct (check-error   check-problem) ([message string?] [annotations annotations/c])]
+ [struct (check-failure check-error)   ([message string?] [annotations annotations/c])]
+ [struct (check-fatal   check-error)   ([message string?] [annotations annotations/c] [exn exn?])])

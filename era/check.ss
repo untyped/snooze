@@ -1,13 +1,18 @@
 #lang scheme/base
 
-(require scheme/contract
-         scheme/match
-         "../base.ss"
-         "annotation.ss"
-         "result.ss"
-         (only-in "result-internal.ss" annotations/c))
+(require "../base.ss")
 
-; Atomic check constructors ----------------------
+(require "check-annotation.ss"
+         "check-result.ss"
+         (except-in "core.ss"
+                    make-check-success
+                    make-check-problem
+                    make-check-warning
+                    make-check-error
+                    make-check-failure
+                    make-check-fatal))
+
+; Shorthand constructors -------------------------
 
 ; [string] -> (list check-success)
 (define (check-pass [message "Okay"])
@@ -20,6 +25,32 @@
 ; string -> (list check-failure)
 (define (check-fail message)
   (list (make-check-failure message)))
+
+; Predicates -------------------------------------
+
+; (listof check-result) ... -> boolean
+(define (check-successes? . results)
+  (ormap check-success? (apply check-all results)))
+
+; (listof check-result) ... -> boolean
+(define (check-problems? . results)
+  (ormap check-problem? (apply check-all results)))
+
+; (listof check-result) ... -> boolean
+(define (check-warnings? . results)
+  (ormap check-warning? (apply check-all results)))
+
+; (listof check-result) ... -> boolean
+(define (check-errors? . results)
+  (ormap check-error? (apply check-all results)))
+
+; (listof check-result) ... -> boolean
+(define (check-failures? . results)
+  (ormap check-failure? (apply check-all results)))
+
+; (listof check-result) ... -> boolean
+(define (check-fatals? . results)
+  (ormap check-fatal? (apply check-all results)))
 
 ; Combinators ------------------------------------
 
@@ -101,7 +132,24 @@
          results
          (apply check-until-problems tail))]))
 
-; Provide statements ---------------------------
+; Syntax ---------------------------------------
+
+; (_ ([annotation any] ...) expr ...) -> (listof check-result)
+(define-syntax check/annotate
+  (syntax-rules ()
+    [(_ ([ann val] ...) expr ...)
+     (check-with-annotations
+      (list (cons ann val) ...)
+      (lambda ()
+        (check-with-handlers
+         (lambda ()
+           expr ...))))]))
+
+; Provide statements -----------------------------
+
+(provide (all-from-out "check-annotation.ss"
+                       "check-result.ss")
+         check/annotate)
 
 (provide/contract
  [check-pass                     (->* () (string?) (list/c check-success?))]
@@ -120,4 +168,10 @@
                                                 (listof check-fatal?)))]
  [check-with-handlers            (-> (-> (listof check-result?)) (listof check-result?))]
  [check-with-annotations         (-> (listof (cons/c annotation? any/c)) (-> (listof check-result?)) (listof check-result?))]
- [check-until-problems           (->* () () #:rest (listof procedure?) (listof check-problem?))])
+ [check-until-problems           (->* () () #:rest (listof procedure?) (listof check-problem?))]
+ [check-successes?               (->* () () #:rest (listof (listof check-result?)) boolean?)]
+ [check-problems?                (->* () () #:rest (listof (listof check-result?)) boolean?)]
+ [check-warnings?                (->* () () #:rest (listof (listof check-result?)) boolean?)]
+ [check-errors?                  (->* () () #:rest (listof (listof check-result?)) boolean?)]
+ [check-failures?                (->* () () #:rest (listof (listof check-result?)) boolean?)]
+ [check-fatals?                  (->* () () #:rest (listof (listof check-result?)) boolean?)])

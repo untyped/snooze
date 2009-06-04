@@ -1,10 +1,17 @@
 #lang scheme/base
 
-(require "../test-base.ss"
-         "annotation.ss"
-         "check-combinator.ss"
-         "check-combinator-syntax.ss"
-         "result.ss")
+(require "../test-base.ss")
+
+(require "check.ss"
+         "check-annotation.ss"
+         "check-result.ss"
+         (except-in "core.ss"
+                    make-check-success
+                    make-check-problem
+                    make-check-warning
+                    make-check-error
+                    make-check-failure
+                    make-check-fatal))
 
 ; Helpers ----------------------------------------
 
@@ -20,8 +27,8 @@
 
 ; Tests ------------------------------------------
 
-(define check-combinator-tests
-  (test-suite "check-combinator.ss"
+(define check-tests
+  (test-suite "check.ss"
     
     (test-case "pass, warn and fail"
       (check-equal? (check-pass)           (list (make-check-success "Okay")) "pass")
@@ -29,6 +36,38 @@
       (check-equal? (check-warn "Warning") (list (make-check-warning "Warning")) "warn")
       (check-equal? (check-fail "Failure") (list (make-check-failure "Failure")) "fail"))
     
+    (test-case "check-successes?"
+      (check-true  (check-successes? (check-pass) (check-warn "Dang")))
+      (check-false (check-successes? (check-warn "Dang") (check-warn "Dang"))))
+    
+    (test-case "check-problems?"
+      (check-true  (check-problems? (check-pass) (check-warn "Dang")))
+      (check-true  (check-problems? (check-pass) (check-fail "Dang")))
+      (check-false (check-problems? (check-pass) (check-pass))))
+    
+    (test-case "check-warnings?"
+      (check-true  (check-warnings? (check-pass) (check-warn "Dang")))
+      (check-false (check-warnings? (check-pass) (check-fail "Dang")))
+      (check-false (check-warnings? (check-pass) (check-pass))))
+    
+    (test-case "check-errors?"
+      (check-true  (check-errors? (check-with-handlers (cut raise-exn exn:fail "Dang"))))
+      (check-true  (check-errors? (check-pass) (check-fail "Dang")))
+      (check-false (check-errors? (check-pass) (check-warn "Dang")))
+      (check-false (check-errors? (check-pass) (check-pass))))
+    
+    (test-case "check-failures?"
+      (check-false (check-failures? (check-with-handlers (cut raise-exn exn:fail "Dang"))))
+      (check-true  (check-failures? (check-pass) (check-fail "Dang")))
+      (check-false (check-failures? (check-pass) (check-warn "Dang")))
+      (check-false (check-failures? (check-pass) (check-pass))))
+    
+    (test-case "check-fatals?"
+      (check-true  (check-fatals? (check-with-handlers (cut raise-exn exn:fail "Dang"))))
+      (check-false (check-fatals? (check-pass) (check-fail "Dang")))
+      (check-false (check-fatals? (check-pass) (check-warn "Dang")))
+      (check-false (check-fatals? (check-pass) (check-pass))))
+  
     (test-equal? "check-all"
       (check-all (check-pass "Success")
                  (check-warn  "Warning")
@@ -40,21 +79,21 @@
     (test-case "check-successes, check-problems, check-warnings, check-errors, check-failures, check-fatals"
       (let* ([exn (make-exn "Dang" (current-continuation-marks))]
              [all (check-all (check-pass)
-                             (check-warn  "w1")
+                             (check-warn "w1")
                              (check-fail "f1")
                              (list (make-check-fatal "e1" exn))
                              (check-pass)
-                             (check-warn  "w2")
+                             (check-warn "w2")
                              (check-fail "f2")
                              (list (make-check-fatal "e2" exn)))])
         (check-equal? (check-successes all)
                       (check-all (check-pass)
                                  (check-pass)))
         (check-equal? (check-problems all)
-                      (check-all (check-warn  "w1")
+                      (check-all (check-warn "w1")
                                  (check-fail "f1")
                                  (list (make-check-fatal "e1" exn))
-                                 (check-warn  "w2")
+                                 (check-warn "w2")
                                  (check-fail "f2")
                                  (list (make-check-fatal "e2" exn))))
         (check-equal? (check-warnings all)
@@ -77,25 +116,19 @@
                     [(warnings failures fatals)
                      (check-warnings+failures+fatals 
                       (check-all (check-pass)
-                                 (check-warn  "w1")
+                                 (check-warn "w1")
                                  (check-fail "f1")
                                  (list (make-check-fatal "e1" exn))
                                  (check-pass)
-                                 (check-warn  "w2")
+                                 (check-warn "w2")
                                  (check-fail "f2")
                                  (list (make-check-fatal "e2" exn))))])
-        (check-equal? warnings 
-                      (check-all (check-warn  "w1")
-                                 (check-warn  "w2"))
-                      "check 1")
-        (check-equal? failures
-                      (check-all (check-fail "f1")
-                                 (check-fail "f2"))
-                      "check 2")
-        (check-equal? fatals
-                      (check-all (list (make-check-fatal "e1" exn))
-                                 (list (make-check-fatal "e2" exn)))
-                      "check 3")))
+        (check-equal? warnings (check-all (check-warn "w1")
+                                          (check-warn "w2")))
+        (check-equal? failures (check-all (check-fail "f1")
+                                          (check-fail "f2")))
+        (check-equal? fatals   (check-all (list (make-check-fatal "e1" exn))
+                                          (list (make-check-fatal "e2" exn))))))
     
     (test-case "check-with-handlers"
       (let ([exn (make-exn:fail "Oops!" (current-continuation-marks))])
@@ -165,13 +198,13 @@
         (check-until-problems (lambda () (set! stage-reached 0) (check-pass))
                               (lambda () (set! stage-reached 1) (check-pass))
                               (lambda () (set! stage-reached 2) (check-pass)))
-        (check-equal? stage-reached 2 "check 1"))
+        (check-equal? stage-reached 2))
       (let ([stage-reached #f])
         (check-until-problems (lambda () (set! stage-reached 0) (check-pass))
-                              (lambda () (set! stage-reached 1) (check-warn  "Dang"))
+                              (lambda () (set! stage-reached 1) (check-warn "Dang"))
                               (lambda () (set! stage-reached 2) (check-pass)))
-        (check-equal? stage-reached 1 "check 2")))))
+        (check-equal? stage-reached 1)))))
 
 ; Provide statements -----------------------------
 
-(provide check-combinator-tests)
+(provide check-tests)
