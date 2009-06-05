@@ -131,7 +131,7 @@
 (define (check-string attr allow-null? max-length val)
   (if (and (string? val) (or (not max-length) (<= (string-length val) max-length)))
       (check-pass)
-      (check-fail (format "~a: must be ~aor text~a."
+      (check-fail (format "~a: must be~a text~a."
                           (attribute-pretty-name attr)
                           (if allow-null? " blank or" "")
                           (if max-length (format " of ~a characters or less" max-length) " of any length")))))

@@ -17,34 +17,34 @@
     #:before
     recreate-test-tables
     
-    (test-case "check-struct : okay"
+    (test-case "check-snooze-struct : okay"
       (let* ([struct  (make-course/defaults)]
              [results (check-snooze-struct struct)])
         (check-equal? (length results) 0)))
     
-    (test-case "check-struct : invalid null attribute"
-      (let* ([struct  (make-course/defaults #:code #f)]
+    (test-case "check-snooze-struct : invalid null attribute"
+      (let* ([struct (make-course/defaults #:code #f)]
              [results (check-snooze-struct struct)])
         (check-equal? (length results) 1)
         (check-equal? (check-result-annotation (car results) ann:struct) struct)
         (check-equal? (check-result-annotation (car results) ann:attrs)
                       (list (attr course code)))))
     
-    (test-case "check-struct : symbol too long"
-      (let* ([struct  (make-course/defaults  #:code 'abcdefghi)]
+    (test-case "check-snooze-struct : symbol too long"
+      (let*/debug ([struct  (make-course/defaults #:code 'abcdefghi)]
              [results (check-snooze-struct struct)])
         (check-equal? (length results) 1)
         (check-equal? (check-result-annotation (car results) ann:attrs)
                       (list (attr course code)))))
     
-    (test-case "check-struct : symbol too long"
+    (test-case "check-snooze-struct : symbol too long"
       (let* ([struct  (make-course/defaults #:name (make-string 129 #\a))]
              [results (check-snooze-struct struct)])
         (check-equal? (length results) 1)
         (check-equal? (check-result-annotation (car results) ann:attrs)
                       (list (attr course name)))))
     
-    (test-case "check-struct : custom check"
+    (test-case "check-snooze-struct : custom check"
       (let ([temp (entity-save-check course)])
         (set-entity-save-check! course (lambda (course) null))
         (let* ([struct  (make-course/defaults #:code #f)]
@@ -52,7 +52,7 @@
           (check-equal? (length results) 0))
         (set-entity-save-check! course temp)))
     
-    (test-case "check-old-struct : symbol too long"
+    (test-case "check-old-snooze-struct : symbol too long"
       (let* ([struct  (make-course/defaults #:name (make-string 129 #\a))]
              [results (check-old-snooze-struct struct)])
         (check-pred null? results)))
