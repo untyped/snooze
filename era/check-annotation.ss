@@ -48,7 +48,7 @@
   (lambda (result) null)
   (lambda (result old new) (append old new)))
 
-; Procedures -------------------------------------
+; Annotation combinators -------------------------
 
 ; annotation check-result -> any
 (define (annotation-default annotation result)
@@ -58,6 +58,54 @@
 (define (annotation-compose annotation result old new)
   ((hash-ref value-combinators annotation) result old new))
 
+; Check result procedures ------------------------
+
+; check-result annotation -> any
+(define (check-result-annotation result annote)
+  (hash-ref (check-result-annotations result)
+            annote
+            (cut annotation-default annote result)))
+
+; check-result annotation -> boolean
+(define (check-result-has-annotation? result annote)
+  (with-handlers ([exn? (lambda _ #f)])
+    (hash-ref (check-result-annotations result) annote)
+    #t))
+
+; check-result annotation any -> check-result
+(define (check-result-annotation-set result annote val)
+  (let* ([message (check-result-message result)]
+         [old     (check-result-annotation result annote)]
+         [new     (annotation-compose annote result old val)]
+         [annotes (hash-set (check-result-annotations result) annote new)])
+    ; check-result
+    (cond [(check-success? result) (make-check-success message annotes)]
+          [(check-warning? result) (make-check-warning message annotes)]
+          [(check-failure? result) (make-check-failure message annotes)]
+          [(check-fatal? result)   (make-check-fatal   message annotes (check-fatal-exn result))])))
+
+; ann:struct, ann:attrs wrappers -----------------
+
+; check-result -> (listof attribute)
+(define (check-result-attributes result)
+  (check-result-annotation result ann:attrs))
+
+; check-result attribute -> boolean
+(define (check-result-has-attribute? result attr)
+  (and (memq attr (check-result-attributes result)) #t))
+
+; check-result (listof attributes) -> check-result
+(define (check-result-attributes-add result val)
+  (check-result-annotation-set result ann:attrs val))
+
+; check-result -> (U guid #f)
+(define (check-result-struct result)
+  (check-result-annotation result ann:struct))
+
+; check-result (U guid #f) -> check-result
+(define (check-result-struct-set result val)
+  (check-result-annotation-set result ann:struct val))
+
 ; Provide statements -----------------------------
 
 (provide define-annotation
@@ -65,6 +113,14 @@
          ann:attrs)
 
 (provide/contract
- [struct annotation  ([id symbol?])]
- [annotation-default (-> annotation? check-result? any)]
- [annotation-compose (-> annotation? check-result? any/c any/c any)])
+ [struct annotation            ([id symbol?])]
+ [annotation-default           (-> annotation? check-result? any)]
+ [annotation-compose           (-> annotation? check-result? any/c any/c any)]
+ [check-result-annotation      (-> check-result? annotation? any)]
+ [check-result-has-annotation? (-> check-result? annotation? boolean?)]
+ [check-result-annotation-set  (-> check-result? annotation? any/c check-result?)]
+ [check-result-attributes      (-> check-result? (listof attribute?))]
+ [check-result-has-attribute?  (-> check-result? attribute? boolean?)]
+ [check-result-attributes-add  (-> check-result? (listof attribute?) check-result?)]
+ [check-result-struct          (-> check-result? (or/c guid? #f))]
+ [check-result-struct-set      (-> check-result? (or/c guid? #f) check-result?)])
