@@ -46,6 +46,35 @@
       (source->sources from)
       (car (source->sources from))))
 
+;  ((opt-listof (U expression entity-alias query-alias))
+; ->
+;  (listof expression)
+(define (expand-distinct-argument argument)
+  (cond [(eq? argument #t) null]
+        [(eq? argument #f) #f]
+        [(pair? argument)  (expand-distinct-list argument)]
+        [else              (expand-distinct-item argument)]))
+
+;  ((listof (U expression entity-alias query-alias))
+; -> 
+;  (listof expression)
+(define (expand-distinct-list argument)
+  (for/fold ([accum null])
+            ([arg   argument])
+            (append accum (expand-distinct-item arg))))
+
+;  (U expression entity-alias query-alias)
+; -> 
+;  (listof expression)
+(define expand-distinct-item
+  (match-lambda
+    [(? expression? expr)
+     (list expr)]
+    [(? entity-alias? alias)
+     (list (make-attribute-alias alias (car (entity-attributes (source-alias-value alias)))))]
+    [(? query-alias? alias)
+     (source-alias-columns alias)]))
+
 ;   ((opt-listof (U expression entity-alias query-alias))
 ; ->
 ;    (listof column)
@@ -125,7 +154,7 @@
 (define (check-where-clause where sources columns)
   (when where
     (check-expression 'where-clause where sources columns)))
-     
+
 ; (listof expression) source-list column-list -> void
 (define (check-group-clause group sources columns)
   (for-each (cut check-expression 'group-clause <> sources columns) group))
@@ -345,6 +374,8 @@
  [source->sources            (-> source? (listof source/c))]
  [source->columns            (-> source? (values (listof column?) (listof column?)))]
  [make-default-what-argument (-> source? (opt-listof source/c))]
+ [expand-distinct-argument   (-> (or/c boolean? (opt-listof (or/c expression? source/c)))
+                                 (or/c (listof expression?) #f))]
  [expand-what-argument       (-> (opt-listof (or/c expression? source/c))
                                  (values (listof column?)
                                          (opt-listof (or/c entity? type?))))]

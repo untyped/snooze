@@ -85,14 +85,14 @@
     (define/public (display-distinct distinct imported out)
       (if (null? distinct)
           (begin (display "DISTINCT " out))
-          (begin (display "DISTINCT ON " out)
+          (begin (display "DISTINCT ON (" out)
                  (display-expression (car distinct) imported out)
                  (let loop ([distinct (cdr distinct)])
                    (unless (null? distinct)
                      (display ", " out)
                      (display-expression (car distinct) imported out)
                      (loop (cdr distinct))))
-                 (display " " out))))
+                 (display ") " out))))
     
     ; WHAT clause ------------------------------------
     

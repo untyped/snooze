@@ -187,19 +187,6 @@
    expand-expression
    expand-unquote))
 
-(define expand-distinct
-  ((or-expand "expression")
-   expand-true+false
-   expand-function
-   expand-aggregate
-   expand-identifier
-   expand-literal))
-
-(define expand-distinct+unquote
-  ((or-expand "distinct+unquote")
-   expand-distinct
-   expand-unquote))
-
 (define expand-column
   ((or-expand "column")
    expand-expression
@@ -226,6 +213,17 @@
 (define expand-column+column-list+unquote
   ((or-expand "column+column-list")
    expand-column+column-list
+   expand-unquote))
+
+(define expand-distinct
+  ((or-expand "distinct")
+   expand-true+false
+   expand-column
+   expand-column-list))
+
+(define expand-distinct+unquote
+  ((or-expand "distinct+unquote")
+   expand-distinct
    expand-unquote))
 
 (define (expand-direction stx)

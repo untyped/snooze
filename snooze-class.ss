@@ -257,7 +257,7 @@
     ;  select
     ;
     ; Prints an SQL string to stdout as a side effect.
-    (define/public (debug-sql query [format "~a~n"] [output-port (current-output-port)])
+    (define/public (debug-sql query #:format [format "~a~n"] #:output-port [output-port (current-output-port)])
       (send database debug-sql query output-port format))))
 
 ; Provide statements -----------------------------

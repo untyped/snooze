@@ -230,14 +230,14 @@
       (check-equal? (distinct-sql (list (sql (= p1.guid 123)))
                                   (list (sql p1.id)))
                     #<<ENDSQL
-DISTINCT ON ([p1-guid] = 123) 
+DISTINCT ON (([p1-guid] = 123)) 
 ENDSQL
                     "single expression")
       (check-equal? (distinct-sql (list (sql (= p1.guid 123))
                                         (sql (= p1.revision 123)))
                                   (list (sql p1.guid)))
                     #<<ENDSQL
-DISTINCT ON ([p1-guid] = 123), ([p1].[revision] = 123) 
+DISTINCT ON (([p1-guid] = 123), ([p1].[revision] = 123)) 
 ENDSQL
                     "multiple expressions"))
     

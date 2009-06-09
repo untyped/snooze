@@ -72,6 +72,7 @@
   (sql:select/internal what distinct from where group order having limit offset))
 
 ;  (U (opt-listof (U column source-alias)) #f)
+;  (U (opt-listof (U expression source-alias)) #t #f)
 ;  source
 ;  (U expression #f)
 ;  (listof (U source-alias column))
@@ -94,10 +95,7 @@
   
   ; (U (listof expression) #f)
   (define distinct
-    (cond [(expression? distinct*) (list distinct*)]
-          [(eq? distinct* #t) (list)]
-          [(eq? distinct* #f) #f]
-          [else (raise-select-exn #:distinct "(U expression (listof expression) #t #f)" distinct*)]))
+    (expand-distinct-argument distinct*))
   
   ; (listof expression-alias)
   (define group
@@ -105,30 +103,30 @@
   
   ; Check #:from:
   (unless (source? from)
-    (raise-select-exn #:from "source" from))
+    (raise-select-exn '#:from "source" from))
   
   ; Check #:where:
   (unless (or (expression? where) (not where))
-    (raise-select-exn #:where "(U expression #f)" where))
+    (raise-select-exn '#:where "(U expression #f)" where))
   
   ; Check #:group:
   (unless (and (list? group) (andmap expression? group))
-    (raise-select-exn #:group "(listof expression)" group))
+    (raise-select-exn '#:group "(listof expression)" group))
   
   ; Check #:order:
   (unless (and (list? order) (andmap order? order))
-    (raise-select-exn #:order "(listof order)" order))
+    (raise-select-exn '#:order "(listof order)" order))
   
   (unless (or (expression? having) (not having))
-    (raise-select-exn #:having "(U expression #f)" having))
+    (raise-select-exn '#:having "(U expression #f)" having))
   
   ; Check #:limit:
   (unless (or (integer? limit) (not limit))
-    (raise-select-exn #:limit "(U integer #f)" limit))
+    (raise-select-exn '#:limit "(U integer #f)" limit))
   
   ; Check #:offset:
   (unless (or (integer? offset) (not offset))
-    (raise-select-exn #:offset "(U integer #f)" offset))
+    (raise-select-exn '#:offset "(U integer #f)" offset))
   
   (let*-values (; (listof source-alias)
                 [(sources) (source->sources from)]

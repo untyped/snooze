@@ -229,12 +229,12 @@
                     "no expressions")
       (check-equal? (distinct-sql (list (sql:= (sql p1.guid) 123)) (list (sql p1.guid)))
                     #<<ENDSQL
-DISTINCT ON ("p1-guid" = 123) 
+DISTINCT ON (("p1-guid" = 123)) 
 ENDSQL
                     "single expression")
       (check-equal? (distinct-sql (list (sql:= (sql p1.guid) 123) (sql:= (sql p1.revision) 123)) (list (sql p1.guid)))
                     #<<ENDSQL
-DISTINCT ON ("p1-guid" = 123), ("p1"."revision" = 123) 
+DISTINCT ON (("p1-guid" = 123), ("p1"."revision" = 123)) 
 ENDSQL
                     "multiple expressions"))
     

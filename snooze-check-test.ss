@@ -31,7 +31,7 @@
                       (list (attr course code)))))
     
     (test-case "check-snooze-struct : symbol too long"
-      (let*/debug ([struct  (make-course/defaults #:code 'abcdefghi)]
+      (let* ([struct  (make-course/defaults #:code 'abcdefghi)]
              [results (check-snooze-struct struct)])
         (check-equal? (length results) 1)
         (check-equal? (check-result-annotation (car results) ann:attrs)
