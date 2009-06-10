@@ -7,6 +7,9 @@
          (unlib-in hash)
          "era.ss")
 
+(require/expose "entity.ss"
+  (name->database-name))
+
 ; Tests ----------------------------------------
 
 (define define-entity-tests
@@ -43,7 +46,12 @@
     
     (test-case "copy constructor"
       (check-equal? (make-person/defaults #:name "Dave")
-                    (person-set (make-person "Dave"))))))
+                    (person-set (make-person "Dave"))))
+    
+    (test-case "name->table-name"
+      (check-equal? (name->database-name 'person)        'person)
+      (check-equal? (name->database-name 'person-record) 'personrecord)
+      (check-equal? (name->database-name 'PersonRecord)  'personrecord))))
 
 ; Provide statements -----------------------------
 

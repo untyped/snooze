@@ -39,7 +39,7 @@
                        attr-defaults
                        guid-constructor
                        guid-predicate
-                       #:table-name               [table-name               name]
+                       #:table-name               [table-name               (name->database-name name)]
                        #:pretty-name              [pretty-name              (name->pretty-name name)]
                        #:pretty-name-plural       [pretty-name-plural       (pluralize-pretty-name pretty-name)]
                        #:pretty-formatter         [pretty-formatter         (cut format "~a" <>)]
@@ -156,6 +156,10 @@
 
 ; Helpers ----------------------------------------
 
+; symbol -> symbol
+(define (name->database-name name)
+  (string->symbol (regexp-replace* #px"[^a-z0-9]" (string-downcase (symbol->string name)) "")))
+
 ;  symbol symbol string string
 ;  type entity integer
 ;  (snooze -> any) (struct natural -> any)
@@ -253,8 +257,7 @@
 ; Provide statements -----------------------------
 
 (provide/contract
- [rename create-entity
-         make-entity
+ [rename create-entity make-entity
          (->* (symbol?
                (listof symbol?)
                (-> entity? (listof type?))
@@ -278,4 +281,5 @@
               (values entity?
                       struct-type?
                       procedure?
-                      procedure?))])
+                      procedure?))]
+ [name->database-name (-> symbol? symbol?)])

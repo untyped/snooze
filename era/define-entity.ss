@@ -170,7 +170,7 @@
               (set! my-kw-stx            (datum->syntax #f (string->keyword (symbol->string (syntax->datum #'name)))))
               (set! my-accessor-stx      (make-id entity-stx entity-stx '- #'name))
               (set! my-mutator-stx       (make-id entity-stx 'set- entity-stx '- #'name '!))
-              (set! my-column-stx        #''name)
+              (set! my-column-stx        #'(name->database-name 'name))
               (parse-attr-kws #'(arg ...))
               (parse-attr-type #'type)
               (finish-attr))]))
