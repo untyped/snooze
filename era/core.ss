@@ -409,7 +409,8 @@
 
 ; type -> any
 (define (attribute-default attr #:snooze [snooze (current-snooze)])
-  ((attribute-default-maker attr) snooze))
+  (parameterize ([current-snooze snooze])
+    ((attribute-default-maker attr))))
 
 ; Snooze structs ---------------------------------
 

@@ -96,7 +96,7 @@
     (define my-private-stx       #f)
     (define my-allows-null-stx   #'#t)
     (define my-max-length-stx    #'#f)
-    (define my-default-stx       #'(lambda (snooze) #f))
+    (define my-default-stx       #'(lambda () #f))
     (define my-type-stx          #f)
     (define my-type-expr-stx     #f)
     (define my-kw-stx            #f)
@@ -130,7 +130,7 @@
          (begin (set! my-max-length-stx #'val)
                 (parse-attr-kws #'(other ...)))]
         [(#:default val other ...)
-         (begin (set! my-default-stx #'(lambda (snooze) val))
+         (begin (set! my-default-stx #'(lambda () val))
                 (parse-attr-kws #'(other ...)))]
         [(#:default-maker val other ...)
          (begin (set! my-default-stx #'val)
@@ -435,7 +435,7 @@
                        (for/list ([info (in-list (cddr attr-info))])
                          (list (string->keyword (symbol->string (syntax->datum (attribute-info-id info))))
                                (attribute-info-accessor-id info)
-                               (syntax-case (attribute-info-type-id info) (boolean integer real symbol string time-tai time-utc)
+                               (syntax-case* (attribute-info-type-id info) (boolean integer real symbol string time-tai time-utc) symbolic-identifier=?
                                  [boolean  #'boolean?]
                                  [integer  #'(or/c integer? #f)]
                                  [real     #'(or/c number? #f)]

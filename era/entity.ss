@@ -97,7 +97,7 @@
     (let* ([name             'guid]
            [col              'guid]
            [type             (make-guid-type #f entity)]
-           [default-maker    (lambda (snooze) #f)]
+           [default-maker    (lambda () #f)]
            [index            0])
       (create-attribute name col "unique ID" "unique IDs" type entity index default-maker struct-accessor struct-mutator)))
   
@@ -105,7 +105,7 @@
     (let* ([name             'revision]
            [col              'revision]
            [type             (make-integer-type #f)]
-           [default-maker    (lambda (snooze) #f)]
+           [default-maker    (lambda () #f)]
            [index            1])
       (create-attribute name col "revision" "revisions" type entity index default-maker struct-accessor struct-mutator)))
   
