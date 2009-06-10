@@ -111,9 +111,6 @@
     
     ; Auditing changes ---------------------------
     
-    (test-case "audit-attributes generated correctly"
-      (fail "Not implemented."))
-    
     (test-case "audit basic insert, update and delete"
       (begin-with-definitions
         (clear-trail!)
@@ -381,7 +378,7 @@
         (define deltas (find-deltas))
         
         (check-equal? (length txns) 1) ; Outer transaction only
-        (check-equal? (length deltas) 1)
+        (check-equal? (length deltas) 1 "SQLite will fail this check")
         
         (check-true (andmap (lambda (delta)
                               (= (audit-delta-struct-id delta) (struct-id dave)))

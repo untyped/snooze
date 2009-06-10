@@ -7,7 +7,6 @@
          "persistent-struct-test.ss"
          "quick-find-test.ss"
          "snooze-create-test.ss"
-         "snooze-concurrency-test.ss"
          "snooze-find-test.ss"
          "snooze-modify-test.ss"
          "snooze-pipeline-test.ss"
@@ -51,7 +50,6 @@
     (make-snooze-find-tests snooze)
     (make-snooze-revision-tests snooze)
     (make-snooze-transaction-tests snooze)
-    (make-snooze-concurrency-tests snooze)
     (make-quick-find-tests snooze)
     
     ; Tests for the audit trails:
