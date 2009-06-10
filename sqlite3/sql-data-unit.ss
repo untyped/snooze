@@ -35,10 +35,14 @@
   (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
     (cond [(guid-type? type)     (let ([id (inexact->exact (string->number value))])
                                    (and id (make-guid (guid-type-entity type) id)))]
-          [(boolean-type? type)  (equal? value "1")]
+          [(boolean-type? type)  (equal? value 1)]
           [(not value)           #f]
-          [(integer-type? type)  (inexact->exact (string->number value))]
-          [(real-type? type)     (string->number value)]
+          [(integer-type? type)  (if (string? value)
+                                     (string->number value)
+                                     value)]
+          [(real-type? type)     (if (string? value)
+                                     (string->number value)
+                                     value)]
           [(string-type? type)   value]
           [(symbol-type? type)   (string->symbol value)]
           [(time-tai-type? type) (parse-time time-tai value)]
@@ -66,14 +70,13 @@
   (string-append (number->string (time-second time))
                  (string-pad (number->string (time-nanosecond time)) 9 #\0)))
 
-; srfi19-time-type string -> (U time-tai time-utc)
+; srfi19-time-type natural -> (U time-tai time-utc)
 (define (parse-time time-type value)
-  (if (> (string-length value) 9)
-      (let* ([sec  (string->number (string-drop-right value 9))]
-             [nano (string->number (string-take-right value 9))])
-        (make-time time-type nano sec))
-      (let* ([nano (string->number value)])
-        (make-time time-type (if nano nano 0) 0))))
+  (if (> value 999999999)
+      (make-time time-type
+                 (remainder value 1000000000)
+                 (quotient  value 1000000000))
+      (make-time time-type (or value 0) 0)))
 
 ; (guard any (any -> boolean) string)
 (define-syntax guard

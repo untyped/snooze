@@ -4,6 +4,7 @@
          scheme/contract
          srfi/19/time
          (planet untyped/unlib:3/time)
+         "../base.ss"
          "../snooze.ss"
          "attribute.ss"
          "cache.ss")

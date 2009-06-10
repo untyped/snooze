@@ -263,8 +263,7 @@
             [(integer? id)
              (let ([x (sql:entity 'x entity)])
                (find-one (sql:select #:from x #:where (sql:= (sql:attr x 'id) id))))]
-            [else (raise-exn exn:fail:snooze
-                    (format "Expected (U integer #f), received ~s." id))]))
+            [else (raise-exn exn:fail:snooze (format "Expected (U integer #f), received ~s." id))]))
     
     
     ; guid -> (U persistent-struct #f)

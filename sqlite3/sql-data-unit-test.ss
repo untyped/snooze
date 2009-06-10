@@ -98,23 +98,23 @@
     
     (test-case "parse-value : boolean"
       (let ([t (make-boolean-type #t #f)])
-        (check-equal? (parse-value t "0") #f "check 1")
-        (check-equal? (parse-value t "1") #t "check 2")
+        (check-equal? (parse-value t 0)  #f "check 1")
+        (check-equal? (parse-value t 1)  #t "check 2")
         (check-equal? (parse-value t #f) #f "check 3")))
     
     (test-case "parse-value : integer"
       (let ([t (make-integer-type #t #f)])
         (check-equal? (parse-value t #f) #f "check 1")
-        (check-equal? (parse-value t "1") 1 "check 2")
-        (check-equal? (parse-value t "0") 0 "check 3")
-        (check-equal? (parse-value t "-1") -1 "check 4")))
+        (check-equal? (parse-value t 1) 1 "check 2")
+        (check-equal? (parse-value t 0) 0 "check 3")
+        (check-equal? (parse-value t -1) -1 "check 4")))
     
     (test-case "parse-value : real"
       (let ([t (make-real-type #t #f)])
         (check-equal? (parse-value t #f) #f "check 1")
-        (check-equal? (parse-value t "0.00000000001") 0.00000000001 "check 2")
-        (check-equal? (parse-value t "0.0") 0.0 "check 3")
-        (check-equal? (parse-value t "123456789") 123456789 "check 4")))
+        (check-equal? (parse-value t 0.00000000001) 0.00000000001 "check 2")
+        (check-equal? (parse-value t 0.0) 0.0 "check 3")
+        (check-equal? (parse-value t 123456789) 123456789 "check 4")))
     
     (test-case "parse-value : string"
       (let ([t (make-string-type #t #f #f)])
@@ -132,31 +132,31 @@
     
     (test-case "parse-value : time-tai"
       (let ([t (make-time-tai-type #t #f)])
-        (check-equal? (parse-value t "") (make-time time-tai 0 0) "check 1")
-        (check-equal? (parse-value t "0") (make-time time-tai 0 0) "check 2")
-        (check-equal? (parse-value t "000000000") (make-time time-tai 0 0) "check 3")
-        (check-equal? (parse-value t "0000000000") (make-time time-tai 0 0) "check 4")
-        (check-equal? (parse-value t "1000000000") (make-time time-tai 0 1) "check 5")
-        (check-equal? (parse-value t "123456789") (make-time time-tai 123456789 0) "check 6")
-        (check-equal? (parse-value t "0123456789") (make-time time-tai 123456789 0) "check 7")
-        (check-equal? (parse-value t "1123456789") (make-time time-tai 123456789 1) "check 8")
-        (check-equal? (parse-value t (escape-value t time-tai1)) time-tai1 "check 9")
-        (check-equal? (parse-value t (escape-value t time-tai2)) time-tai2 "check 10")
-        (check-equal? (parse-value t (escape-value t time-tai3)) time-tai3 "check 11")))
+        (check-equal? (parse-value t #f) #f "check 1")
+        (check-equal? (parse-value t 0) (make-time time-tai 0 0) "check 2")
+        (check-equal? (parse-value t 000000000) (make-time time-tai 0 0) "check 3")
+        (check-equal? (parse-value t 0000000000) (make-time time-tai 0 0) "check 4")
+        (check-equal? (parse-value t 1000000000) (make-time time-tai 0 1) "check 5")
+        (check-equal? (parse-value t 123456789) (make-time time-tai 123456789 0) "check 6")
+        (check-equal? (parse-value t 0123456789) (make-time time-tai 123456789 0) "check 7")
+        (check-equal? (parse-value t 1123456789) (make-time time-tai 123456789 1) "check 8")
+        (check-equal? (parse-value t (string->number (escape-value t time-tai1))) time-tai1 "check 9")
+        (check-equal? (parse-value t (string->number (escape-value t time-tai2))) time-tai2 "check 10")
+        (check-equal? (parse-value t (string->number (escape-value t time-tai3))) time-tai3 "check 11")))
     
     (test-case "parse-value : time-utc"
       (let ([t (make-time-utc-type #t #f)])
-        (check-equal? (parse-value t "") (make-time time-utc 0 0) "check 1")
-        (check-equal? (parse-value t "0") (make-time time-utc 0 0) "check 2")
-        (check-equal? (parse-value t "000000000") (make-time time-utc 0 0) "check 3")
-        (check-equal? (parse-value t "0000000000") (make-time time-utc 0 0) "check 4")
-        (check-equal? (parse-value t "1000000000") (make-time time-utc 0 1) "check 5")
-        (check-equal? (parse-value t "123456789") (make-time time-utc 123456789 0) "check 6")
-        (check-equal? (parse-value t "0123456789") (make-time time-utc 123456789 0) "check 7")
-        (check-equal? (parse-value t "1123456789") (make-time time-utc 123456789 1) "check 8")
-        (check-equal? (parse-value t (escape-value t time-utc1)) time-utc1 "check 9")
-        (check-equal? (parse-value t (escape-value t time-utc2)) time-utc2 "check 10")
-        (check-equal? (parse-value t (escape-value t time-utc3)) time-utc3 "check 11")))
+        (check-equal? (parse-value t #f) #f "check 1")
+        (check-equal? (parse-value t 0) (make-time time-utc 0 0) "check 2")
+        (check-equal? (parse-value t 000000000) (make-time time-utc 0 0) "check 3")
+        (check-equal? (parse-value t 0000000000) (make-time time-utc 0 0) "check 4")
+        (check-equal? (parse-value t 1000000000) (make-time time-utc 0 1) "check 5")
+        (check-equal? (parse-value t 123456789) (make-time time-utc 123456789 0) "check 6")
+        (check-equal? (parse-value t 0123456789) (make-time time-utc 123456789 0) "check 7")
+        (check-equal? (parse-value t 1123456789) (make-time time-utc 123456789 1) "check 8")
+        (check-equal? (parse-value t (string->number (escape-value t time-utc1))) time-utc1 "check 9")
+        (check-equal? (parse-value t (string->number (escape-value t time-utc2))) time-utc2 "check 10")
+        (check-equal? (parse-value t (string->number (escape-value t time-utc3))) time-utc3 "check 11")))
     
     (test-exn "parse-value : unknown type"
       exn:fail:contract?
@@ -167,7 +167,7 @@
                                       (make-integer-type #t #f)
                                       (make-string-type #t #f #f)
                                       (make-symbol-type #t #f #f)))])
-        (check-equal? (parse (vector "1" "1" "1" "1")) (vector #t 1 "1" '|1|) "check 1")
+        (check-equal? (parse (vector 1 1 "1" "1")) (vector #t 1 "1" '|1|) "check 1")
         (check-equal? (parse (vector #f #f #f #f)) (vector #f #f #f #f) "check 1")))))
 
 ; Provide statements -----------------------------

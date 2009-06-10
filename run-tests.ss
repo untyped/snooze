@@ -41,12 +41,11 @@
 ; string integer string string [string] -> void
 (define (run-postgresql8-tests server port database username [password #f])
   (run-snooze-tests
-   (make-snooze #:auto-connect? #t
-                 (postgresql8:make-database #:server   server
-                                             #:port     port
-                                             #:database database
-                                             #:username username
-                                             #:password password))
+   (make-snooze (postgresql8:make-database #:server   server
+                                           #:port     port
+                                           #:database database
+                                           #:username username
+                                           #:password password))
    postgresql8:all-postgresql8-tests))
 
 ; [(U exn #f)] -> void

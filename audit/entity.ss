@@ -4,7 +4,8 @@
          scheme/contract
          srfi/26/cut)
 
-(require "../snooze.ss"
+(require "../base.ss"
+         "../snooze.ss"
          "../snooze-interface.ss"
          "cache.ss")
 
