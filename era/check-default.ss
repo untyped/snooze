@@ -40,23 +40,23 @@
              (if allow-null?
                  (check-pass)
                  (check-fail (format "~a: value is required."
-                                     (attribute-pretty-name attr))))]
+                                     (string-titlecase (attribute-pretty-name attr)))))]
             [(boolean-type? type)
              (if (boolean? val)
                  (check-pass)
                  (check-fail (format "~a: must be a yes/no value."
-                                     (attribute-pretty-name attr))))]
+                                     (string-titlecase (attribute-pretty-name attr)))))]
             [(integer-type? type)
              (if (integer? val)
                  (check-pass)
                  (check-fail (format "~a: must be~a a whole number."
-                                     (attribute-pretty-name attr)
+                                     (string-titlecase (attribute-pretty-name attr))
                                      (if allow-null? " blank or" ""))))]
             [(real-type? type)
              (if (real? val)
                  (check-pass)
                  (check-fail (format "~a: must be~a a number."
-                                     (attribute-pretty-name attr)
+                                     (string-titlecase (attribute-pretty-name attr))
                                      (if allow-null? " blank or" ""))))]
             [(string-type? type)
              (let ([max-length (character-type-max-length type)])
@@ -68,24 +68,23 @@
              (if (time-tai? val)
                  (check-pass)
                  (check-fail (format "~a: must be~a a date or time."
-                                     (attribute-pretty-name attr)
+                                     (string-titlecase (attribute-pretty-name attr))
                                      (if allow-null? " blank or" ""))))]
             [(time-utc-type? type)
              (if (time-utc? val)
                  (check-pass)
                  (check-fail (format "~a: must be~a a date or time."
-                                     (attribute-pretty-name attr)
+                                     (string-titlecase (attribute-pretty-name attr))
                                      (if allow-null? " blank or" ""))))]
             [(guid-type? type)
              (let ([entity (guid-type-entity type)])
                (if (and (guid? val) (eq? (guid-entity val) entity))
                    (if (snooze-struct-saved? val)
                        (check-pass)
-                       (check-fail (format "~a: related record unsaved."
-                                           (attribute-pretty-name attr))))
-                   (let ([name (entity-pretty-name entity)])
+                       (check-fail (format "~a: related record unsaved." (string-titlecase (attribute-pretty-name attr)))))
+                   (let ([name (string-titlecase (entity-pretty-name entity))])
                      (check-fail (format "~a: must be~a~a."
-                                         (attribute-pretty-name attr)
+                                         (string-titlecase (attribute-pretty-name attr))
                                          (if allow-null? " blank or" "")
                                          (if (memq (string-ref name 0) '(#\a #\e #\i #\o #\u #\A #\E #\I #\O #\U))
                                              (format "an ~a" name)
