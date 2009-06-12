@@ -44,13 +44,17 @@
         (send (guid-snooze ans) find-by-guid ans)
         ans)))
 
-; guid -> any
+; guid -> list
 (define (snooze-struct-ref* guid)
   (cons guid
         (for/list ([ans (in-list (cdr (real:snooze-struct-ref* (guid-ref guid))))])
           (if (guid? ans)
               (send (guid-snooze ans) find-by-guid ans)
               ans))))
+
+; guid -> list
+(define (snooze-struct-data-ref* guid)
+  (cddr (snooze-struct-ref* guid)))
 
 ; guid <attr any> ... -> guid
 (define (snooze-struct-set original . args)
@@ -110,6 +114,7 @@
  [snooze-struct-revision          (-> guid? (or/c natural-number/c #f))]
  [snooze-struct-ref               (-> guid? (or/c attribute? symbol?) any)]
  [snooze-struct-ref*              (-> guid? list?)]
+ [snooze-struct-data-ref*         (-> guid? list?)]
  [snooze-struct-set               (->* (guid?) () #:rest attr/value-list? guid?)]
  [make-snooze-struct              (->* (entity?) () #:rest any/c guid?)]
  [make-snooze-struct/defaults     (->* (entity?) () #:rest attr/value-list? guid?)]

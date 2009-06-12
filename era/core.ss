@@ -372,6 +372,10 @@
       (raise-exn exn:fail:contract
         (format "Attribute not found: ~s ~s" entity name+attr))))
 
+; entity -> (listof attribute)
+(define (entity-data-attributes entity)
+  (cddr (entity-attributes entity)))
+
 ; Relationships ----------------------------------
 
 ; Watch this space...
@@ -536,6 +540,7 @@
  [entity-has-attribute?                (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-guid-attribute?               (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-attribute                     (-> entity? (or/c symbol? attribute?) attribute?)]
+ [entity-data-attributes               (-> entity? (listof attribute?))]
  [struct attribute                     ([name                 symbol?]
                                         [column-name          symbol?]
                                         [pretty-name          string?]
