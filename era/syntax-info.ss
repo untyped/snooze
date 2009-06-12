@@ -47,7 +47,8 @@
 
 ; identifier -> entity-info
 (define (entity-info-ref id)
-  (module-identifier-mapping-get info-cache id))
+  (with-handlers ([exn? (lambda (exn) (raise-syntax-error #f "not an entity identifier" id))])
+    (module-identifier-mapping-get info-cache id)))
 
 ; Provide statements -----------------------------
 

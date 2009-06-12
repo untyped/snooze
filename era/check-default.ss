@@ -34,7 +34,8 @@
 ; attribute any -> (listof check-result)
 (define (check-attribute-value attr val)
   (check/annotate ([ann:attrs (list attr)])
-    (let* ([type        (attribute-type attr)]
+    (let* ([name        (attribute-name attr)]
+           [type        (attribute-type attr)]
            [allow-null? (type-allows-null? type)])
       (cond [(equal? val (type-null type))
              (if allow-null?

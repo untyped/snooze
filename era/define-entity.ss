@@ -328,6 +328,10 @@
                
                (define default-alias (sql:alias 'entity entity-private))
                
+               (set-entity-defaults-constructor! entity defaults-constructor)
+               (set-entity-copy-constructor!     entity copy-constructor)
+               (set-entity-default-alias!        entity default-alias)
+               
                ; Transformer binding: makes things like (struct ...) in plt-match work.
                ; Copied by-example from an expanded define-struct.
                ; The syntax-quotes-within-syntax-quotes are intensional.

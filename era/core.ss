@@ -289,9 +289,12 @@
    private-mutator
    cached-constructor
    cached-predicate
+   defaults-constructor
+   copy-constructor
    guid-constructor
    guid-predicate
    attributes
+   default-alias
    on-save
    on-delete
    save-check
@@ -322,10 +325,11 @@
         [empty-check (lambda (guid) null)])
     (make-entity name table-name pretty-name pretty-name-plural pretty-formatter
                  #f                       ; struct type
-                 #f #f #f #f #f #f        ; constructors and predicates
+                 #f #f #f #f #f #f #f #f  ; constructors and predicates
                  guid-constructor         ; guid constructor
                  guid-predicate           ; guid predicate
                  null                     ; attributes
+                 #f                       ; default-alias
                  empty-hook               ; hooks
                  empty-hook               ;
                  empty-check              ; validation
@@ -493,28 +497,31 @@
  [type:symbol                          symbol-type?]
  [type:time-tai                        time-tai-type?]
  [type:time-utc                        time-utc-type?]
- [struct entity                        ([name                symbol?]
-                                        [table-name          symbol?]
-                                        [pretty-name         string?]
-                                        [pretty-name-plural  string?]
-                                        [pretty-formatter    procedure?]
-                                        [struct-type         struct-type?]
-                                        [private-constructor procedure?]
-                                        [private-predicate   procedure?]
-                                        [private-accessor    procedure?]
-                                        [private-mutator     procedure?]
-                                        [cached-constructor  procedure?]
-                                        [cached-predicate    procedure?]
-                                        [guid-constructor    (-> (or/c natural-number/c #f)
-                                                                 (or/c symbol? #f)
-                                                                 (is-a?/c snooze<%>)
-                                                                 guid?)]
-                                        [guid-predicate      (-> any/c boolean?)]
-                                        [attributes          (listof attribute?)]
-                                        [on-save             (-> (-> connection? guid? guid?) connection? guid? guid?)]
-                                        [on-delete           (-> (-> connection? guid? guid?) connection? guid? guid?)]
-                                        [save-check          procedure?]
-                                        [delete-check        procedure?])]
+ [struct entity                        ([name                 symbol?]
+                                        [table-name           symbol?]
+                                        [pretty-name          string?]
+                                        [pretty-name-plural   string?]
+                                        [pretty-formatter     procedure?]
+                                        [struct-type          struct-type?]
+                                        [private-constructor  procedure?]
+                                        [private-predicate    procedure?]
+                                        [private-accessor     procedure?]
+                                        [private-mutator      procedure?]
+                                        [cached-constructor   procedure?]
+                                        [cached-predicate     procedure?]
+                                        [defaults-constructor procedure?]
+                                        [copy-constructor     procedure?]
+                                        [guid-constructor     (-> (or/c natural-number/c #f)
+                                                                  (or/c symbol? #f)
+                                                                  (is-a?/c snooze<%>)
+                                                                  guid?)]
+                                        [guid-predicate       (-> any/c boolean?)]
+                                        [attributes           (listof attribute?)]
+                                        [default-alias        any/c]
+                                        [on-save              (-> (-> connection? guid? guid?) connection? guid? guid?)]
+                                        [on-delete            (-> (-> connection? guid? guid?) connection? guid? guid?)]
+                                        [save-check           procedure?]
+                                        [delete-check         procedure?])]
  [make-vanilla-entity                  (-> symbol?
                                            symbol?
                                            string?
@@ -529,18 +536,18 @@
  [entity-has-attribute?                (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-guid-attribute?               (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-attribute                     (-> entity? (or/c symbol? attribute?) attribute?)]
- [struct attribute                     ([name                symbol?]
-                                        [column-name         symbol?]
-                                        [pretty-name         string?]
-                                        [pretty-name-plural  string?]
-                                        [type                type?]
-                                        [entity              entity?]
-                                        [index               integer?]
-                                        [default-maker       procedure?]
-                                        [private-accessor    procedure?]
-                                        [private-mutator     procedure?]
-                                        [cached-accessor     procedure?]
-                                        [cached-mutator      procedure?])]
+ [struct attribute                     ([name                 symbol?]
+                                        [column-name          symbol?]
+                                        [pretty-name          string?]
+                                        [pretty-name-plural   string?]
+                                        [type                 type?]
+                                        [entity               entity?]
+                                        [index                integer?]
+                                        [default-maker        procedure?]
+                                        [private-accessor     procedure?]
+                                        [private-mutator      procedure?]
+                                        [cached-accessor      procedure?]
+                                        [cached-mutator       procedure?])]
  [attribute-default                    (->* (attribute?) (#:snooze (is-a?/c snooze<%>)) any/c)]
  [prop:entity                          struct-type-property?]
  [prop:entity-set?                     (-> any/c boolean?)]
