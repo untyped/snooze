@@ -4,7 +4,6 @@
 
 (require (for-syntax "../base.ss"
                      scheme/base
-                     scheme/provide-transform
                      scheme/struct-info
                      (only-in srfi/1 append-map)
                      (cce-scheme-in syntax)
@@ -402,97 +401,6 @@
     [(_ arg ...)
      (parse-name #'(arg ...))]))
 
-; (_ struct-id)
-(define-syntax entity-out
-  (make-provide-transformer
-   (lambda (stx modes)
-     ; (listof export)
-     (syntax-case stx ()
-       [(_ id)
-        (append (expand-export #'(struct-out id) modes)
-                (expand-export #'(entity-extras-out id) modes))]))))
-
-; (_ struct-id)
-(define-syntax (provide-entity/contract stx)
-  
-  ;  (list a1 a2 ...)
-  ;  (list b1 b2 ...)
-  ;  ...
-  ; ->
-  ;  (list a1 b1 ... a2 b2 ...)
-  (define (interleave . lists)
-    (if (ormap null? lists)
-        null
-        (append (map car lists)
-                (apply interleave (map cdr lists)))))
-  
-  (syntax-case stx ()
-    [(_ id)
-     (let* ([info      (entity-info-ref #'id)]
-            [attr-info (entity-info-attribute-info info)])
-       (with-syntax* ([struct-type          (entity-info-struct-type-id          info)]
-                      [predicate            (entity-info-predicate-id            info)]
-                      [guid-predicate       (entity-info-guid-predicate-id       info)]
-                      [constructor          (entity-info-constructor-id          info)]
-                      [id-accessor          (entity-info-id-accessor-id          info)]
-                      [saved-predicate      (entity-info-saved-predicate-id      info)]
-                      [vanilla-predicate    (entity-info-vanilla-predicate-id    info)]
-                      [local-predicate      (entity-info-local-predicate-id      info)]
-                      [pretty-formatter     (entity-info-pretty-formatter-id     info)]
-                      [defaults-constructor (entity-info-defaults-constructor-id info)]
-                      [copy-constructor     (entity-info-copy-constructor-id     info)]
-                      [guid-accessor        (attribute-info-accessor-id (car attr-info))]
-                      [guid-contract        #'(or/c predicate #f)]
-                      [revision-accessor    (attribute-info-accessor-id (cadr attr-info))]
-                      [revision-contract    #'(or/c natural-number/c #f)]
-                      [([attr-kw attr-accessor attr-contract] ...)
-                       (for/list ([info (in-list (cddr attr-info))])
-                         (list (string->keyword (symbol->string (syntax->datum (attribute-info-id info))))
-                               (attribute-info-accessor-id info)
-                               (with-syntax ([type #`(attribute-type #,(attribute-info-private-id info))])
-                                 (syntax-case* (attribute-info-type-id info)
-                                   (boolean integer real symbol string time-tai time-utc enum) symbolic-identifier=?
-                                   [boolean  #'boolean?]
-                                   [integer  #'(if (type-allows-null? type) (or/c #f integer?)  integer?)]
-                                   [real     #'(if (type-allows-null? type) (or/c #f number?)   number?)]
-                                   [symbol   #'(if (type-allows-null? type) (or/c #f symbol?)   symbol?)]
-                                   [string   #'(if (type-allows-null? type) (or/c #f string?)   string?)]
-                                   [time-tai #'(if (type-allows-null? type) (or/c #f time-tai?) time-tai?)]
-                                   [time-utc #'(if (type-allows-null? type) (or/c #f time-utc?) time-utc?)]
-                                   [enum     #'(if (type-allows-null? type)
-                                                   (apply or/c #f (enum-type-values type))
-                                                   (apply or/c (enum-type-values type)))]
-                                   [entity   #'(if (type-allows-null? type)
-                                                   (or/c #f (entity-cached-predicate (guid-type-entity type)))
-                                                   (entity-cached-predicate (guid-type-entity type)))]))))])
-         (quasisyntax/loc stx
-           (begin (provide id)
-                  (provide/contract
-                   [struct-type          struct-type?]
-                   [predicate            (-> any/c boolean?)]
-                   [constructor          (->* (attr-contract ...)
-                                              (#:snooze (is-a?/c snooze<%>))
-                                              guid-predicate)]
-                   [id-accessor          (-> guid-predicate (or/c natural-number/c #f))]
-                   [saved-predicate      (-> guid-predicate boolean?)]
-                   [vanilla-predicate    (-> guid-predicate boolean?)]
-                   [local-predicate      (-> guid-predicate boolean?)]
-                   [pretty-formatter     (->* (guid-predicate) () #:rest any/c string?)]
-                   [defaults-constructor (->* ()
-                                              (#:snooze (is-a?/c snooze<%>)
-                                                        #,@(interleave (syntax->list #'(attr-kw ...))
-                                                                       (syntax->list #'(attr-contract ...))))
-                                              guid-predicate)]
-                   [copy-constructor     (->* (guid-predicate)
-                                              (#:snooze (is-a?/c snooze<%>)
-                                                        #,@(interleave (syntax->list #'(attr-kw ...))
-                                                                       (syntax->list #'(attr-contract ...))))
-                                              guid-predicate)]
-                   [guid-accessor        (-> guid-predicate guid-contract)]
-                   [revision-accessor    (-> guid-predicate revision-contract)]
-                   [attr-accessor        (-> guid-predicate attr-contract)]
-                   ...)))))]))
-
 ; (_ id id) -> attribute
 (define-syntax (attr stx)
   (syntax-case* stx () symbolic-identifier=?
@@ -508,25 +416,6 @@
 
 ; Helpers ----------------------------------------
 
-; (_ struct-id)
-(define-syntax entity-extras-out
-  (make-provide-transformer
-   (lambda (stx modes)
-     ; syntax -> export
-     (define (create-export id-stx)
-       (make-export id-stx (syntax->datum id-stx) 0 #f id-stx))
-     ; (listof export)
-     (syntax-case stx ()
-       [(_ id)
-        (let ([info (entity-info-ref #'id)])
-          (map create-export (list (entity-info-id-accessor-id          info)
-                                   (entity-info-saved-predicate-id      info)
-                                   (entity-info-vanilla-predicate-id    info)
-                                   (entity-info-local-predicate-id      info)
-                                   (entity-info-pretty-formatter-id     info)
-                                   (entity-info-defaults-constructor-id info)
-                                   (entity-info-copy-constructor-id     info))))]))))
-
 ; (listof (cons property any)) -> boolean
 (define (reserved-properties? prop-alist)
   (ormap (lambda (prop)
@@ -537,6 +426,4 @@
 ; Provide statements -----------------------------
 
 (provide define-entity
-         entity-out
-         provide-entity/contract
          attr)

@@ -19,6 +19,7 @@
                     make-check-failure
                     make-check-fatal)
          "define-entity.ss"
+         "provide-entity.ss"
          "syntax-info.ss")
 
 ; Provide statements ---------------------------
@@ -30,5 +31,6 @@
                        "check-syntax.ss"
                        "struct.ss"
                        "define-entity.ss"
+                       "provide-entity.ss"
                        "syntax-info.ss"))
 

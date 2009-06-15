@@ -3,6 +3,7 @@
 (require "../base.ss")
 
 (require scheme/string
+         (unlib-in enumeration)
          "../common/connection.ss"
          "cached-struct.ss"
          "check.ss"

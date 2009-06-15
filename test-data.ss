@@ -77,11 +77,10 @@
   
 ; Provide statements -----------------------------
 
-(provide-entity/contract person)
-(provide-entity/contract pet)
-(provide-entity/contract course)
-(provide-entity/contract tree-node)
-
-(provide/contract
+(provide/contract/entities
  [drop-all-tables      (-> void?)]
- [recreate-test-tables (-> void?)])
+ [recreate-test-tables (-> void?)]
+ [entity               person]
+ [entity               pet]
+ [entity               course]
+ [entity               tree-node])
