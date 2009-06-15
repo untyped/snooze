@@ -93,15 +93,33 @@
 
 ; guid any ... -> string
 (define (format-snooze-struct guid . rest)
-  (apply (entity-pretty-formatter (snooze-struct-entity guid)) guid rest))
+  (define ans (apply (entity-pretty-formatter (snooze-struct-entity guid)) guid rest))
+  (if (string? ans)
+      ans
+      (raise-exn exn:fail:contract
+        (format "format-snooze-struct: pretty-formatter for ~a returned ~a, expected a string"
+                (entity-name (guid-entity guid))
+                ans))))
 
 ; guid any ... -> (listof check-result)
 (define (check-snooze-struct guid . rest)
-  (apply (entity-save-check (snooze-struct-entity guid)) guid rest))
+  (define ans (apply (entity-save-check (snooze-struct-entity guid)) guid rest))
+  (if (and (list? ans) (andmap check-result? ans))
+      ans
+      (raise-exn exn:fail:contract
+        (format "check-snooze-struct: validation for ~a returned ~a, expected (listof check-result)"
+                (entity-name (guid-entity guid))
+                ans))))
 
 ; guid any ... -> (listof check-result)
 (define (check-old-snooze-struct guid . rest)
-  (apply (entity-delete-check (snooze-struct-entity guid)) guid rest))
+  (define ans (apply (entity-delete-check (snooze-struct-entity guid)) guid rest))
+  (if (and (list? ans) (andmap check-result? ans))
+      ans
+      (raise-exn exn:fail:contract
+        (format "check-snooze-struct: validation for ~a returned ~a, expected (listof check-result)"
+                (entity-name (guid-entity guid))
+                ans))))
 
 ; Provide statements -----------------------------
 
@@ -119,6 +137,6 @@
  [make-snooze-struct              (->* (entity?) () #:rest any/c guid?)]
  [make-snooze-struct/defaults     (->* (entity?) () #:rest attr/value-list? guid?)]
  [copy-snooze-struct              (-> guid? guid?)]
- [format-snooze-struct            (->* (guid?) () #:rest any/c string?)]
- [check-snooze-struct             (->* (guid?) () #:rest any/c (listof check-result?))]
- [check-old-snooze-struct         (->* (guid?) () #:rest any/c (listof check-result?))])
+ [format-snooze-struct            (->* (guid?) () #:rest any/c any)]
+ [check-snooze-struct             (->* (guid?) () #:rest any/c any)]
+ [check-old-snooze-struct         (->* (guid?) () #:rest any/c any)])
