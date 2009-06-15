@@ -4,6 +4,7 @@
 
 (require (for-syntax scheme/base)
          scheme/dict
+         (unlib-in enumeration)
          "../common/connection.ss"
          "core-snooze-interface.ss")
 
@@ -186,8 +187,8 @@
 (define-serializable-struct (string-type character-type) () #:transparent)
 (define-serializable-struct (symbol-type character-type) () #:transparent)
 
-; (struct boolean (U natural #f) (listof symbol))
-(define-serializable-struct (enum-type symbol-type) (values) #:transparent)
+; (struct boolean (U natural #f) (U enum #f) (listof symbol))
+(define-serializable-struct (enum-type symbol-type) (enum values) #:transparent)
 
 ; (struct boolean)
 (define-serializable-struct (temporal-type type)          () #:transparent)
@@ -199,9 +200,12 @@
 (define-serializable-struct (primary-key-type guid-type) () #:transparent)
 (define-serializable-struct (foreign-key-type guid-type) () #:transparent)
 
-; boolean (listof symbol) -> enum-type
-(define (create-enum-type allow-null? vals)
-  (make-enum-type allow-null? (foldl max 0 (map string-length (map symbol->string vals))) vals))
+; boolean (U enum (listof symbol)) -> enum-type
+(define (create-enum-type allow-null? enum+vals)
+  (let* ([enum       (if (enum? enum+vals) enum+vals #f)]
+         [vals       (if (enum? enum+vals) (enum-values enum+vals) enum+vals)]
+         [max-length (foldl max 0 (map string-length (map symbol->string vals)))])
+    (make-enum-type allow-null? max-length enum vals)))
 
 ; type -> any
 (define (type-null type)
@@ -494,11 +498,14 @@
  [struct (character-type type)         ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
  [struct (string-type character-type)  ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
  [struct (symbol-type character-type)  ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
- [struct (enum-type symbol-type)       ([allows-null? boolean?] [max-length (or/c natural-number/c #f)] [values (listof symbol?)])]
+ [struct (enum-type symbol-type)       ([allows-null? boolean?]
+                                        [max-length   (or/c natural-number/c #f)]
+                                        [enum         (or/c enum? #f)]
+                                        [values       (listof symbol?)])]
  [struct (temporal-type type)          ([allows-null? boolean?])]
  [struct (time-utc-type temporal-type) ([allows-null? boolean?])]
  [struct (time-tai-type temporal-type) ([allows-null? boolean?])]
- [create-enum-type                     (-> boolean? (listof symbol?) enum-type?)]
+ [create-enum-type                     (-> boolean? (or/c enum? (listof symbol?)) enum-type?)]
  [type-null                            (-> type? any)]
  [type-valid?                          (-> type? any/c boolean?)]
  [type-name                            (-> type? symbol?)]

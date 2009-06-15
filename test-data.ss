@@ -3,6 +3,7 @@
 (require "base.ss")
 
 (require (prefix-in srfi: srfi/19)
+         (unlib-in enumeration)
          "main.ss")
 
 (define-entity person
@@ -46,9 +47,11 @@
              #:default (srfi:current-time srfi:time-tai)])
   #:table-name 'courses)
 
+(define-enum color (red black))
+
 (define-entity tree-node
   ([parent tree-node]
-   [color  enum #:values '(red black)]
+   [color  enum #:values color]
    [value  string]))
 
 ; Procedures -------------------------------------
