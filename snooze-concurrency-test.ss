@@ -5,7 +5,7 @@
 (require scheme/dict
          (unlib-in hash)
          "snooze-api.ss"
-         "era/era.ss")
+         "core/era.ss")
 
 ; Tests -------------------------------------------
 

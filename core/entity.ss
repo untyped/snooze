@@ -7,7 +7,7 @@
          "../generic/connection.ss"
          "snooze-struct.ss"
          "check-default.ss"
-         "core.ss"
+         "struct.ss"
          "pretty.ss")
 
 ;   symbol

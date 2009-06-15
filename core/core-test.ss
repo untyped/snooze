@@ -6,10 +6,10 @@
          (only-in srfi/1 take)
          srfi/26
          (unlib-in hash)
-         "core.ss"
+         "struct.ss"
          (only-in "define-entity.ss" attr))
 
-(require/expose "core.ss"
+(require/expose "struct.ss"
   (interned-guids))
 
 (define (hash->alist hash)
@@ -203,7 +203,7 @@
 ; Tests ----------------------------------------
 
 (define core-tests
-  (test-suite "core.ss"
+  (test-suite "struct.ss"
     guid-tests
     type-tests
     ;entity-tests

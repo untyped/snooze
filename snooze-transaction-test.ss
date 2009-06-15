@@ -5,7 +5,7 @@
 (require scheme/class
          srfi/26
          "snooze-api.ss"
-         "era/era.ss"
+         "core/era.ss"
          "sql/sql.ss")
 
 ; Tests ----------------------------------------

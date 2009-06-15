@@ -17,7 +17,7 @@
          ;"snooze-transaction-test.ss"
          "test-base.ss"
          ;"audit/all-audit-tests.ss"
-         "era/all-era-tests.ss"
+         "core/all-era-tests.ss"
          "generic/all-generic-tests.ss"
          "sql/all-sql-tests.ss")
 

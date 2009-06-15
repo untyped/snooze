@@ -4,8 +4,8 @@
 
 (require srfi/13
          srfi/19
-         "../era/core.ss"
-         "../era/snooze-struct.ss"
+         "../core/struct.ss"
+         "../core/snooze-struct.ss"
          "../generic/generic.ss"
          "../sql/sql-struct.ss")
 

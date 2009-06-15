@@ -3,7 +3,7 @@
 (require "../base.ss")
 
 (require (for-syntax scheme/base)
-         "core.ss")
+         "struct.ss")
 
 ; Variables --------------------------------------
 

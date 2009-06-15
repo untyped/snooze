@@ -4,7 +4,7 @@
 
 (require scheme/string
          (unlib-in time profile)
-         "../era/core.ss"
+         "../core/struct.ss"
          "../sql/sql-struct.ss"
          "interface.ss")
 

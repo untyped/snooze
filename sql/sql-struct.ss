@@ -7,12 +7,12 @@
          (planet untyped/unlib:3/time)
          (planet untyped/unlib:3/symbol)
          "../base.ss"
-         "../era/core.ss")
+         "../core/struct.ss")
 
 ; ***** NOTE *****
 ; The terms "entity" and "attribute" are used here
 ; to refer to parts of the query representation. The
-; "entity" and "attribute" from era/era.ss are referred
+; "entity" and "attribute" from core/era.ss are referred
 ; to as "era:entity" and "era:attribute".
 ; ****************
 

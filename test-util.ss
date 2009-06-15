@@ -7,7 +7,7 @@
          (unlib-in hash)
          "snooze-api.ss"
          "test-data.ss"
-         "era/era.ss")
+         "core/era.ss")
 
 ; (parameter (string -> (listof (listof any))))
 (define direct-query-proc

@@ -6,8 +6,8 @@
          srfi/19
          (spgsql-in spgsql)
          (unlib-in symbol)
-         "../era/core.ss"
-         "../era/snooze-struct.ss"
+         "../core/struct.ss"
+         "../core/snooze-struct.ss"
          "../generic/generic.ss")
 
 (define postgresql8-sql-mixin

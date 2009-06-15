@@ -4,7 +4,7 @@
 
 (require "check-annotation.ss"
          "check-result.ss"
-         (except-in "core.ss"
+         (except-in "struct.ss"
                     make-check-success
                     make-check-problem
                     make-check-warning

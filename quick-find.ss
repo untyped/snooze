@@ -5,7 +5,7 @@
                      srfi/26/cut
                      (planet untyped/unlib:3/syntax)
                      "base.ss"
-                     "era/syntax-info.ss")
+                     "core/syntax-info.ss")
          scheme/class
          "quick-find-internal.ss"
          "snooze-api.ss"

@@ -1,7 +1,7 @@
 #lang scheme/base
 
 (require (planet untyped/unlib:3/symbol)
-         "../era/syntax-info.ss"
+         "../core/syntax-info.ss"
          (for-template scheme/base))
 
 ; symbol

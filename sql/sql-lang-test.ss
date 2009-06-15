@@ -5,7 +5,7 @@
          srfi/19
          srfi/26
          "../test-base.ss"
-         "../era/era.ss"
+         "../core/era.ss"
          "sql-alias.ss"
          (prefix-in sql: "sql-lang.ss")
          "sql-struct.ss"

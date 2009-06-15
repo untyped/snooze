@@ -11,7 +11,7 @@
                      (unlib-in syntax)
                      "syntax-info.ss")
          scheme/serialize
-         (except-in "core.ss" make-entity)
+         (except-in "struct.ss" make-entity)
          "cached-struct.ss"
          "entity.ss"
          (prefix-in real: "snooze-struct.ss")

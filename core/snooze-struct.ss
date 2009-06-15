@@ -4,7 +4,7 @@
 
 (require (unlib-in list)
          "attribute-keyword.ss"
-         "core.ss")
+         "struct.ss")
 
 ; any -> boolean
 (define (snooze-struct? struct)

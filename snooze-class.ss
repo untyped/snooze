@@ -6,9 +6,9 @@
          srfi/26
          (planet untyped/unlib:3/gen)
          (planet untyped/unlib:3/parameter)
-         (prefix-in real: (only-in "era/snooze-struct.ss" make-snooze-struct))
+         (prefix-in real: (only-in "core/snooze-struct.ss" make-snooze-struct))
          "snooze-cache.ss"
-         "era/era.ss"
+         "core/era.ss"
          "generic/generic.ss"
          "sql/sql.ss")
 

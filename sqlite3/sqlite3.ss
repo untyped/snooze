@@ -4,8 +4,8 @@
 
 (require (prefix-in sqlite: (sqlite-in sqlite))
          (unlib-in gen symbol)
-         "../era/core.ss"
-         "../era/snooze-struct.ss"
+         "../core/struct.ss"
+         "../core/snooze-struct.ss"
          "../generic/generic.ss"
          "../sql/sql-struct.ss"
          "sql.ss")

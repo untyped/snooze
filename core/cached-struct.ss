@@ -4,7 +4,7 @@
 
 (require (unlib-in list parameter)
          "attribute-keyword.ss"
-         "core.ss"
+         "struct.ss"
          (prefix-in real: "snooze-struct.ss"))
 
 ; Standard wrappers ------------------------------

@@ -4,8 +4,8 @@
 
 (require srfi/19
          "snooze-api.ss"
-         "era/era.ss"
-         (prefix-in real: "era/snooze-struct.ss")
+         "core/era.ss"
+         (prefix-in real: "core/snooze-struct.ss")
          )
 
 ; Tests -------------------------------------------

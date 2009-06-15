@@ -3,7 +3,7 @@
 (require "../base.ss")
 
 (require (unlib-in time profile)
-         "../era/core.ss"
+         "../core/struct.ss"
          "../generic/generic.ss"
          (only-in "../sql/sql.ss" sql:select)
          "../sql/sql-struct.ss")

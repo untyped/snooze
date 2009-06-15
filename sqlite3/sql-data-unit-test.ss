@@ -3,7 +3,7 @@
 (require scheme/unit
          srfi/19
          "../test-base.ss"
-         "../era/era.ss"
+         "../core/era.ss"
          "sql-data-unit.ss")
 
 ; Helpers ----------------------------------------

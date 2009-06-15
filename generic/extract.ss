@@ -3,7 +3,7 @@
 (require "../base.ss")
 
 (require scheme/list
-         "../era/era.ss"
+         "../core/era.ss"
          "../sql/sql.ss"
          "../sql/sql-struct.ss"
          "interface.ss")

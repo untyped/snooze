@@ -5,7 +5,7 @@
                      scheme/pretty
                      srfi/26/cut
                      (planet untyped/unlib:3/syntax)
-                     "../era/syntax-info.ss"
+                     "../core/syntax-info.ss"
                      "sql-syntax-util.ss")
          (prefix-in sql: "sql-lang.ss")
          "sql-struct.ss")

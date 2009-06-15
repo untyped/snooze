@@ -3,7 +3,7 @@
 (require "../base.ss")
 
 (require "check-annotation.ss"
-         "core.ss")
+         "struct.ss")
 
 ; Primitive constructors -------------------------
 

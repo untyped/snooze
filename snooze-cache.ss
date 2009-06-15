@@ -3,8 +3,8 @@
 (require "base.ss")
 
 (require scheme/dict
-         "era/core.ss"
-         "era/snooze-struct.ss")
+         "core/struct.ss"
+         "core/snooze-struct.ss")
 
 ; Cache frame ------------------------------------
 

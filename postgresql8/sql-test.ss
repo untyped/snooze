@@ -4,7 +4,7 @@
 
 (require srfi/19
          (spgsql-in spgsql)
-         "../era/era.ss"
+         "../core/era.ss"
          "../sql/sql.ss"
          "sql.ss")
 

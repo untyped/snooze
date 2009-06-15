@@ -6,7 +6,7 @@
          "check-annotation.ss"
          "check-result.ss"
          "check-syntax.ss"
-         (except-in "core.ss"
+         (except-in "struct.ss"
                     make-check-success
                     make-check-problem
                     make-check-warning

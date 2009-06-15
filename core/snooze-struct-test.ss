@@ -5,7 +5,7 @@
 (require (only-in srfi/1 take)
          srfi/26
          (unlib-in hash)
-         "core.ss"
+         "struct.ss"
          "define-entity.ss"
          "snooze-struct.ss")
 

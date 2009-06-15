@@ -2,7 +2,7 @@
 
 (require "../base.ss")
 
-(require "core.ss")
+(require "struct.ss")
 
 ; Procedures -------------------------------------
 

@@ -5,8 +5,8 @@
 (require (prefix-in postgresql: (spgsql-in spgsql))
          (unlib-in gen symbol)
          "../base.ss"
-         "../era/core.ss"
-         "../era/snooze-struct.ss"
+         "../core/struct.ss"
+         "../core/snooze-struct.ss"
          "../generic/generic.ss"
          "../sql/sql-struct.ss"
          "sql.ss")

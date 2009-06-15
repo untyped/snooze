@@ -9,7 +9,7 @@
          (planet untyped/unlib:3/list)
          (planet untyped/unlib:3/symbol)
          "../base.ss"
-         "../era/core.ss"
+         "../core/struct.ss"
          "sql-struct.ss"
          "sql-util.ss")
 

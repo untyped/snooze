@@ -1,7 +1,7 @@
 #lang scheme/base
 
 (require scheme/contract
-         "era/era.ss"
+         "core/era.ss"
          (prefix-in sql: (only-in "sql/sql-lang.ss"
                                   attr or in null? =))
          (prefix-in sql: (only-in "sql/sql-struct.ss"
