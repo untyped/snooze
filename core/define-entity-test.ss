@@ -54,7 +54,21 @@
     (test-case "name->table-name"
       (check-equal? (name->database-name 'person)        'person)
       (check-equal? (name->database-name 'person-record) 'personrecord)
-      (check-equal? (name->database-name 'PersonRecord)  'personrecord))))
+      (check-equal? (name->database-name 'PersonRecord)  'personrecord))
+    
+    (test-case "attr"
+      (let ([a (attr person guid)]
+            [b (attr person name)])
+        (check-true (andmap attribute? (list a b)))
+        (check-not-eq? a b)
+        (check-equal? (map attribute-name (list a b)) '(guid name))
+        (check-equal? (map attribute-entity (list a b)) (list person person))))
+    
+    (test-case "attr-list"
+      (let ([attrs (attr-list person guid name)])
+        (check-equal? (attr-list person guid name)
+                      (list (attr person guid)
+                            (attr person name)))))))
 
 ; Provide statements -----------------------------
 

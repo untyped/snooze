@@ -404,15 +404,21 @@
 ; (_ id id) -> attribute
 (define-syntax (attr stx)
   (syntax-case* stx () symbolic-identifier=?
-    [(_ entity attr)
-     (and (identifier? #'entity)
-          (identifier? #'attr))
-     (let ([info     (entity-info-ref #'entity)]
-           [attr-sym (syntax->datum #'attr)])
+    [(_ id attr-id)
+     (and (identifier? #'id) (identifier? #'attr-id))
+     (let ([info     (entity-info-ref #'id)]
+           [attr-sym (syntax->datum #'attr-id)])
        (or (for/or ([attr-info (in-list (entity-info-attribute-info info))])
              (and (eq? attr-sym (syntax->datum (attribute-info-id attr-info)))
                   (attribute-info-private-id attr-info)))
            (raise-syntax-error #f "attribute not found" stx stx)))]))
+
+; (_ id id) -> attribute
+(define-syntax (attr-list stx)
+  (syntax-case stx ()
+    [(_ id attr-id ...) 
+     (syntax/loc stx
+       (list (attr id attr-id) ...))]))
 
 ; Helpers ----------------------------------------
 
@@ -426,4 +432,5 @@
 ; Provide statements -----------------------------
 
 (provide define-entity
-         attr)
+         attr
+         attr-list)
