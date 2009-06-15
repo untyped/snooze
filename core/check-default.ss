@@ -66,9 +66,12 @@
                  (check-fail (format "~a: must be~a one of the values: ~a."
                                      (string-titlecase (attribute-pretty-name attr))
                                      (if allow-null? " blank or" "")
-                                     (string-join (map (cut format "~a" <>)
-                                                       (enum-type-values type))
-                                                  ", "))))]
+                                         
+                                         (string-join (map (cut format "~s" <>)
+                                                           (if (enum-type-enum type)
+                                                               (enum-pretty-values (enum-type-enum type))
+                                                               (enum-type-values type)))
+                                                      ", "))))]
             [(string-type? type)
              (let ([max-length (character-type-max-length type)])
                (check-string attr allow-null? max-length val))]
