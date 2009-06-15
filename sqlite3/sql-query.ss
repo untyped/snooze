@@ -4,7 +4,7 @@
 
 (require (unlib-in time profile)
          "../core/struct.ss"
-         "../generic/generic.ss"
+         "../common/generic.ss"
          (only-in "../sql/sql.ss" sql:select)
          "../sql/sql-struct.ss")
 

@@ -4,7 +4,7 @@
 
 (require scheme/class
          "core/core.ss"
-         "generic/connection.ss"
+         "common/connection.ss"
          "sql/sql.ss")
 
 ; API procedures ---------------------------------

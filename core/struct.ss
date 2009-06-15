@@ -4,7 +4,7 @@
 
 (require (for-syntax scheme/base)
          scheme/dict
-         "../generic/connection.ss"
+         "../common/connection.ss"
          "core-snooze-interface.ss")
 
 ; Snooze objects ---------------------------------

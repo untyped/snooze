@@ -18,7 +18,7 @@
          "test-base.ss"
          ;"audit/all-audit-tests.ss"
          "core/all-core-tests.ss"
-         "generic/all-generic-tests.ss"
+         "common/all-generic-tests.ss"
          "sql/all-sql-tests.ss")
 
 ; Tests ----------------------------------------

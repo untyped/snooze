@@ -2,7 +2,7 @@
 
 (require "../base.ss")
 
-(require "../generic/connection.ss"
+(require "../common/connection.ss"
          "cached-struct.ss"
          "check.ss"
          "check-annotation.ss"

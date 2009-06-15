@@ -6,7 +6,7 @@
          srfi/19
          "../core/struct.ss"
          "../core/snooze-struct.ss"
-         "../generic/generic.ss"
+         "../common/generic.ss"
          "../sql/sql-struct.ss")
 
 (define sqlite3-sql-mixin

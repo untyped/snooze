@@ -7,7 +7,7 @@
          "../base.ss"
          "../core/struct.ss"
          "../core/snooze-struct.ss"
-         "../generic/generic.ss"
+         "../common/generic.ss"
          "../sql/sql-struct.ss"
          "sql.ss")
 

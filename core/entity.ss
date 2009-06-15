@@ -4,7 +4,7 @@
 
 (require srfi/26
          (unlib-in symbol)
-         "../generic/connection.ss"
+         "../common/connection.ss"
          "snooze-struct.ss"
          "check-default.ss"
          "struct.ss"
