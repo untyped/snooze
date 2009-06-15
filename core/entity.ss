@@ -239,7 +239,8 @@
 ; (any -> boolean) -> (any -> boolean)
 (define (make-cached-predicate struct-predicate)
   (lambda (guid)
-    (struct-predicate (guid-ref guid))))
+    (and (guid? guid)
+         (struct-predicate (guid-ref guid)))))
 
 ; (struct -> any) -> (guid -> any)
 (define (make-cached-accessor struct-accessor)

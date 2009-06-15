@@ -186,6 +186,9 @@
 (define-serializable-struct (string-type character-type) () #:transparent)
 (define-serializable-struct (symbol-type character-type) () #:transparent)
 
+; (struct boolean (U natural #f) (listof symbol))
+(define-serializable-struct (enum-type symbol-type) (values) #:transparent)
+
 ; (struct boolean)
 (define-serializable-struct (temporal-type type)          () #:transparent)
 (define-serializable-struct (time-utc-type temporal-type) () #:transparent)
@@ -195,6 +198,10 @@
 (define-serializable-struct (guid-type type) (entity) #:transparent)
 (define-serializable-struct (primary-key-type guid-type) () #:transparent)
 (define-serializable-struct (foreign-key-type guid-type) () #:transparent)
+
+; boolean (listof symbol) -> enum-type
+(define (create-enum-type allow-null? vals)
+  (make-enum-type allow-null? (foldl max 0 (map string-length (map symbol->string vals))) vals))
 
 ; type -> any
 (define (type-null type)
@@ -487,9 +494,11 @@
  [struct (character-type type)         ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
  [struct (string-type character-type)  ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
  [struct (symbol-type character-type)  ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
+ [struct (enum-type symbol-type)       ([allows-null? boolean?] [max-length (or/c natural-number/c #f)] [values (listof symbol?)])]
  [struct (temporal-type type)          ([allows-null? boolean?])]
  [struct (time-utc-type temporal-type) ([allows-null? boolean?])]
  [struct (time-tai-type temporal-type) ([allows-null? boolean?])]
+ [create-enum-type                     (-> boolean? (listof symbol?) enum-type?)]
  [type-null                            (-> type? any)]
  [type-valid?                          (-> type? any/c boolean?)]
  [type-name                            (-> type? symbol?)]

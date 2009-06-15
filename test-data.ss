@@ -48,8 +48,8 @@
 
 (define-entity tree-node
   ([parent tree-node]
-   [value  string])
-  #:table-name 'treenode)
+   [color  enum #:values '(red black)]
+   [value  string]))
 
 ; Procedures -------------------------------------
 

@@ -2,7 +2,8 @@
 
 (require "../base.ss")
 
-(require "../common/connection.ss"
+(require scheme/string
+         "../common/connection.ss"
          "cached-struct.ss"
          "check.ss"
          "check-annotation.ss"
@@ -59,6 +60,15 @@
                  (check-fail (format "~a: must be~a a number."
                                      (string-titlecase (attribute-pretty-name attr))
                                      (if allow-null? " blank or" ""))))]
+            [(enum-type? type)
+             (if (memq val (enum-type-values type))
+                 (check-pass)
+                 (check-fail (format "~a: must be~a one of the values: ~a."
+                                     (string-titlecase (attribute-pretty-name attr))
+                                     (if allow-null? " blank or" "")
+                                     (string-join (map (cut format "~a" <>)
+                                                       (enum-type-values type))
+                                                  ", "))))]
             [(string-type? type)
              (let ([max-length (character-type-max-length type)])
                (check-string attr allow-null? max-length val))]

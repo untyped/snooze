@@ -8,7 +8,14 @@
          (prefix-in real: "core/snooze-struct.ss")
          )
 
-; Tests -------------------------------------------
+; Helpers ----------------------------------------
+
+; These bypass the normal contract checks on make-foo/defaults:
+
+(define create-course    (entity-defaults-constructor course))
+(define create-tree-node (entity-defaults-constructor tree-node))
+
+; Tests ------------------------------------------
 
 ; test-suite
 (define snooze-check-tests
@@ -18,12 +25,12 @@
     recreate-test-tables
     
     (test-case "check-snooze-struct : okay"
-      (let* ([struct  (make-course/defaults)]
+      (let* ([struct  (create-course)]
              [results (check-snooze-struct struct)])
         (check-equal? (length results) 0)))
     
     (test-case "check-snooze-struct : invalid null attribute"
-      (let* ([struct (make-course/defaults #:code #f)]
+      (let* ([struct (create-course #:code #f)]
              [results (check-snooze-struct struct)])
         (check-equal? (length results) 1)
         (check-equal? (check-result-annotation (car results) ann:struct) struct)
@@ -31,53 +38,60 @@
                       (list (attr course code)))))
     
     (test-case "check-snooze-struct : symbol too long"
-      (let* ([struct  (make-course/defaults #:code 'abcdefghi)]
+      (let* ([struct  (create-course #:code 'abcdefghi)]
              [results (check-snooze-struct struct)])
         (check-equal? (length results) 1)
         (check-equal? (check-result-annotation (car results) ann:attrs)
                       (list (attr course code)))))
     
-    (test-case "check-snooze-struct : symbol too long"
-      (let* ([struct  (make-course/defaults #:name (make-string 129 #\a))]
+    (test-case "check-snooze-struct : string too long"
+      (let* ([struct  (create-course #:name (make-string 129 #\a))]
              [results (check-snooze-struct struct)])
         (check-equal? (length results) 1)
         (check-equal? (check-result-annotation (car results) ann:attrs)
                       (list (attr course name)))))
     
+    (test-case "check-snooze-struct : wrong enum value"
+      (let* ([struct  (create-tree-node #:color 'white)]
+             [results (check-snooze-struct struct)])
+        (check-equal? (length results) 1)
+        (check-equal? (check-result-annotation (car results) ann:attrs)
+                      (list (attr tree-node color)))))
+      
     (test-case "check-snooze-struct : custom check"
       (let ([temp (entity-save-check course)])
         (set-entity-save-check! course (lambda (course) null))
-        (let* ([struct  (make-course/defaults #:code #f)]
+        (let* ([struct  (create-course #:code #f)]
                [results (check-snooze-struct struct)])
           (check-equal? (length results) 0))
         (set-entity-save-check! course temp)))
     
     (test-case "check-old-snooze-struct : symbol too long"
-      (let* ([struct  (make-course/defaults #:name (make-string 129 #\a))]
+      (let* ([struct  (create-course #:name (make-string 129 #\a))]
              [results (check-old-snooze-struct struct)])
         (check-pred null? results)))
     
     (test-case "save! : okay"
-      (check-not-exn (cut save! (make-course/defaults))))
+      (check-not-exn (cut save! (create-course))))
     
     (test-case "save! : invalid null attribute"
       (check-exn exn:fail:snooze:check?
-        (cut save! (make-course/defaults #:code #f))))
+        (cut save! (create-course #:code #f))))
     
     (test-case "save! : symbol too long"
       (check-exn exn:fail:snooze:check?
-        (cut save! (make-course/defaults #:code 'abcdefghi))))
+        (cut save! (create-course #:code 'abcdefghi))))
     
     (test-case "save! : symbol too long"
       (check-exn exn:fail:snooze:check?
-        (cut save! (make-course/defaults #:name (make-string 129 #\a)))))
+        (cut save! (create-course #:name (make-string 129 #\a)))))
     
     (test-case "save! : custom check"
       (let ([temp (entity-save-check course)])
         (set-entity-save-check! course (lambda (course) null))
         (with-handlers ([exn? (lambda (exn)
                                 (check-false (exn:fail:snooze:check? exn)))])
-          (save! (make-course/defaults #:code #f))
+          (save! (create-course #:code #f))
           (check-fail "no exception raised"))
         (set-entity-save-check! course temp)))))
 

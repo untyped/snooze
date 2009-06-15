@@ -96,6 +96,7 @@
     (define my-private-stx       #f)
     (define my-allows-null-stx   #'#t)
     (define my-max-length-stx    #'#f)
+    (define my-values-stx        #f)
     (define my-default-stx       #'(lambda () #f))
     (define my-type-stx          #f)
     (define my-type-expr-stx     #f)
@@ -107,19 +108,25 @@
     (define my-pretty-plural-stx #'pluralize-pretty-name)
     
     (define (parse-attr-type stx)
-      (with-syntax ([allows-null? my-allows-null-stx])
+      (with-syntax ([allows-null? my-allows-null-stx]
+                    [max-length   my-max-length-stx]
+                    [values       my-values-stx])
         (set! my-type-stx stx)
-        (syntax-case* stx (boolean integer real symbol string time-tai time-utc) symbolic-identifier=?
+        (syntax-case* stx (boolean integer real symbol string time-tai time-utc enum) symbolic-identifier=?
           [boolean  (set! my-type-expr-stx #'(make-boolean-type allows-null?))]
           [integer  (set! my-type-expr-stx #'(make-integer-type allows-null?))]
           [real     (set! my-type-expr-stx #'(make-real-type allows-null?))]
-          [symbol   (set! my-type-expr-stx (with-syntax ([max-length my-max-length-stx])
-                                             #'(make-symbol-type allows-null? max-length)))]
-          [string   (set! my-type-expr-stx (with-syntax ([max-length my-max-length-stx])
-                                             #`(make-string-type allows-null? max-length)))]
+          [symbol   (set! my-type-expr-stx #'(make-symbol-type allows-null? max-length))]
+          [string   (set! my-type-expr-stx #'(make-string-type allows-null? max-length))]
           [time-tai (set! my-type-expr-stx #'(make-time-tai-type allows-null?))]
           [time-utc (set! my-type-expr-stx #'(make-time-utc-type allows-null?))]
-          [entity   (set! my-type-expr-stx #'(make-guid-type allows-null? entity))])))
+          [enum     (if my-values-stx
+                        (set! my-type-expr-stx #'(create-enum-type allows-null? values))
+                        (raise-syntax-error #f "required keyword missing: #:values" complete-stx stx))]
+          [entity   (if (or (bound-identifier=? #'entity entity-stx)
+                            (with-handlers ([exn? (lambda _ #f)]) (entity-info-ref #'entity)))
+                        (set! my-type-expr-stx #'(make-guid-type allows-null? entity))
+                        (raise-syntax-error #f "not a valid attribute type" complete-stx stx))])))
     
     (define (parse-attr-kws stx)
       (syntax-case stx ()
@@ -128,6 +135,9 @@
                 (parse-attr-kws #'(other ...)))]
         [(#:max-length val other ...)
          (begin (set! my-max-length-stx #'val)
+                (parse-attr-kws #'(other ...)))]
+        [(#:values val other ...)
+         (begin (set! my-values-stx #'val)
                 (parse-attr-kws #'(other ...)))]
         [(#:default val other ...)
          (begin (set! my-default-stx #'(lambda () val))
@@ -328,9 +338,9 @@
                
                (define default-alias (sql:alias 'entity entity-private))
                
-               (set-entity-defaults-constructor! entity defaults-constructor)
-               (set-entity-copy-constructor!     entity copy-constructor)
-               (set-entity-default-alias!        entity default-alias)
+               (set-entity-defaults-constructor! entity-private defaults-constructor)
+               (set-entity-copy-constructor!     entity-private copy-constructor)
+               (set-entity-default-alias!        entity-private default-alias)
                
                ; Transformer binding: makes things like (struct ...) in plt-match work.
                ; Copied by-example from an expanded define-struct.
@@ -439,15 +449,22 @@
                        (for/list ([info (in-list (cddr attr-info))])
                          (list (string->keyword (symbol->string (syntax->datum (attribute-info-id info))))
                                (attribute-info-accessor-id info)
-                               (syntax-case* (attribute-info-type-id info) (boolean integer real symbol string time-tai time-utc) symbolic-identifier=?
-                                 [boolean  #'boolean?]
-                                 [integer  #'(or/c integer? #f)]
-                                 [real     #'(or/c number? #f)]
-                                 [symbol   #'(or/c symbol? #f)]
-                                 [string   #'(or/c string? #f)]
-                                 [time-tai #'(or/c time-tai? #f)]
-                                 [time-utc #'(or/c time-utc? #f)]
-                                 [entity   #`(or/c #,(entity-info-guid-predicate-id (entity-info-ref #'entity)) #f)])))])
+                               (with-syntax ([type #`(attribute-type #,(attribute-info-private-id info))])
+                                 (syntax-case* (attribute-info-type-id info)
+                                   (boolean integer real symbol string time-tai time-utc enum) symbolic-identifier=?
+                                   [boolean  #'boolean?]
+                                   [integer  #'(if (type-allows-null? type) (or/c #f integer?)  integer?)]
+                                   [real     #'(if (type-allows-null? type) (or/c #f number?)   number?)]
+                                   [symbol   #'(if (type-allows-null? type) (or/c #f symbol?)   symbol?)]
+                                   [string   #'(if (type-allows-null? type) (or/c #f string?)   string?)]
+                                   [time-tai #'(if (type-allows-null? type) (or/c #f time-tai?) time-tai?)]
+                                   [time-utc #'(if (type-allows-null? type) (or/c #f time-utc?) time-utc?)]
+                                   [enum     #'(if (type-allows-null? type)
+                                                   (apply or/c #f (enum-type-values type))
+                                                   (apply or/c (enum-type-values type)))]
+                                   [entity   #'(if (type-allows-null? type)
+                                                   (or/c #f (entity-cached-predicate (guid-type-entity type)))
+                                                   (entity-cached-predicate (guid-type-entity type)))]))))])
          (quasisyntax/loc stx
            (begin (provide id)
                   (provide/contract

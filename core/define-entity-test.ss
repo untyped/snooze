@@ -25,7 +25,8 @@
       (check-pred procedure? make-person)
       (check-pred procedure? person?)
       (check-true  (person? (make-person "Dave")))
-      (check-false (person? (make-pet #f "Odie"))))
+      (check-false (person? (make-pet #f "Odie")))
+      (check-false (person? #f)))
     
     (test-case "struct equality"
       (let ([a1 (make-person "A")]
@@ -42,11 +43,13 @@
       (check-equal? (make-person/defaults #:name "Dave")
                     (make-person "Dave"))
       (check-equal? (make-person/defaults #:name "Dave")
-                    (person-set (make-person "Dave"))))
+                    (person-set (make-person "Dave")))
+      (check-exn exn:fail:contract? (cut make-person/defaults #:name 'Dave)))
     
     (test-case "copy constructor"
       (check-equal? (make-person/defaults #:name "Dave")
-                    (person-set (make-person "Dave"))))
+                    (person-set (make-person "Dave")))
+      (check-exn exn:fail:contract? (cut person-set (make-person "Dave") #:name 'Dave)))
     
     (test-case "name->table-name"
       (check-equal? (name->database-name 'person)        'person)
