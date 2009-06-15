@@ -1,8 +1,10 @@
 #lang scheme/base
 
+(require "../base.ss")
+
 (require scheme/contract
          syntax/boundmap
-         "syntax-info-internal.ss")
+         (unlib-in syntax-info))
 
 ; Variables --------------------------------------
 
@@ -24,7 +26,12 @@
    guid-predicate-id
    default-alias-id
    attribute-info)
-  private-id)
+  #:struct? #t
+  #:transformer
+  (lambda (info stx)
+    (syntax-case stx ()
+      [id (identifier? #'id)
+          (entity-info-private-id info)])))
 
 (define-struct attribute-info
   (id private-id type-id accessor-id mutator-id)
