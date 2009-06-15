@@ -4,7 +4,7 @@
 
 (require srfi/19
          (sqlite-in sqlite)
-         "../core/era.ss"
+         "../core/core.ss"
          "../sql/sql.ss"
          "sql.ss")
 

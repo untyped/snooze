@@ -7,7 +7,7 @@
          "quick-find.ss"
          "snooze-api.ss"
          "snooze-class.ss"
-         "core/era.ss"
+         "core/core.ss"
          "sql/sql.ss")
 
 ; Provide statements -----------------------------
@@ -16,7 +16,7 @@
          (all-from-out "snooze-api.ss"
                        "snooze-class.ss"
                        "quick-find.ss"
-                       "core/era.ss"
+                       "core/core.ss"
                        "sql/sql.ss")
          (struct-out exn:fail:snooze)
          (struct-out exn:fail:snooze:query)

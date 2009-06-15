@@ -5,7 +5,7 @@
 (require (only-in srfi/1 take)
          srfi/26
          (unlib-in hash)
-         "era.ss")
+         "core.ss")
 
 (require/expose "entity.ss"
   (name->database-name))

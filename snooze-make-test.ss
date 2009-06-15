@@ -5,7 +5,7 @@
 (require scheme/dict
          (unlib-in hash)
          "snooze-api.ss"
-         "core/era.ss"
+         "core/core.ss"
          (prefix-in real: "core/snooze-struct.ss"))
 
 ; Tests -------------------------------------------

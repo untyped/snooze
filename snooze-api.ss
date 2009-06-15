@@ -3,7 +3,7 @@
 (require "base.ss")
 
 (require scheme/class
-         "core/era.ss"
+         "core/core.ss"
          "generic/connection.ss"
          "sql/sql.ss")
 

@@ -8,7 +8,7 @@
          (planet untyped/unlib:3/parameter)
          (prefix-in real: (only-in "core/snooze-struct.ss" make-snooze-struct))
          "snooze-cache.ss"
-         "core/era.ss"
+         "core/core.ss"
          "generic/generic.ss"
          "sql/sql.ss")
 

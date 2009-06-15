@@ -9,7 +9,7 @@
          "snooze-class.ss"
          "test-data.ss"
          "test-util.ss"
-         "core/era.ss"
+         "core/core.ss"
          "postgresql8/postgresql8.ss"
          "sqlite3/sqlite3.ss")
 

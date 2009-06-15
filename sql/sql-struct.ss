@@ -12,7 +12,7 @@
 ; ***** NOTE *****
 ; The terms "entity" and "attribute" are used here
 ; to refer to parts of the query representation. The
-; "entity" and "attribute" from core/era.ss are referred
+; "entity" and "attribute" from core/core.ss are referred
 ; to as "era:entity" and "era:attribute".
 ; ****************
 

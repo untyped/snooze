@@ -13,8 +13,8 @@
 ; Tests -------------------------------------------
 
 ; test-suite
-(define all-era-tests
-  (test-suite "era"
+(define all-core-tests
+  (test-suite "core"
     core-tests
     snooze-struct-tests
     cached-struct-tests
@@ -26,4 +26,4 @@
 
 ; Provide statements -----------------------------
 
-(provide all-era-tests)
+(provide all-core-tests)

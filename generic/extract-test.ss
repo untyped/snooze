@@ -4,7 +4,7 @@
 
 (require srfi/19
          (unlib-in gen)
-         "../core/era.ss"
+         "../core/core.ss"
          "extract.ss")
 
 ; Persistent structs ---------------------------
