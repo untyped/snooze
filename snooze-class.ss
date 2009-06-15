@@ -9,7 +9,7 @@
          (prefix-in real: (only-in "core/snooze-struct.ss" make-snooze-struct))
          "snooze-cache.ss"
          "core/core.ss"
-         "common/generic.ss"
+         "common/common.ss"
          "sql/sql.ss")
 
 ; database<%> [#:auto-connect? boolean] -> snooze<%>

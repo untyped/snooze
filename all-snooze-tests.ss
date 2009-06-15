@@ -18,7 +18,7 @@
          "test-base.ss"
          ;"audit/all-audit-tests.ss"
          "core/all-core-tests.ss"
-         "common/all-generic-tests.ss"
+         "common/all-common-tests.ss"
          "sql/all-sql-tests.ss")
 
 ; Tests ----------------------------------------
@@ -35,7 +35,7 @@
     all-sql-tests
     
     ; Tests for the back end:
-    all-generic-tests
+    all-common-tests
     all-back-end-tests
     
     ; Tests the front end:

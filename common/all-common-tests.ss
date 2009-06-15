@@ -4,8 +4,8 @@
 
 (require "extract-test.ss")
 
-(define all-generic-tests
-  (test-suite "generic"
+(define all-common-tests
+  (test-suite "common"
     extract-tests))
 
-(provide all-generic-tests)
+(provide all-common-tests)

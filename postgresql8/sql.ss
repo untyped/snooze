@@ -8,7 +8,7 @@
          (unlib-in symbol)
          "../core/struct.ss"
          "../core/snooze-struct.ss"
-         "../common/generic.ss")
+         "../common/common.ss")
 
 (define postgresql8-sql-mixin
   (mixin (generic-database<%>) (sql-escape<%> parse<%> sql-create<%> sql-drop<%> sql-insert<%> sql-update<%> sql-delete<%>)

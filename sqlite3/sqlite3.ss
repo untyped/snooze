@@ -6,7 +6,7 @@
          (unlib-in gen symbol)
          "../core/struct.ss"
          "../core/snooze-struct.ss"
-         "../common/generic.ss"
+         "../common/common.ss"
          "../sql/sql-struct.ss"
          "sql.ss")
 
