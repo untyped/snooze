@@ -38,8 +38,12 @@
              #:max-length  128
              #:default "name"]
    [value    integer
-             #:default 1]
-   [rating   real]
+             #:default 1
+             #:min-value 0
+             #:max-value 5]
+   [rating   real
+             #:min-value 0.0
+             #:max-value 1.0]
    [active?  boolean
              #:column-name 'active
              #:pretty-name "active flag"]
@@ -76,6 +80,8 @@
   (create-table pet))
   
 ; Provide statements -----------------------------
+
+(provide color)
 
 (provide/contract/entities
  [drop-all-tables      (-> void?)]

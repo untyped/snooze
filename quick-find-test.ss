@@ -30,11 +30,11 @@
     #:before
     (lambda ()
       (recreate-test-tables)
-      (set! c1 (save! (make-course 'course1 "Course 1" 1 1.1 #f (string->time-tai "2001-01-01 01:01:01"))))
-      (set! c2 (save! (make-course 'course2 "Course 2" 2 2.2 #t (string->time-tai "2002-02-02 02:02:02"))))
-      (set! c3 (save! (make-course 'course3 "Course 3" 3 3.3 #f (string->time-tai "2003-03-03 03:03:03"))))
-      (set! c4 (save! (make-course 'course4 "Course 4" 4 4.4 #t (string->time-tai "2004-04-04 04:04:04"))))
-      (set! c5 (save! (make-course 'course5 "Course 5" 5 5.5 #f (string->time-tai "2005-05-05 05:05:05")))))
+      (set! c1 (save! (make-course 'course1 "Course 1" 1 0.1 #f (string->time-tai "2001-01-01 01:01:01"))))
+      (set! c2 (save! (make-course 'course2 "Course 2" 2 0.2 #t (string->time-tai "2002-02-02 02:02:02"))))
+      (set! c3 (save! (make-course 'course3 "Course 3" 3 0.3 #f (string->time-tai "2003-03-03 03:03:03"))))
+      (set! c4 (save! (make-course 'course4 "Course 4" 4 0.4 #t (string->time-tai "2004-04-04 04:04:04"))))
+      (set! c5 (save! (make-course 'course5 "Course 5" 5 0.5 #f (string->time-tai "2005-05-05 05:05:05")))))
     
     #:after
     drop-all-tables

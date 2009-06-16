@@ -94,6 +94,8 @@
     (define my-name-stx          #f)
     (define my-private-stx       #f)
     (define my-allows-null-stx   #'#t)
+    (define my-min-value-stx     #'#f)
+    (define my-max-value-stx     #'#f)
     (define my-max-length-stx    #'#f)
     (define my-values-stx        #f)
     (define my-default-stx       #'(lambda () #f))
@@ -108,13 +110,15 @@
     
     (define (parse-attr-type stx)
       (with-syntax ([allows-null? my-allows-null-stx]
+                    [min-value    my-min-value-stx]
+                    [max-value    my-max-value-stx]
                     [max-length   my-max-length-stx]
                     [values       my-values-stx])
         (set! my-type-stx stx)
         (syntax-case* stx (boolean integer real symbol string time-tai time-utc enum) symbolic-identifier=?
           [boolean  (set! my-type-expr-stx #'(make-boolean-type allows-null?))]
-          [integer  (set! my-type-expr-stx #'(make-integer-type allows-null?))]
-          [real     (set! my-type-expr-stx #'(make-real-type allows-null?))]
+          [integer  (set! my-type-expr-stx #'(make-integer-type allows-null? min-value max-value))]
+          [real     (set! my-type-expr-stx #'(make-real-type allows-null? min-value max-value))]
           [symbol   (set! my-type-expr-stx #'(make-symbol-type allows-null? max-length))]
           [string   (set! my-type-expr-stx #'(make-string-type allows-null? max-length))]
           [time-tai (set! my-type-expr-stx #'(make-time-tai-type allows-null?))]
@@ -131,6 +135,12 @@
       (syntax-case stx ()
         [(#:allow-null? val other ...)
          (begin (set! my-allows-null-stx #'val)
+                (parse-attr-kws #'(other ...)))]
+        [(#:min-value val other ...)
+         (begin (set! my-min-value-stx #'val)
+                (parse-attr-kws #'(other ...)))]
+        [(#:max-value val other ...)
+         (begin (set! my-max-value-stx #'val)
                 (parse-attr-kws #'(other ...)))]
         [(#:max-length val other ...)
          (begin (set! my-max-length-stx #'val)

@@ -104,7 +104,7 @@
   (define revision-attribute
     (let* ([name             'revision]
            [col              'revision]
-           [type             (make-integer-type #f)]
+           [type             (make-integer-type #f 0 #f)]
            [default-maker    (lambda () #f)]
            [index            1])
       (create-attribute name col "revision" "revisions" type entity index default-maker struct-accessor struct-mutator)))

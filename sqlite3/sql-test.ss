@@ -87,7 +87,7 @@
         (check-exn exn:fail:contract? (cut escape-sql-value t "123") "check 3")))
     
     (test-case "escape-sql-value : integer"
-      (let ([t (make-integer-type #t #f)])
+      (let ([t (make-integer-type #t #f #f)])
         (check-equal? (escape-sql-value t #f) "NULL" "check 1")
         (check-equal? (escape-sql-value t 1) "1" "check 2")
         (check-equal? (escape-sql-value t 0) "0" "check 3")
@@ -95,7 +95,7 @@
         (check-exn exn:fail:contract? (cut escape-sql-value t "123") "check 5")))
     
     (test-case "escape-sql-value : real"
-      (let ([t (make-real-type #t #f)])
+      (let ([t (make-real-type #t #f #f)])
         (check-equal? (escape-sql-value t #f) "NULL" "check 1")
         (check-equal? (escape-sql-value t 0.00000000001) "1e-11" "check 2")
         (check-equal? (escape-sql-value t 0.0) "0.0" "check 3")
@@ -153,14 +153,14 @@
         (check-equal? (parse-value t #f) #f "check 3")))
     
     (test-case "parse-value : integer"
-      (let ([t (make-integer-type #t #f)])
+      (let ([t (make-integer-type #t #f #f)])
         (check-equal? (parse-value t #f) #f "check 1")
         (check-equal? (parse-value t "1") 1 "check 2")
         (check-equal? (parse-value t "0") 0 "check 3")
         (check-equal? (parse-value t "-1") -1 "check 4")))
     
     (test-case "parse-value : real"
-      (let ([t (make-real-type #t #f)])
+      (let ([t (make-real-type #t #f #f)])
         (check-equal? (parse-value t #f) #f "check 1")
         (check-equal? (parse-value t "0.00000000001") 0.00000000001 "check 2")
         (check-equal? (parse-value t "0.0") 0.0 "check 3")
@@ -214,7 +214,7 @@
     
     (test-case "make-parser"
       (let ([parse (make-parser (list (make-boolean-type #t #f)
-                                      (make-integer-type #t #f)
+                                      (make-integer-type #t #f #f)
                                       (make-string-type #t #f #f)
                                       (make-symbol-type #t #f #f)))])
         (check-equal? (parse (vector "1" "1" "1" "1")) (vector #t 1 "1" '|1|) "check 1")

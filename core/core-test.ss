@@ -171,7 +171,7 @@
         (check-attribute 'guid expected)
         (check-attribute (attr pet guid) expected))
       
-      (let ([expected (list 'revision 'revision 1 #t #t (make-integer-type #f))])
+      (let ([expected (list 'revision 'revision 1 #t #t (make-integer-type #f #f #f))])
         (check-attribute 'revision expected)
         (check-attribute (attr pet revision) expected))
       

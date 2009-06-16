@@ -333,11 +333,11 @@
         (define p1-average-id   (sql:average (sql p1.revision)))
         
         (check-equal? (query-extract-info (sql:select #:what (sql p1.revision) #:from p1))
-                      (make-integer-type #f)
+                      (make-integer-type #f 0 #f)
                       "single attribute")
         
         (check-equal? (query-extract-info (sql:select #:what (list (sql p1.revision) (sql p1.name)) #:from p1))
-                      (list (make-integer-type #f)
+                      (list (make-integer-type #f 0 #f)
                             (make-string-type #t #f))
                       "list of attributes")
         
@@ -355,11 +355,11 @@
                                                                    p1-min-revision
                                                                    p1-average-id)
                                                       #:from p1))
-                      (list (make-integer-type #t)
-                            (make-integer-type #t)
-                            (make-integer-type #f)
-                            (make-integer-type #f)
-                            (make-real-type    #t))
+                      (list (make-integer-type #t #f #f)
+                            (make-integer-type #t #f #f)
+                            (make-integer-type #f  0 #f)
+                            (make-integer-type #f  0 #f)
+                            (make-real-type    #t #f #f))
                       "aggregates")
         
         (check-equal? (query-extract-info (sql:select #:what (list (sql:alias 'column1 (sql:+ (sql p1.revision) (sql p1.revision)))

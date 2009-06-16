@@ -54,22 +54,7 @@
                     (for/list ([info (in-list (cddr attr-info))])
                       (list (string->keyword (symbol->string (syntax->datum (attribute-info-id info))))
                             (attribute-info-accessor-id info)
-                            (with-syntax ([type #`(attribute-type #,(attribute-info-private-id info))])
-                              (syntax-case* (attribute-info-type-id info)
-                                (boolean integer real symbol string time-tai time-utc enum) symbolic-identifier=?
-                                [boolean  #'boolean?]
-                                [integer  #'(if (type-allows-null? type) (or/c #f integer?)  integer?)]
-                                [real     #'(if (type-allows-null? type) (or/c #f number?)   number?)]
-                                [symbol   #'(if (type-allows-null? type) (or/c #f symbol?)   symbol?)]
-                                [string   #'(if (type-allows-null? type) (or/c #f string?)   string?)]
-                                [time-tai #'(if (type-allows-null? type) (or/c #f time-tai?) time-tai?)]
-                                [time-utc #'(if (type-allows-null? type) (or/c #f time-utc?) time-utc?)]
-                                [enum     #'(if (type-allows-null? type)
-                                                (apply or/c #f (enum-type-values type))
-                                                (apply or/c (enum-type-values type)))]
-                                [entity   #'(if (type-allows-null? type)
-                                                (or/c #f (entity-cached-predicate (guid-type-entity type)))
-                                                (entity-cached-predicate (guid-type-entity type)))]))))])
+                            #`(type-contract (attribute-type #,(attribute-info-private-id info)))))])
       (values
        ; provide
        (list id-stx)

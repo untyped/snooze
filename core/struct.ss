@@ -177,8 +177,8 @@
 ; (struct boolean)
 (define-serializable-struct (boolean-type type) () #:transparent)
 
-; (struct boolean)
-(define-serializable-struct (numeric-type type) () #:transparent)
+; (struct boolean number number)
+(define-serializable-struct (numeric-type type) (min-value max-value) #:transparent)
 (define-serializable-struct (integer-type numeric-type) () #:transparent)
 (define-serializable-struct (real-type    numeric-type) () #:transparent)
 
@@ -213,22 +213,30 @@
       (void)
       #f))
 
-; type any -> boolean
-(define (type-valid? type value)
-  (cond [(equal? value (type-null type)) (type-allows-null? type)]
-        [(boolean-type? type)            (boolean? value)]
-        [(integer-type? type)            (integer? value)]
-        [(real-type? type)               (real? value)]
-        [(string-type? type)             (let ([max-length (character-type-max-length type)])
-                                           (and (string? value)
-                                                (or (not max-length)
-                                                    (<= (string-length value) max-length))))]
-        [(symbol-type? type)             (let ([max-length (character-type-max-length type)])
-                                           (and (symbol? value)
-                                                (or (not max-length)
-                                                    (<= (string-length (symbol->string value)) max-length))))]
-        [(time-tai-type? type)           (time-tai? value)]
-        [(time-utc-type? type)           (time-utc? value)]))
+; type any [boolean] -> boolean
+(define (type-valid? type val [strict? #t])
+  (if (equal? val (type-null type))
+      (type-allows-null? type)
+      (match type
+        [(? boolean-type?)                 (boolean? val)]
+        [(struct integer-type (_ min max)) (and (integer? val)
+                                                (or (not min) (>= val min))
+                                                (or (not max) (<= val max)))]
+        [(struct real-type (_ min max))    (and (number? val)
+                                                (or (not min) (>= val min))
+                                                (or (not max) (<= val max)))]
+        [(struct enum-type (_ _ _ vals))   (and (member val vals) #t)]
+        [(struct string-type (_ max))      (and (string? val)
+                                                (or (not strict?) 
+                                                    (not max)
+                                                    (<= (string-length val) max)))]
+        [(struct symbol-type (_ max))      (and (symbol? val)
+                                                (or (not strict?)
+                                                    (not max)
+                                                    (<= (string-length (symbol->string val)) max)))]
+        [(? time-tai-type?)                (time-tai? val)]
+        [(? time-utc-type?)                (time-utc? val)]
+        [(struct guid-type (_ entity))     ((entity-cached-predicate entity) val)])))
 
 ; type -> symbol
 (define (type-name type)
@@ -257,10 +265,35 @@
            (eq? (guid-type-entity type1)
                 (guid-type-entity type2)))))
 
+; type -> contract
+(define (type-contract type)
+  
+  ; boolean -> list
+  (define (null-name null?)
+    (if null?
+        '(#:allow-null? #t)
+        '(#:allow-null? #f)))
+  
+  (flat-named-contract
+   (match type
+     [(? boolean-type?)                     '(boolean-attr/c)]
+     [(struct numeric-type (null? min max)) `(,(if (integer-type? type) 'integer-attr/c 'real-attr/c)
+                                              ,@(if min `(#:min-value ,min) null)
+                                              ,@(if max `(#:max-value ,max) null)
+                                              ,@(null-name null?))]
+     [(struct enum-type (null? _ _ values)) `(enum-attr/c #:values ,values ,@(null-name null?))]
+     [(struct character-type (null? max))   `(,(if (symbol-type? type) 'symbol-attr/c 'string-attr/c)
+                                              ,@(if max `(#:max-length ,max) null)
+                                              ,@(null-name null?))]
+     [(struct time-utc-type (null?))        `(time-utc-attr/c ,@(null-name null?))]
+     [(struct time-tai-type (null?))        `(time-tai-attr/c ,@(null-name null?))]
+     [(struct guid-type (null? entity))     `(foreign-key/c ,(entity-name entity) ,@(null-name null?))])
+   (cut type-valid? type <> #f)))
+
 ; type
 (define type:boolean  (make-boolean-type  #t))
-(define type:integer  (make-integer-type  #t))
-(define type:real     (make-real-type     #t))
+(define type:integer  (make-integer-type  #t #f #f))
+(define type:real     (make-real-type     #t #f #f))
 (define type:string   (make-string-type   #t #f))
 (define type:symbol   (make-symbol-type   #t #f))
 (define type:time-tai (make-time-tai-type #t))
@@ -492,12 +525,21 @@
  [struct type                          ([allows-null? boolean?])]
  [struct (guid-type type)              ([allows-null? boolean?] [entity entity?])]
  [struct (boolean-type type)           ([allows-null? boolean?])]
- [struct (numeric-type type)           ([allows-null? boolean?])]
- [struct (integer-type numeric-type)   ([allows-null? boolean?])]
- [struct (real-type numeric-type)      ([allows-null? boolean?])]
- [struct (character-type type)         ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
- [struct (string-type character-type)  ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
- [struct (symbol-type character-type)  ([allows-null? boolean?] [max-length (or/c natural-number/c #f)])]
+ [struct (numeric-type type)           ([allows-null? boolean?]
+                                        [min-value    (or/c number? #f)]
+                                        [max-value    (or/c number? #f)])]
+ [struct (integer-type numeric-type)   ([allows-null? boolean?]
+                                        [min-value    (or/c integer? #f)]
+                                        [max-value    (or/c integer? #f)])]
+ [struct (real-type numeric-type)      ([allows-null? boolean?]
+                                        [min-value    (or/c number? #f)]
+                                        [max-value    (or/c number? #f)])]
+ [struct (character-type type)         ([allows-null? boolean?]
+                                        [max-length   (or/c natural-number/c #f)])]
+ [struct (string-type character-type)  ([allows-null? boolean?]
+                                        [max-length   (or/c natural-number/c #f)])]
+ [struct (symbol-type character-type)  ([allows-null? boolean?]
+                                        [max-length   (or/c natural-number/c #f)])]
  [struct (enum-type symbol-type)       ([allows-null? boolean?]
                                         [max-length   (or/c natural-number/c #f)]
                                         [enum         (or/c enum? #f)]
@@ -507,9 +549,10 @@
  [struct (time-tai-type temporal-type) ([allows-null? boolean?])]
  [create-enum-type                     (-> boolean? (or/c enum? (listof symbol?)) enum-type?)]
  [type-null                            (-> type? any)]
- [type-valid?                          (-> type? any/c boolean?)]
+ [type-valid?                          (->* (type? any/c) (boolean?) boolean?)]
  [type-name                            (-> type? symbol?)]
  [type-compatible?                     (-> type? type? boolean?)]
+ [type-contract                        (-> type? contract?)]
  [type:boolean                         boolean-type?]
  [type:integer                         integer-type?]
  [type:real                            real-type?]
