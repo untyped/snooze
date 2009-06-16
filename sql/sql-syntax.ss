@@ -9,6 +9,11 @@
   (syntax-case stx ()
     [(_ expr) (expand-top-level (syntax expr))]))
 
+(define-syntax (sql-list stx)
+  (syntax-case stx ()
+    [(_ expr ...) (syntax/loc stx (list (sql expr) ...))]))
+
 ; Provide statements -----------------------------
 
-(provide sql)
+(provide sql
+         sql-list)
