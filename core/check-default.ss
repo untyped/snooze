@@ -121,7 +121,7 @@
     (let ([results (check-snooze-struct guid)])
       (if (check-errors? results)
           (raise-exn exn:fail:snooze:check
-            (format "failed validation: could not save ~s:~n~s"
+            (format "failed validation: could not save ~s:~n~a"
                     guid
                     (pretty-format results))
             results)
@@ -133,7 +133,7 @@
     (let ([results (check-old-snooze-struct guid)])
       (if (check-errors? results)
           (raise-exn exn:fail:snooze:check
-            (format "failed validation: could not delete ~s:~n~s"
+            (format "failed validation: could not delete ~s:~n~a"
                     guid
                     (pretty-format results))
             results)
