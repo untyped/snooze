@@ -213,8 +213,8 @@
       (void)
       #f))
 
-; type any [boolean] -> boolean
-(define (type-valid? type val [strict? #t])
+; type any -> boolean
+(define (type-valid? type val)
   (if (equal? val (type-null type))
       (type-allows-null? type)
       (match type
@@ -227,12 +227,10 @@
                                                 (or (not max) (<= val max)))]
         [(struct enum-type (_ _ _ vals))   (and (member val vals) #t)]
         [(struct string-type (_ max))      (and (string? val)
-                                                (or (not strict?) 
-                                                    (not max)
+                                                (or (not max)
                                                     (<= (string-length val) max)))]
         [(struct symbol-type (_ max))      (and (symbol? val)
-                                                (or (not strict?)
-                                                    (not max)
+                                                (or (not max)
                                                     (<= (string-length (symbol->string val)) max)))]
         [(? time-tai-type?)                (time-tai? val)]
         [(? time-utc-type?)                (time-utc? val)]
@@ -288,7 +286,7 @@
      [(struct time-utc-type (null?))        `(time-utc-attr/c ,@(null-name null?))]
      [(struct time-tai-type (null?))        `(time-tai-attr/c ,@(null-name null?))]
      [(struct guid-type (null? entity))     `(foreign-key/c ,(entity-name entity) ,@(null-name null?))])
-   (cut type-valid? type <> #f)))
+   (cut type-valid? type <>)))
 
 ; type
 (define type:boolean  (make-boolean-type  #t))
@@ -549,7 +547,7 @@
  [struct (time-tai-type temporal-type) ([allows-null? boolean?])]
  [create-enum-type                     (-> boolean? (or/c enum? (listof symbol?)) enum-type?)]
  [type-null                            (-> type? any)]
- [type-valid?                          (->* (type? any/c) (boolean?) boolean?)]
+ [type-valid?                          (-> type? any/c boolean?)]
  [type-name                            (-> type? symbol?)]
  [type-compatible?                     (-> type? type? boolean?)]
  [type-contract                        (-> type? contract?)]
