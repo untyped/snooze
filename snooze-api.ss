@@ -2,7 +2,7 @@
 
 (require "base.ss")
 
-(require scheme/class
+(require (for-syntax scheme/base)
          "core/core.ss"
          "common/connection.ss"
          "sql/sql.ss")
@@ -110,12 +110,20 @@
 (define-syntax-rule (g:select args ...)
   (g:find (sql (select args ...))))
 
+; (_ expr ...)
+; (_ [#:snooze snooze] expr ...)
+(define-syntax (with-connection stx)
+  (syntax-case stx ()
+    [(_ #:snooze snooze expr ...) (syntax/loc stx (call-with-connection #:snooze snooze (lambda () expr ...)))]
+    [(_ expr ...)                 (syntax/loc stx (call-with-connection (lambda () expr ...)))]))
+
 ; Provide statements -----------------------------
 
 (provide current-snooze
          select-one
          select-all
-         g:select)
+         g:select
+         with-connection)
 
 (provide/contract
  [call-with-cache       (->* (procedure?) (#:snooze (is-a?/c snooze<%>)) any)]

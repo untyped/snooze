@@ -1,10 +1,11 @@
 #lang scheme/base
 
-(require scheme/contract
-         "core/core.ss"
-         (prefix-in sql: (only-in "sql/sql-lang.ss"
+(require "../base.ss")
+
+(require "struct.ss"
+         (prefix-in sql: (only-in "../sql/sql-lang.ss"
                                   attr or in null? =))
-         (prefix-in sql: (only-in "sql/sql-struct.ss"
+         (prefix-in sql: (only-in "../sql/sql-struct.ss"
                                   expression?
                                   attribute-alias?
                                   attribute-alias-attribute)))

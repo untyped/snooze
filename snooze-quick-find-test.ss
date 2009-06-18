@@ -14,18 +14,9 @@
 (define-values (c1 c2 c3 c4 c5)
   (values #f #f #f #f #f))
 
-; #:attr any ... -> (U course #f)
-; #:attr any ... -> (listof course)
-; #:attr any ... -> (gen-> course)
-(define-values (find-count-courses find-course find-courses g:courses)
-  (values (custom-find-count course #:order ((asc course.value)))
-          (custom-find-one   course #:order ((asc course.value)))
-          (custom-find-all   course #:order ((asc course.value)))
-          (custom-g:find     course #:order ((asc course.value)))))
-
 ; test-suite
-(define quick-find-tests
-  (test-suite "quick-find.ss"
+(define snooze-quick-find-tests
+  (test-suite "snooze-quick-find-tests"
     
     #:before
     (lambda ()
@@ -44,7 +35,7 @@
       (check-equal? (find-count-courses #:active? #f) 3))
     
     (test-case "find-one #:guid"
-      (check-equal? (find-course #:guid #f) #f)
+      (check-exn exn:fail:contract? (cut find-course #:guid #f))
       (check-equal? (find-course #:guid c1) c1)
       (check-equal? (find-course #:guid c2) c2))
     
@@ -73,5 +64,5 @@
 
 ; Provide statements -----------------------------
 
-(provide quick-find-tests)
+(provide snooze-quick-find-tests)
 

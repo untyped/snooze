@@ -106,9 +106,12 @@
                  (when struct
                    (if (eq? struct 'uncached)
                        (display " uncached" out)
-                       (for ([val (in-vector (struct->vector struct) 2)])
+                       (for ([val   (in-vector (struct->vector struct) 1)]
+                             [index (in-naturals)])
                          (display " " out)
-                         (show val out))))
+                         (if (zero? index)
+                             (show (guid-id+serial val) out)
+                             (show val out)))))
                  (display ")" out))))
            #:property
            prop:equal+hash
@@ -301,6 +304,7 @@
 
 ; (struct symbol 
 ;         symbol
+;         symbol
 ;         string
 ;         string
 ;         (guid any ... -> string)
@@ -320,6 +324,7 @@
 ;         (struct -> (listof check-result))
 (define-struct entity 
   (name
+   plural-name
    table-name
    pretty-name
    pretty-name-plural
@@ -350,6 +355,7 @@
 
 ;  symbol
 ;  symbol
+;  symbol
 ;  string
 ;  string
 ;  (guid any ... -> string)
@@ -362,10 +368,18 @@
 ; We can't mutate struct types, so we have to create them first and then patch
 ; the entity. This procedure gets around the field contracts on entity during
 ; the creation process.
-(define (make-vanilla-entity name table-name pretty-name pretty-name-plural pretty-formatter guid-constructor guid-predicate)
+(define (make-vanilla-entity
+         name
+         plural-name
+         table-name
+         pretty-name
+         pretty-name-plural
+         pretty-formatter
+         guid-constructor
+         guid-predicate)
   (let ([empty-hook  (lambda (continue conn guid) (continue conn guid))]
         [empty-check (lambda (guid) null)])
-    (make-entity name table-name pretty-name pretty-name-plural pretty-formatter
+    (make-entity name plural-name table-name pretty-name pretty-name-plural pretty-formatter
                  #f                       ; struct type
                  #f #f #f #f #f #f #f #f  ; constructors and predicates
                  guid-constructor         ; guid constructor
@@ -559,6 +573,7 @@
  [type:time-tai                        time-tai-type?]
  [type:time-utc                        time-utc-type?]
  [struct entity                        ([name                 symbol?]
+                                        [plural-name          symbol?]
                                         [table-name           symbol?]
                                         [pretty-name          string?]
                                         [pretty-name-plural   string?]
@@ -584,6 +599,7 @@
                                         [save-check           procedure?]
                                         [delete-check         procedure?])]
  [make-vanilla-entity                  (-> symbol?
+                                           symbol?
                                            symbol?
                                            string?
                                            string?

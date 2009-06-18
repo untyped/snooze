@@ -8,8 +8,7 @@
 
 (define-entity person
   ([name     string])
-  #:table-name         'people
-  #:pretty-name-plural "people"
+  #:plural people
   #:pretty-formatter
   (lambda (person)
     (person-name person)))
@@ -17,7 +16,6 @@
 (define-entity pet
   ([owner    person]
    [name     string])
-  #:table-name 'pets
   #:pretty-formatter
   (lambda (pet [include-owner? #f])
     (if include-owner?
@@ -48,8 +46,7 @@
              #:column-name 'active
              #:pretty-name "active flag"]
    [start    time-tai
-             #:default (srfi:current-time srfi:time-tai)])
-  #:table-name 'courses)
+             #:default (srfi:current-time srfi:time-tai)]))
 
 (define-enum color (red black))
 

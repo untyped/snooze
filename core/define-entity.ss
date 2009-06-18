@@ -8,14 +8,16 @@
                      (only-in srfi/1 append-map)
                      (cce-scheme-in syntax)
                      (unlib-in syntax)
+                     "pretty.ss"
+                     "quick-find.ss"
                      "syntax-info.ss")
          scheme/serialize
          (except-in "struct.ss" make-entity)
          "cached-struct.ss"
          "entity.ss"
+         "pretty.ss"
          (prefix-in real: "snooze-struct.ss")
          "syntax-info.ss"
-         "pretty.ss"
          (prefix-in sql: "../sql/sql-lang.ss"))
 
 ; Syntax -----------------------------------------
@@ -26,8 +28,9 @@
   ; Lists are accumulated in reverse order and re-reversed in "finish".
   
   ; Entity:
-  (define entity-stx #f)                  ; person
-  (define entity-private-stx #f)          ; entity:person
+  (define entity-id-stx #f)               ; person
+  (define plural-id-stx #f)               ; people
+  (define private-id-stx #f)              ; entity:person
   (define struct-type-stx #f)             ; struct:person
   (define constructor-stx #f)             ; make-person
   (define predicate-stx #f)               ; person?
@@ -43,6 +46,7 @@
   (define pretty-formatter-stx #f)        ; format-person
   (define defaults-constructor-stx #f)    ; make-person/defaults
   (define copy-constructor-stx #f)        ; person-set
+  (define natural-order-stx #f)           ; (sql-list (asc person.name))
   (define deserialize-info-stx #f)        ; deserialize-info:person
   (define property-stxs null)             ; (... (cons prop:bar bar) (cons prop:foo foo))
   (define entity-kw-stxs null)            ; #:table-name 'Person ...
@@ -65,8 +69,9 @@
   (define (parse-name stx)
     (syntax-case stx ()
       [(name other ...)
-       (begin (set! entity-stx                  #'name)
-              (set! entity-private-stx          (make-id #f 'entity: #'name))
+       (begin (set! entity-id-stx               #'name)
+              (set! plural-id-stx               (make-id #'name (name->plural-name (syntax->datum #'name))))
+              (set! private-id-stx              (make-id #f 'entity: #'name))
               (set! struct-type-stx             (make-id #'name 'struct: #'name))
               (set! constructor-stx             (make-id #'name 'make- #'name))
               (set! predicate-stx               (make-id #'name #'name '?))
@@ -81,6 +86,7 @@
               (set! pretty-formatter-stx        (make-id #'name 'format- #'name))
               (set! defaults-constructor-stx    (make-id #'name 'make- #'name '/defaults))
               (set! copy-constructor-stx        (make-id #'name #'name '-set))
+              (set! natural-order-stx           #`(sql-list (asc #,(make-id #'name '.guid))))
               (set! deserialize-info-stx        (make-id #'name 'deserialize-info: #'name '-v0))
               (parse-attrs #'(other ...)))]))
   
@@ -106,7 +112,7 @@
     (define my-mutator-stx       #f)
     (define my-column-stx        #f)
     (define my-pretty-stx        #'name->pretty-name)
-    (define my-pretty-plural-stx #'pluralize-pretty-name)
+    (define my-pretty-plural-stx #'pretty-name->pretty-name-plural)
     
     (define (parse-attr-type stx)
       (with-syntax ([allows-null? my-allows-null-stx]
@@ -126,7 +132,7 @@
           [enum     (if my-values-stx
                         (set! my-type-expr-stx #'(create-enum-type allows-null? values))
                         (raise-syntax-error #f "required keyword missing: #:values" complete-stx stx))]
-          [entity   (if (or (bound-identifier=? #'entity entity-stx)
+          [entity   (if (or (bound-identifier=? #'entity entity-id-stx)
                             (with-handlers ([exn? (lambda _ #f)]) (entity-info-ref #'entity)))
                         (set! my-type-expr-stx #'(make-guid-type allows-null? entity))
                         (raise-syntax-error #f "not a valid attribute type" complete-stx stx))])))
@@ -185,10 +191,10 @@
        (and (identifier? #'name)
             (identifier? #'type))
        (begin (set! my-name-stx          #'name)
-              (set! my-private-stx       (make-id #f 'attr: entity-stx '- #'name))
+              (set! my-private-stx       (make-id #f 'attr: entity-id-stx '- #'name))
               (set! my-kw-stx            (datum->syntax #f (string->keyword (symbol->string (syntax->datum #'name)))))
-              (set! my-accessor-stx      (make-id entity-stx entity-stx '- #'name))
-              (set! my-mutator-stx       (make-id entity-stx 'set- entity-stx '- #'name '!))
+              (set! my-accessor-stx      (make-id entity-id-stx entity-id-stx '- #'name))
+              (set! my-mutator-stx       (make-id entity-id-stx 'set- entity-id-stx '- #'name '!))
               (set! my-column-stx        #'(name->database-name 'name))
               (parse-attr-kws #'(arg ...))
               (parse-attr-type #'type)
@@ -196,6 +202,11 @@
   
   (define (parse-entity-kws stx)
     (syntax-case stx ()
+      [(#:plural val other ...)
+       (if (identifier? #'val)
+           (begin (set! plural-id-stx #'val)
+                  (parse-entity-kws #'(other ...)))
+           (raise-syntax-error #f "#:plural must be an identifier" complete-stx #'(#:plural val)))]
       [(#:property prop:entity val other ...)
        (raise-syntax-error #f"prop:entity cannot be specified in a define-entity form" complete-stx #'(#:property prop:entity val))]
       [(#:property prop:serializable val other ...)
@@ -213,8 +224,9 @@
   
   (define (finish-entity)
     (with-syntax (; Entity:
-                  [entity                   entity-stx]
-                  [entity-private           entity-private-stx]
+                  [entity                   entity-id-stx]
+                  [plural                   plural-id-stx]
+                  [entity-private           private-id-stx]
                   [struct-type              struct-type-stx]
                   [constructor              constructor-stx]
                   [predicate                predicate-stx]
@@ -222,6 +234,14 @@
                   [entity-guid-struct-type  entity-guid-struct-type-stx]
                   [entity-guid-constructor  entity-guid-constructor-stx]
                   [entity-guid-predicate    entity-guid-predicate-stx]
+                  
+                  [find-one                 (make-id entity-id-stx 'find- entity-id-stx)]
+                  [find-all                 (if (eq? (syntax->datum entity-id-stx)
+                                                     (syntax->datum plural-id-stx))
+                                                (make-id entity-id-stx 'find-all- plural-id-stx)
+                                                (make-id entity-id-stx 'find- plural-id-stx))]
+                  [find-count               (make-id entity-id-stx 'find-count- plural-id-stx)]
+                  [g:find                   (make-id entity-id-stx 'g: plural-id-stx)]
                   
                   [id-accessor              id-accessor-stx]
                   [saved-predicate          saved-predicate-stx]
@@ -237,8 +257,8 @@
                   [(guid-attr revision-attr attr ...)               (list* #'guid
                                                                            #'revision
                                                                            (reverse attr-stxs))]
-                  [(guid-private revision-private attr-private ...) (list* (make-id #f 'attr: entity-stx '-revision)
-                                                                           (make-id #f 'attr: entity-stx '-guid)
+                  [(guid-private revision-private attr-private ...) (list* (make-id #f 'attr: entity-id-stx '-revision)
+                                                                           (make-id #f 'attr: entity-id-stx '-guid)
                                                                            (reverse attr-private-stxs))]
                   [(guid-kw revision-kw attr-kw ...)                (list* '#:guid
                                                                            '#:revision
@@ -248,15 +268,15 @@
                   [(attr-default ...)                               (reverse attr-default-stxs)]
                   [(attr-pretty ...)                                (reverse attr-pretty-stxs)]
                   [(attr-pretty-plural ...)                         (reverse attr-pretty-plural-stxs)]
-                  [(guid-accessor revision-accessor accessor ...)   (list* (make-id entity-stx entity-stx '-guid)
-                                                                           (make-id entity-stx entity-stx '-revision)
+                  [(guid-accessor revision-accessor accessor ...)   (list* (make-id entity-id-stx entity-id-stx '-guid)
+                                                                           (make-id entity-id-stx entity-id-stx '-revision)
                                                                            (reverse attr-accessor-stxs))]
-                  [(revision-mutator mutator ...)                   (list* (make-id entity-stx 'set- entity-stx '-revision!)
+                  [(revision-mutator mutator ...)                   (list* (make-id entity-id-stx 'set- entity-id-stx '-revision!)
                                                                            (reverse attr-mutator-stxs))]
                   [(guid-column revision-column column ...)         (list* #''id
                                                                            #''revision
                                                                            (reverse attr-column-stxs))])
-      (quasisyntax/loc entity-stx
+      (quasisyntax/loc entity-id-stx
         (begin (define-guid-type entity-guid)
                
                (define-values (entity-private struct-type constructor predicate)
@@ -269,6 +289,7 @@
                                                        attr-pretty-names)]
                         [make-attr-types          (lambda (entity) (list attr-type-expr ...))])
                    (make-entity 'entity
+                                'plural
                                 attr-names
                                 make-attr-types
                                 (list attr-default ...)
@@ -279,7 +300,7 @@
                                 #:attr-pretty-names-plural attr-pretty-names-plural
                                 #:properties   
                                 #,(if (eq? (syntax-local-context) 'module)
-                                      (syntax/loc entity-stx
+                                      (syntax/loc entity-id-stx
                                         (list (cons prop:serializable
                                                     (make-serialize-info
                                                      (lambda (struct) (list->vector (real:snooze-struct-ref* struct)))
@@ -287,7 +308,7 @@
                                                      #t
                                                      (or (current-load-relative-directory) (current-directory))))
                                               property ...))
-                                      (syntax/loc entity-stx
+                                      (syntax/loc entity-id-stx
                                         (list property ...)))
                                 entity-kw ...)))
                
@@ -331,7 +352,7 @@
                    ((entity-cached-constructor entity-private) #:snooze snooze guid revision attr ...)))
                
                #,(if (eq? (syntax-local-context) 'module)
-                     (syntax/loc entity-stx
+                     (syntax/loc entity-id-stx
                        (begin (define deserialize-info
                                 (make-deserialize-info
                                  ; maker
@@ -345,7 +366,16 @@
                               (provide deserialize-info)))
                      #'(begin))
                
-               (define default-alias (sql:alias 'entity entity-private))
+               (define default-alias
+                 (sql:alias 'entity entity-private))
+               
+               (define-values (find-one find-all find-count g:find)
+                 #,(make-quick-finds
+                    entity-id-stx
+                    (list #'find-one #'find-all #'find-count #'g:find)
+                    #'default-alias
+                    (syntax->list #'(guid-attr revision-attr attr ...))
+                    #'()))
                
                (set-entity-defaults-constructor! entity-private defaults-constructor)
                (set-entity-copy-constructor!     entity-private copy-constructor)
@@ -385,6 +415,10 @@
                      (certify #'entity-guid-constructor)
                      (certify #'entity-guid-predicate)
                      (certify #'default-alias)
+                     (certify #'find-one)
+                     (certify #'find-all)
+                     (certify #'find-count)
+                     (certify #'g:find)
                      (list (make-attribute-info
                             (certify #'guid-attr)
                             (certify #'guid-private)

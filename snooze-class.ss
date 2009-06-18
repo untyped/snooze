@@ -34,9 +34,7 @@
     ; A transparent procedure that wraps the body of any
     ; call-with-transaction block. Must return the same value
     ; as the transaction body.
-    (field [transaction-hook
-            (lambda (continue conn guid)
-              (continue conn guid))])
+    (field [transaction-hook (lambda (continue conn guid) (continue conn guid))])
     
     ; (parameter snooze-cache%)
     (field [current-cache (make-parameter (new snooze-cache% [snooze this]))])

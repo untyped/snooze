@@ -73,7 +73,7 @@
       (check-exn exn:fail:contract? (cut make-course/defaults #:code #f))
       (check-exn exn:fail:contract? (cut make-course/defaults #:code "not a symbol"))
       ; symbol/string length aren't checked by contracts:
-      (check-not-exn (cut make-course/defaults #:code 'bittoolong))
+      (check-exn exn:fail:contract? (cut make-course/defaults #:code 'bittoolong))
       (check-exn exn:fail:contract? (cut make-course/defaults #:name (make-string #\a 129)))
       (check-not-exn (cut make-course/defaults #:value 0))
       (check-not-exn (cut make-course/defaults #:value 5))

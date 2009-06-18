@@ -11,6 +11,7 @@
                      (unlib-in syntax)
                      "syntax-info.ss")
          (except-in "struct.ss" make-entity)
+         (prefix-in sql: "../sql/sql-lang.ss")
          "syntax-info.ss")
 
 ; Helpers ----------------------------------------
@@ -46,15 +47,25 @@
                    [pretty-formatter     (entity-info-pretty-formatter-id     info)]
                    [defaults-constructor (entity-info-defaults-constructor-id info)]
                    [copy-constructor     (entity-info-copy-constructor-id     info)]
+                   [find-one             (entity-info-find-one-id             info)]
+                   [find-all             (entity-info-find-all-id             info)]
+                   [find-count           (entity-info-find-count-id           info)]
+                   [g:find               (entity-info-g:find-id               info)]
                    [guid-accessor        (attribute-info-accessor-id (car attr-info))]
                    [guid-contract        #'(or/c predicate #f)]
                    [revision-accessor    (attribute-info-accessor-id (cadr attr-info))]
                    [revision-contract    #'(or/c natural-number/c #f)]
-                   [([attr-kw attr-accessor attr-contract] ...)
-                    (for/list ([info (in-list (cddr attr-info))])
+                   [([guid-kw     guid-accessor     guid-contract]
+                     [revision-kw revision-accessor revision-contract]
+                     [attr-kw     attr-accessor     attr-contract] ...)
+                    (for/list ([info (in-list attr-info)])
                       (list (string->keyword (symbol->string (syntax->datum (attribute-info-id info))))
                             (attribute-info-accessor-id info)
-                            #`(type-contract (attribute-type #,(attribute-info-private-id info)))))])
+                            #`(type-contract (attribute-type #,(attribute-info-private-id info)))))]
+                   [(make-kw-arg ...)    (interleave (syntax->list #'(attr-kw ...))
+                                                     (syntax->list #'(attr-contract ...)))]
+                   [(find-kw-arg ...)    (interleave (syntax->list #'(guid-kw revision-kw attr-kw ...))
+                                                     (syntax->list #'(guid-contract revision-contract attr-contract ...)))])
       (values
        ; provide
        (list id-stx)
@@ -72,17 +83,43 @@
            [local-predicate      (-> guid-predicate boolean?)]
            [pretty-formatter     (->* (guid-predicate) () #:rest any/c string?)]
            [defaults-constructor (->* ()
-                                      (#:snooze (is-a?/c snooze<%>)
-                                                #,@(interleave (syntax->list #'(attr-kw ...))
-                                                               (syntax->list #'(attr-contract ...))))
+                                      (#:snooze (is-a?/c snooze<%>) make-kw-arg ...)
                                       guid-predicate)]
            [copy-constructor     (->* (guid-predicate)
-                                      (#:snooze (is-a?/c snooze<%>)
-                                                #,@(interleave (syntax->list #'(attr-kw ...))
-                                                               (syntax->list #'(attr-contract ...))))
+                                      (#:snooze (is-a?/c snooze<%>) make-kw-arg ...)
                                       guid-predicate)]
-           [guid-accessor        (-> guid-predicate guid-contract)]
-           [revision-accessor    (-> guid-predicate revision-contract)]
+           [find-one             (->* ()
+                                      (#:snooze (is-a?/c snooze<%>)
+                                                find-kw-arg ...
+                                                #:what   sql:select-what/c
+                                                #:order  sql:select-order/c
+                                                #:limit  sql:select-limit/c
+                                                #:offset sql:select-offset/c)
+                                      (or/c guid-predicate #f))]
+           [find-all             (->* ()
+                                      (#:snooze (is-a?/c snooze<%>)
+                                                find-kw-arg ...
+                                                #:what   sql:select-what/c
+                                                #:order  sql:select-order/c
+                                                #:limit  sql:select-limit/c
+                                                #:offset sql:select-offset/c)
+                                      (listof guid-predicate))]
+           [find-count           (->* ()
+                                      (#:snooze (is-a?/c snooze<%>)
+                                                find-kw-arg ...
+                                                #:what   sql:select-what/c
+                                                #:order  sql:select-order/c
+                                                #:limit  sql:select-limit/c
+                                                #:offset sql:select-offset/c)
+                                      natural-number/c)]
+           [g:find               (->* ()
+                                      (#:snooze (is-a?/c snooze<%>)
+                                                find-kw-arg ...
+                                                #:what   sql:select-what/c
+                                                #:order  sql:select-order/c
+                                                #:limit  sql:select-limit/c
+                                                #:offset sql:select-offset/c)
+                                      procedure?)]
            [attr-accessor        (-> guid-predicate attr-contract)]
            ...)))))))
 
@@ -103,7 +140,11 @@
                                    (entity-info-local-predicate-id      info)
                                    (entity-info-pretty-formatter-id     info)
                                    (entity-info-defaults-constructor-id info)
-                                   (entity-info-copy-constructor-id     info))))]))))
+                                   (entity-info-copy-constructor-id     info)
+                                   (entity-info-find-one-id             info)
+                                   (entity-info-find-all-id             info)
+                                   (entity-info-find-count-id           info)
+                                   (entity-info-g:find-id               info))))]))))
 
 ; Syntax -----------------------------------------
 

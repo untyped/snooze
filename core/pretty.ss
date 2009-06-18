@@ -10,10 +10,15 @@
          [words (regexp-split #px"-" str)])
     (string-join words " ")))
 
+; symbol -> symbol
+(define (name->plural-name name)
+  (string->symbol (format "~as" name)))
+
 ; string -> string
-(define (pluralize-pretty-name pretty)
-  (format "~as" pretty))
+(define (pretty-name->pretty-name-plural name)
+  (format "~as" name))
 
 (provide/contract
- [name->pretty-name     (-> symbol? string?)]
- [pluralize-pretty-name (-> string? string?)])
+ [name->pretty-name               (-> symbol? string?)]
+ [name->plural-name               (-> symbol? symbol?)]
+ [pretty-name->pretty-name-plural (-> string? string?)])

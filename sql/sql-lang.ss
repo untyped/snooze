@@ -143,7 +143,7 @@
     (check-group-clause group sources columns*)
     (check-order-clause order sources columns*)
     (check-having-clause having sources columns*)
-  
+    
     ; Make and return the structure:
     (make-query what distinct from where group order having limit offset local-columns imported-columns expand-info)))
 
@@ -375,10 +375,10 @@
                                            (format "sql:in: list elements must all be of the same type: ~a" arg2)))
                                        type2)]
                       [(query? arg2) (let ([columns (query-what arg2)])
-                                             (unless (= (length columns) 1)
-                                               (raise-exn exn:fail:contract
-                                                 (format "sql:in: subquery must have exactly one column: ~a" arg2)))
-                                             (expression-type (car columns)))])])
+                                       (unless (= (length columns) 1)
+                                         (raise-exn exn:fail:contract
+                                           (format "sql:in: subquery must have exactly one column: ~a" arg2)))
+                                       (expression-type (car columns)))])])
     (unless (type-compatible? type1 type2)
       (raise-exn exn:fail:contract
         (format "sql:in: type mismatch: argument types do not match: ~a ~a" (type-name type1) (type-name type2))))
@@ -423,7 +423,7 @@
 (define (sql:null type)
   (make-null type))
 
-; Order ----------------------------------------
+; Order ------------------------------------------
 
 ; expression+quotable (U 'asc 'desc) -> order
 (define (sql:order expr dir)
@@ -433,22 +433,43 @@
 (define sql:asc  (cut sql:order <> 'asc))
 (define sql:desc (cut sql:order <> 'desc))
 
+; Contracts --------------------------------------
+
+(define select-distinct/c (or/c expression? (listof expression?) boolean?))
+(define select-what/c     (or/c expression? source-alias? (listof (or/c expression? source-alias?)) false/c))
+(define select-from/c     (or/c source? query?))
+(define select-where/c    (or/c expression? false/c))
+(define select-group/c    (listof (or/c column? source-alias?)))
+(define select-order/c    (listof order?))
+(define select-having/c   (or/c expression? false/c))
+(define select-limit/c    (or/c natural-number/c #f))
+(define select-offset/c   (or/c natural-number/c #f))
+
 ; Provide statements -----------------------------
 
 (provide (rename-out [sql:alias alias]
-                     [sql:cond  cond]))
+                     [sql:cond  cond])
+         select-distinct/c
+         select-what/c    
+         select-from/c    
+         select-where/c   
+         select-group/c   
+         select-order/c   
+         select-having/c  
+         select-limit/c   
+         select-offset/c)
 
 (provide/contract
- [rename sql:select          select          (->* (#:from     (or/c source? query?))
-                                                  (#:what     (or/c expression? source-alias? (listof (or/c expression? source-alias?)) false/c)
-                                                   #:distinct (or/c expression? (listof expression?) boolean?)
-                                                   #:where    (or/c expression? false/c)
-                                                   #:group    (listof (or/c column? source-alias?))
-                                                   #:order    (listof order?)
-                                                   #:having   (or/c expression? false/c)
-                                                   #:limit    (or/c integer? false/c)
-                                                   #:offset   (or/c integer? false/c))
-                                                 query?)]
+ [rename sql:select          select          (->* (#:from     select-from/c)
+                                                  (#:what     select-what/c
+                                                              #:distinct select-distinct/c
+                                                              #:where    select-where/c
+                                                              #:group    select-group/c
+                                                              #:order    select-order/c
+                                                              #:having   select-having/c
+                                                              #:limit    select-limit/c
+                                                              #:offset   select-offset/c)
+                                                  query?)]
  [rename sql:select/internal select/internal (-> (or/c expression? source-alias? (listof (or/c expression? source-alias?)) false/c)
                                                  (or/c expression? (listof expression?) boolean?)
                                                  (or/c source? query?)

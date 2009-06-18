@@ -3,7 +3,6 @@
 (require mzlib/etc
          scheme/class
          scheme/unit
-         "quick-find-test.ss"
          "snooze-api.ss"
          "snooze-check-test.ss"
          "snooze-concurrency-test.ss"
@@ -13,6 +12,7 @@
          ;"snooze-hook-test.ss"
          "snooze-make-test.ss"
          "snooze-modify-test.ss"
+         "snooze-quick-find-test.ss"
          "snooze-save-test.ss"
          ;"snooze-transaction-test.ss"
          "test-base.ss"
@@ -49,7 +49,7 @@
     ;snooze-transaction-tests
     ;snooze-concurrency-tests
     snooze-find-tests
-    quick-find-tests
+    snooze-quick-find-tests
     
     ; Tests for the audit trails:
     #;(make-audit-tests snooze)))

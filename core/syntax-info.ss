@@ -25,6 +25,10 @@
    guid-constructor-id
    guid-predicate-id
    default-alias-id
+   find-one-id
+   find-all-id
+   find-count-id
+   g:find-id
    attribute-info)
   #:struct? #t
   #:transformer

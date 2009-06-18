@@ -11,6 +11,7 @@
          "pretty.ss")
 
 ;   symbol
+;   symbol
 ;   (listof symbol)
 ;   (entity -> (listof type))
 ;   (listof (snooze -> any))
@@ -34,18 +35,20 @@
 ;   (any ... -> snooze-struct)
 ;   (any -> boolean)
 (define (create-entity name
+                       plural-name
                        attr-names
                        make-attr-types
                        attr-defaults
                        guid-constructor
                        guid-predicate
                        #:table-name               [table-name               (name->database-name name)]
-                       #:pretty-name              [pretty-name              (name->pretty-name name)]
-                       #:pretty-name-plural       [pretty-name-plural       (pluralize-pretty-name pretty-name)]
+                       #:pretty-name              [pretty-name              (name->pretty-name   name)]
+                       #:pretty-name-plural       [pretty-name-plural       (name->pretty-name   plural-name)]
                        #:pretty-formatter         [pretty-formatter         (cut format "~a" <>)]
                        #:attr-column-names        [attr-column-names        attr-names]
                        #:attr-pretty-names        [attr-pretty-names        (map name->pretty-name attr-names)]
-                       #:attr-pretty-names-plural [attr-pretty-names-plural (map pluralize-pretty-name attr-pretty-names)]
+                       #:attr-pretty-names-plural [attr-pretty-names-plural (map name->pretty-name
+                                                                                 (map name->plural-name attr-pretty-names))]
                        #:on-save                  [on-save                  #f]
                        #:on-delete                [on-delete                #f]
                        #:save-check               [save-check               #f]
@@ -54,10 +57,19 @@
   
   ; entity
   (define entity
-    (make-vanilla-entity name table-name pretty-name pretty-name-plural pretty-formatter guid-constructor guid-predicate))
+    (make-vanilla-entity
+     name
+     plural-name
+     table-name
+     pretty-name
+     pretty-name-plural
+     pretty-formatter
+     guid-constructor
+     guid-predicate))
   
   ; (listof type)
-  (define attr-types (make-attr-types entity))
+  (define attr-types
+    (make-attr-types entity))
   
   ; integer
   ;
@@ -260,6 +272,7 @@
 (provide/contract
  [rename create-entity make-entity
          (->* (symbol?
+               symbol?
                (listof symbol?)
                (-> entity? (listof type?))
                (listof procedure?)
