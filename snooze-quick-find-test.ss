@@ -2,7 +2,6 @@
 
 (require srfi/26/cut
          (planet untyped/unlib:3/gen)
-         "quick-find.ss"
          "snooze-api.ss"
          "test-base.ss"
          "core/core.ss"

@@ -4,7 +4,6 @@
 
 (require scheme/unit
          (unlib-in gen)
-         "quick-find.ss"
          "snooze-api.ss"
          "snooze-class.ss"
          "core/core.ss"
@@ -15,7 +14,6 @@
 (provide (unlib-out gen)
          (all-from-out "snooze-api.ss"
                        "snooze-class.ss"
-                       "quick-find.ss"
                        "core/core.ss"
                        "sql/sql.ss")
          (struct-out exn:fail:snooze)
