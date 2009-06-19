@@ -80,9 +80,11 @@
     
     ; (-> any) -> any
     (define/public (call-with-connection thunk)
-      (dynamic-wind (cut connect)
-                    (cut thunk)
-                    (cut disconnect)))
+      (if (thread-cell-ref current-connection-cell)
+          (thunk)
+          (dynamic-wind (cut connect)
+                        (cut thunk)
+                        (cut disconnect))))
     
     ; -> void
     (define/public (connect)
