@@ -74,8 +74,8 @@
   (send snooze find-by-id entity id))
 
 ; (-> ans) any ... -> ans
-(define (call-with-transaction #:snooze [snooze (current-snooze)] thunk . args)
-  (send/apply snooze call-with-transaction thunk args))
+(define (call-with-transaction #:snooze [snooze (current-snooze)] #:metadata [metadata null] thunk)
+  (send snooze call-with-transaction #:metadata metadata thunk))
 
 ; query -> string
 (define (query->string #:snooze [snooze (current-snooze)] query)
@@ -142,7 +142,7 @@
  [find-all              (->* (query?) (#:snooze (is-a?/c snooze<%>)) (or/c null? pair?))]
  [g:find                (->* (query?) (#:snooze (is-a?/c snooze<%>)) procedure?)]
  [find-by-id            (->* (entity? natural-number/c) (#:snooze (is-a?/c snooze<%>)) (or/c guid? #f))]
- [call-with-transaction (->* (procedure?) (#:snooze (is-a?/c snooze<%>)) #:rest (listof procedure?) any)]
+ [call-with-transaction (->* (procedure?) (#:snooze (is-a?/c snooze<%>) #:metadata list?) any)]
  [query->string         (->* (query?) (#:snooze (is-a?/c snooze<%>)) string?)]
  [debug-sql             (->* (query?) (#:snooze (is-a?/c snooze<%>) #:output-port output-port? #:format string?) query?)]
  [table-names           (->* () (#:snooze (is-a?/c snooze<%>)) (listof symbol?))]

@@ -203,7 +203,7 @@
       (or (send (get-current-cache) get-local-alias guid)
           (car (send (get-database) direct-find (current-connection) (list guid)))))
     
-    ; thunk any ... -> any
+    ; thunk [#:metadata list] -> any
     ;
     ; If the database allows it, a transaction is started and the thunk argument
     ; is called. Some databases do not allow nested transactions, so a new
@@ -221,7 +221,7 @@
     ;
     ; The extra arguments are passed to the transaction hook (if it is present)
     ; but *not* to the body thunk.
-    (define/public (call-with-transaction body . metadata-args)
+    (define/public (call-with-transaction #:metadata [metadata null] body)
       (auto-connect)
       (let ([conn (current-connection)])
         (if (send database transaction-allowed? conn)
@@ -229,9 +229,7 @@
               (send database call-with-transaction
                     conn
                     (lambda ()
-                      (hook (lambda _ (body))
-                            conn
-                            metadata-args))))
+                      (hook (lambda _ (body)) conn metadata))))
             (body))))
     
     ; -> (listof symbol)
