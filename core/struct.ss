@@ -25,9 +25,7 @@
     (define show (if write? write display))
     (unless (guid? guid)
       (raise-type-error 'guid.custom-write "guid" guid))
-    (display "#(" out)
-    (show (guid-id+serial guid) out)
-    (display ")" out)))
+    (show (vector (string->symbol (format "guid:~a" (guid-id+serial guid)))) out)))
 
 ; property
 ; guid -> boolean
@@ -98,8 +96,7 @@
 (define-syntax (define-guid-type stx)
   (syntax-case stx ()
     [(_ id)
-     (with-syntax ([custom-write-id (make-id #f #'id '.custom-write)]
-                   [print-prefix    (format "#(~a " (syntax->datum #'id))])
+     (with-syntax ([custom-write-id (make-id #f #'id '.custom-write)])
        #'(define-serializable-struct (id guid)
            ()
            #:transparent
@@ -109,24 +106,25 @@
            #:property
            prop:custom-write
            (lambda (guid out write?)
-             (unless (guid? guid) (raise-type-error 'custom-write-id "guid" guid))
+             (unless (guid? guid)
+               (raise-type-error 'custom-write-id "guid" guid))
              (let ([show   (if write? write display)]
                    [struct (and (not (in-cache-code?))
                                 (with-handlers ([exn? (lambda (exn) 'uncached)])
                                   (guid-ref guid)))])
                (parameterize ([in-cache-code? #t])
-                 (display print-prefix out)
-                 (show (guid-id+serial guid) out)
-                 (when struct
-                   (if (eq? struct 'uncached)
-                       (display " uncached" out)
-                       (for ([val   (in-vector (struct->vector struct) 1)]
-                             [index (in-naturals)])
-                         (display " " out)
-                         (if (zero? index)
-                             (show (if val (guid-id+serial val) #f) out)
-                             (show val out)))))
-                 (display ")" out))))
+                 (if (eq? struct 'uncached)
+                     (show (vector 'id 'uncached) out)
+                     (let* ([ans   (struct->vector struct)]
+                            [guid* (vector-ref ans 1)])
+                       (vector-set! ans 0 'id)
+                       (vector-set! ans 1 (list 'ext (guid-id+serial guid)
+                                                'int (and guid* (guid-id+serial guid*))))
+                       (for ([i (in-range 2 (vector-length ans))])
+                         (let ([val (vector-ref ans i)])
+                           (when (guid? val)
+                             (vector-set! ans i (vector (string->symbol (format "guid:~a" (guid-id+serial guid))))))))
+                       (show ans out))))))
            #:property
            prop:equal+hash
            (list (lambda (guid1 guid2 same?)
