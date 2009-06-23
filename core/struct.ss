@@ -2,7 +2,8 @@
 
 (require "../base.ss")
 
-(require (for-syntax scheme/base)
+(require (for-syntax scheme/base
+                     (unlib-in syntax))
          scheme/dict
          (unlib-in enumeration)
          "../common/connection.ss"
@@ -22,6 +23,8 @@
   prop:custom-write
   (lambda (guid out write?)
     (define show (if write? write display))
+    (unless (guid? guid)
+      (raise-type-error 'guid.custom-write "guid" guid))
     (display "#(" out)
     (show (guid-id+serial guid) out)
     (display ")" out)))
@@ -34,24 +37,32 @@
 
 ; guid -> guid
 (define (copy-guid guid)
+  (unless (guid? guid)
+    (raise-type-error 'copy-guid "guid" guid))
   ((entity-guid-constructor (guid-entity guid))
    (guid-id+serial guid)
    (guid-snooze guid)))
 
 ; guid -> (U integer #f)
 (define (guid-id guid)
+  (unless (guid? guid)
+    (raise-type-error 'guid-id "guid" guid))
   (let ([id+serial (guid-id+serial guid)])
     (and (number? id+serial)
          id+serial)))
 
 ; guid -> (U symbol #f)
 (define (guid-serial guid)
+  (unless (guid? guid)
+    (raise-type-error 'guid-serial "guid" guid))
   (let ([id+serial (guid-id+serial guid)])
     (and (symbol? id+serial)
          id+serial)))
 
 ; guid guid -> boolean
 (define (guid=? guid1 guid2)
+  (unless (guid? guid1) (raise-type-error 'guid=?-first-arg "guid" guid1))
+  (unless (guid? guid2) (raise-type-error 'guid=?-second-arg "guid" guid2))
   (and (eq? (guid-id+serial guid1)
             (guid-id+serial guid2))
        (eq? (guid-entity guid1)
@@ -61,6 +72,7 @@
 
 ; guid guid -> boolean
 (define (guid=?-hash-code guid)
+  (unless (guid? guid) (raise-type-error 'guid=?-hash-code "guid" guid))
   (equal-hash-code
    (list (guid-id+serial guid)
          (entity-name (guid-entity guid))
@@ -86,7 +98,8 @@
 (define-syntax (define-guid-type stx)
   (syntax-case stx ()
     [(_ id)
-     (with-syntax ([print-prefix (format "#(~a " (syntax->datum #'id))])
+     (with-syntax ([custom-write-id (make-id #f #'id '.custom-write)]
+                   [print-prefix    (format "#(~a " (syntax->datum #'id))])
        #'(define-serializable-struct (id guid)
            ()
            #:transparent
@@ -96,6 +109,7 @@
            #:property
            prop:custom-write
            (lambda (guid out write?)
+             (unless (guid? guid) (raise-type-error 'custom-write-id "guid" guid))
              (let ([show   (if write? write display)]
                    [struct (and (not (in-cache-code?))
                                 (with-handlers ([exn? (lambda (exn) 'uncached)])
@@ -110,7 +124,7 @@
                              [index (in-naturals)])
                          (display " " out)
                          (if (zero? index)
-                             (show (guid-id+serial val) out)
+                             (show (if val (guid-id+serial val) #f) out)
                              (show val out)))))
                  (display ")" out))))
            #:property
