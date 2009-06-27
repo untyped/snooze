@@ -156,7 +156,7 @@
                                                                   (escape-name 'id))]
                                    [(boolean-type? type)  "INTEGER"]
                                    [(integer-type? type)  "INTEGER"]
-                                   [(real-type? type)     "FLOAT"]
+                                   [(real-type? type)     "REAL"]
                                    [(string-type? type)   (string-type-definition-sql (string-type-max-length type))]
                                    [(symbol-type? type)   (string-type-definition-sql (symbol-type-max-length type))]
                                    [(time-tai-type? type) "INTEGER"]
@@ -170,7 +170,6 @@
 
 ; (U integer #f) -> string
 (define (string-type-definition-sql max-length)
-  "TEXT"
-  #;(if max-length
-        (format "CHARACTER VARYING (~a)" max-length)
-        "TEXT"))
+  (if max-length
+      (format "CHARACTER VARYING (~a)" max-length)
+      "TEXT"))
