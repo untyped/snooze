@@ -8,7 +8,7 @@
 
 (define release-notes
   '((p "Changes and additions:")
-    (ul (li "updated from SQLite.plt v3.x to SQLite.plt v4.3."))))
+    (ul (li "not changes yet..."))))
 
 (define primary-file "main.ss")
 
