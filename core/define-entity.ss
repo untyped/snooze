@@ -121,7 +121,7 @@
                     [max-length   my-max-length-stx]
                     [values       my-values-stx])
         (set! my-type-stx stx)
-        (syntax-case* stx (boolean integer real symbol string time-tai time-utc enum) symbolic-identifier=?
+        (syntax-case* stx (boolean integer real symbol string time-tai time-utc enum binary) symbolic-identifier=?
           [boolean  (set! my-type-expr-stx #'(make-boolean-type allows-null?))]
           [integer  (set! my-type-expr-stx #'(make-integer-type allows-null? min-value max-value))]
           [real     (set! my-type-expr-stx #'(make-real-type allows-null? min-value max-value))]
@@ -132,6 +132,7 @@
           [enum     (if my-values-stx
                         (set! my-type-expr-stx #'(create-enum-type allows-null? values))
                         (raise-syntax-error #f "required keyword missing: #:values" complete-stx stx))]
+          [binary   (set! my-type-expr-stx #'(make-binary-type allows-null?))]
           [entity   (if (or (bound-identifier=? #'entity entity-id-stx)
                             (with-handlers ([exn? (lambda _ #f)]) (entity-info-ref #'entity)))
                         (set! my-type-expr-stx #'(make-guid-type allows-null? entity))

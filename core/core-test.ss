@@ -74,7 +74,7 @@
       (check-equal? (entity-name person) 'person))
     
     (test-case "entity-table-name"
-      (check-equal? (entity-table-name person) 'people))
+      (check-equal? (entity-table-name person) 'person))
     
     (test-case "entity-struct-type"
       (check-pred struct-type? (entity-struct-type person))

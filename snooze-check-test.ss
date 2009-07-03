@@ -57,7 +57,14 @@
         (check-equal? (length results) 1)
         (check-equal? (check-result-annotation (car results) ann:attrs)
                       (list (attr tree-node color)))))
-      
+    
+    (test-case "check-snooze-struct : unserializable binary value"
+      (let* ([struct  (create-course #:notes (lambda (x) (add1 x)))]
+             [results (check-snooze-struct struct)])
+        (check-equal? (length results) 1)
+        (check-equal? (check-result-annotation (car results) ann:attrs)
+                      (list (attr course notes)))))
+    
     (test-case "check-snooze-struct : custom check"
       (let ([temp (entity-save-check course)])
         (set-entity-save-check! course (lambda (course) null))

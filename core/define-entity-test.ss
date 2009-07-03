@@ -84,6 +84,8 @@
       (check-exn exn:fail:contract? (cut make-course/defaults #:rating -0.001))
       (check-exn exn:fail:contract? (cut make-course/defaults #:rating 1.001))
       (check-exn exn:fail:contract? (cut make-course/defaults #:start (current-time time-utc)))
+      (check-not-exn (cut make-course/defaults #:notes '(a b c)))
+      (check-exn exn:fail:contract? (cut make-course/defaults #:notes (lambda (x) (add1 x))))
       (check-not-exn (cut make-tree-node/defaults #:color 'red))
       (check-not-exn (cut make-tree-node/defaults #:color (color red)))
       (check-exn exn:fail:contract? (cut make-tree-node/defaults #:color 'white)))))

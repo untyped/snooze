@@ -189,6 +189,9 @@
 ; (struct boolean)
 (define-serializable-struct type (allows-null?) #:transparent)
 
+; (struct boolean entity)
+(define-serializable-struct (guid-type type) (entity) #:transparent)
+
 ; (struct boolean)
 (define-serializable-struct (boolean-type type) () #:transparent)
 
@@ -210,10 +213,8 @@
 (define-serializable-struct (time-utc-type temporal-type) () #:transparent)
 (define-serializable-struct (time-tai-type temporal-type) () #:transparent)
 
-; (struct boolean entity)
-(define-serializable-struct (guid-type type) (entity) #:transparent)
-(define-serializable-struct (primary-key-type guid-type) () #:transparent)
-(define-serializable-struct (foreign-key-type guid-type) () #:transparent)
+; (struct boolean)
+(define-serializable-struct (binary-type type) () #:transparent)
 
 ; boolean (U enum (listof symbol)) -> enum-type
 (define (create-enum-type allow-null? enum+vals)
@@ -233,6 +234,7 @@
   (if (equal? val (type-null type))
       (type-allows-null? type)
       (match type
+        [(struct guid-type (_ entity))     ((entity-cached-predicate entity) val)]
         [(? boolean-type?)                 (boolean? val)]
         [(struct integer-type (_ min max)) (and (integer? val)
                                                 (or (not min) (>= val min))
@@ -249,34 +251,36 @@
                                                     (<= (string-length (symbol->string val)) max)))]
         [(? time-tai-type?)                (time-tai? val)]
         [(? time-utc-type?)                (time-utc? val)]
-        [(struct guid-type (_ entity))     ((entity-cached-predicate entity) val)])))
+        [(? binary-type?)                  (serializable? val)])))
 
 ; type -> symbol
 (define (type-name type)
-  (cond [(boolean-type? type)  'boolean]
+  (cond [(guid-type? type)     (entity-name (guid-type-entity type))]
+        [(boolean-type? type)  'boolean]
         [(integer-type? type)  'integer]
         [(real-type? type)     'real]
         [(string-type? type)   'string]
         [(symbol-type? type)   'symbol]
+        [(enum-type? type)     'enum]
         [(time-utc-type? type) 'time-utc]
         [(time-tai-type? type) 'time-tai]
-        [(guid-type? type)     (entity-name (guid-type-entity type))]))
+        [(binary-type? type)   'binary]))
 
 ; type type -> boolean
 ;
 ; Returns #t if the arguments are of the same class of type (boolean types, integer types, etc).
 (define (type-compatible? type1 type2)
-  (or (and (boolean-type? type1)  (boolean-type? type2))
-      (and (integer-type? type1)  (integer-type? type2))
-      (and (real-type? type1)     (real-type? type2))
-      (and (string-type? type1)   (string-type? type2))
-      (and (symbol-type? type1)   (symbol-type? type2))
+  (or (and (guid-type?     type1) (guid-type?     type2)
+           (eq? (guid-type-entity type1)
+                (guid-type-entity type2)))
+      (and (boolean-type?  type1) (boolean-type?  type2))
+      (and (integer-type?  type1) (integer-type?  type2))
+      (and (real-type?     type1) (real-type?     type2))
+      (and (string-type?   type1) (string-type?   type2))
+      (and (symbol-type?   type1) (symbol-type?   type2))
       (and (time-utc-type? type1) (time-utc-type? type2))
       (and (time-tai-type? type1) (time-tai-type? type2))
-      (and (guid-type? type1)
-           (guid-type? type2)
-           (eq? (guid-type-entity type1)
-                (guid-type-entity type2)))))
+      (and (binary-type?   type1) (binary-type?   type2))))
 
 ; type -> contract
 (define (type-contract type)
@@ -289,6 +293,7 @@
   
   (flat-named-contract
    (match type
+     [(struct guid-type (null? entity))     `(foreign-key/c ,(entity-name entity) ,@(null-name null?))]
      [(? boolean-type?)                     '(boolean-attr/c)]
      [(struct numeric-type (null? min max)) `(,(if (integer-type? type) 'integer-attr/c 'real-attr/c)
                                               ,@(if min `(#:min-value ,min) null)
@@ -300,7 +305,7 @@
                                               ,@(null-name null?))]
      [(struct time-utc-type (null?))        `(time-utc-attr/c ,@(null-name null?))]
      [(struct time-tai-type (null?))        `(time-tai-attr/c ,@(null-name null?))]
-     [(struct guid-type (null? entity))     `(foreign-key/c ,(entity-name entity) ,@(null-name null?))])
+     [(struct binary-type (null?))          `(binary-attr/c ,@(null-name null?))])
    (cut type-valid? type <>)))
 
 ; type
@@ -311,6 +316,7 @@
 (define type:symbol   (make-symbol-type   #t #f))
 (define type:time-tai (make-time-tai-type #t))
 (define type:time-utc (make-time-utc-type #t))
+(define type:binary   (make-binary-type   #t))
 
 ; Entities ---------------------------------------
 
@@ -571,6 +577,7 @@
  [struct (temporal-type type)          ([allows-null? boolean?])]
  [struct (time-utc-type temporal-type) ([allows-null? boolean?])]
  [struct (time-tai-type temporal-type) ([allows-null? boolean?])]
+ [struct (binary-type type)            ([allows-null? boolean?])]
  [create-enum-type                     (-> boolean? (or/c enum? (listof symbol?)) enum-type?)]
  [type-null                            (-> type? any)]
  [type-valid?                          (-> type? any/c boolean?)]
@@ -584,6 +591,7 @@
  [type:symbol                          symbol-type?]
  [type:time-tai                        time-tai-type?]
  [type:time-utc                        time-utc-type?]
+ [type:binary                          binary-type?]
  [struct entity                        ([name                 symbol?]
                                         [plural-name          symbol?]
                                         [table-name           symbol?]

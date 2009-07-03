@@ -84,7 +84,7 @@
       (let* ([per1    (save! (make-person "per1"))]
              [per1-id (real:snooze-struct-id (send (current-cache) cache-ref/local per1))] 
              [per2    (delete! per1)])
-        (check-equal? (direct-query (format "select * from people where guid=~a;" per1-id)) null)))))
+        (check-equal? (direct-query (format "select * from person where guid=~a;" per1-id)) null)))))
 
 ; Provide statements -----------------------------
 

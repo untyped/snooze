@@ -120,8 +120,8 @@
 
 (define expand-in-haystack+unquote
   ((or-expand "in-haystack+unquote")
-   expand-in-haystack
-   expand-unquote))
+   expand-unquote
+   expand-in-haystack))
 
 (define (expand-function stx)
   (syntax-case* stx (and or not + - * / abs floor ceiling round = <> < <= > >=

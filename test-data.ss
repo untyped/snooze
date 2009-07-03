@@ -46,7 +46,8 @@
              #:column-name 'active
              #:pretty-name "active flag"]
    [start    time-tai
-             #:default (srfi:current-time srfi:time-tai)]))
+             #:default (srfi:current-time srfi:time-tai)]
+   [notes    binary]))
 
 (define-enum color (red black))
 

@@ -2,7 +2,8 @@
 
 (require "../base.ss")
 
-(require scheme/string
+(require scheme/serialize
+         scheme/string
          srfi/19
          (spgsql-in spgsql)
          (unlib-in symbol)
@@ -12,7 +13,7 @@
 
 (define postgresql8-sql-mixin
   (mixin (generic-database<%>) (sql-escape<%> parse<%> sql-create<%> sql-drop<%> sql-insert<%> sql-update<%> sql-delete<%>)
-
+    
     (inspect #f)
     
     (inherit get-snooze)
@@ -29,27 +30,28 @@
     
     ; type any -> string
     (define/public (escape-sql-value type value)
-      (cond [(boolean-type? type)  (guard type value boolean? "boolean")          (if value "true" "false")]
+      (cond [(boolean-type? type)  (guard type value boolean?  "boolean")             (if value "true" "false")]
             [(not value)           "NULL"]
-            [(guid-type? type)     (guard type value guid? "(U guid #f)")         (cond [(not (eq? (guid-entity value) (guid-type-entity type)))
-                                                                                         (raise-exn exn:fail:snooze:query
-                                                                                           (format "wrong guid entity: expected ~a, received ~a."
-                                                                                                   (entity-name (guid-entity value))
-                                                                                                   (entity-name (guid-type-entity type))))]
-                                                                                        [(guid-id value) => number->string]
-                                                                                        [(with-handlers ([exn? #f])
-                                                                                           (and (guid? value) (guid-ref value)))
-                                                                                         => (lambda (struct)
-                                                                                              (number->string (snooze-struct-id struct)))]
-                                                                                        [else (raise-exn exn:fail:snooze:query
-                                                                                                (format "cannot use unsaved struct in a query: ~s" value)
-                                                                                                #f)])]
-            [(integer-type? type)  (guard type value integer?  "(U integer #f)")  (number->string value)]
-            [(real-type? type)     (guard type value real?     "(U real #f)")     (number->string value)]
-            [(string-type? type)   (guard type value string?   "(U string #f)")   (string-append "'" (regexp-replace* #rx"'" value "''") "'")]
-            [(symbol-type? type)   (guard type value symbol?   "(U symbol #f)")   (string-append "'" (regexp-replace* #rx"'" (symbol->string value) "''") "'")]
-            [(time-tai-type? type) (guard type value time-tai? "(U time-tai #f)") (date->string (time-tai->date value 0) "'~Y-~m-~d ~H:~M:~S.~N'")]
-            [(time-utc-type? type) (guard type value time-utc? "(U time-utc #f)") (date->string (time-utc->date value 0) "'~Y-~m-~d ~H:~M:~S.~N'")]
+            [(guid-type? type)     (guard type value guid?     "(U guid #f)")         (cond [(not (eq? (guid-entity value) (guid-type-entity type)))
+                                                                                             (raise-exn exn:fail:snooze:query
+                                                                                               (format "wrong guid entity: expected ~a, received ~a."
+                                                                                                       (entity-name (guid-entity value))
+                                                                                                       (entity-name (guid-type-entity type))))]
+                                                                                            [(guid-id value) => number->string]
+                                                                                            [(with-handlers ([exn? #f])
+                                                                                               (and (guid? value) (guid-ref value)))
+                                                                                             => (lambda (struct)
+                                                                                                  (number->string (snooze-struct-id struct)))]
+                                                                                            [else (raise-exn exn:fail:snooze:query
+                                                                                                    (format "cannot use unsaved struct in a query: ~s" value)
+                                                                                                    #f)])]
+            [(integer-type? type)  (guard type value integer?      "(U integer #f)")  (number->string value)]
+            [(real-type? type)     (guard type value real?         "(U real #f)")     (number->string value)]
+            [(string-type? type)   (guard type value string?       "(U string #f)")   (string-append "'" (regexp-replace* #rx"'" value "''") "'")]
+            [(symbol-type? type)   (guard type value symbol?       "(U symbol #f)")   (string-append "'" (regexp-replace* #rx"'" (symbol->string value) "''") "'")]
+            [(time-tai-type? type) (guard type value time-tai?     "(U time-tai #f)") (date->string (time-tai->date value 0) "'~Y-~m-~d ~H:~M:~S.~N'")]
+            [(time-utc-type? type) (guard type value time-utc?     "(U time-utc #f)") (date->string (time-utc->date value 0) "'~Y-~m-~d ~H:~M:~S.~N'")]
+            [(binary-type? type)   (guard type value serializable? "serializable")    (format-sql "~a" [bytea (serialize/bytes value)])]
             [else                  (raise-type-error #f "unrecognised type" type)]))
     
     ; entity -> string
@@ -80,7 +82,8 @@
            [(? character-type?) (if (character-type-max-length type)
                                     (format " CHARACTER VARYING (~a)" (character-type-max-length type))
                                     " TEXT")]
-           [(? temporal-type?)  " TIMESTAMP WITHOUT TIME ZONE"])
+           [(? temporal-type?)  " TIMESTAMP WITHOUT TIME ZONE"]
+           [(? binary-type?)    " BYTEA"])
          (if (type-allows-null? type) "" " NOT NULL")
          (string-append " DEFAULT " (escape-sql-value type (attribute-default attr))))))
     
@@ -138,23 +141,24 @@
     
     ; type (U string sql-null) -> any
     ; This is factored out as a procedure because it increases the speed of the map in make-parser by 5-50%.
-    (define (private-parse-value type value)
+    (define (private-parse-value type val)
       (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
-        (cond [(sql-null? value)     #f]
-              [(guid-type? type)     (entity-make-vanilla-guid #:snooze (get-snooze) (guid-type-entity type) (inexact->exact value))]
-              [(boolean-type? type)  value]
-              [(integer-type? type)  (inexact->exact value)]
-              [(real-type? type)     value]
-              [(string-type? type)   value]
-              [(symbol-type? type)   (string->symbol value)]
-              [(time-tai-type? type) (date->time-tai (sql-datetime->srfi-date value))]
-              [(time-utc-type? type) (date->time-utc (sql-datetime->srfi-date value))]
+        (cond [(sql-null? val)     #f]
+              [(guid-type? type)     (entity-make-vanilla-guid #:snooze (get-snooze) (guid-type-entity type) (inexact->exact val))]
+              [(boolean-type? type)  val]
+              [(integer-type? type)  (inexact->exact val)]
+              [(real-type? type)     val]
+              [(string-type? type)   val]
+              [(symbol-type? type)   (string->symbol val)]
+              [(time-tai-type? type) (date->time-tai (sql-datetime->srfi-date val))]
+              [(time-utc-type? type) (date->time-utc (sql-datetime->srfi-date val))]
+              [(binary-type? type)   (deserialize/bytes val)]
               [else                  (raise-exn exn:fail:snooze (format "unrecognised type: ~a" type))])))
     
     ; type (U string sql-null) -> any
-    (define/public (parse-value type value)
-      (private-parse-value type value))
-
+    (define/public (parse-value type val)
+      (private-parse-value type val))
+    
     ; (listof type) -> ((U (listof database-value) #f) -> (U (listof scheme-value) #f))
     (define/public (make-parser types)
       (lambda (vals)
@@ -168,6 +172,17 @@
     [(guard type value predicate expected)
      (unless (predicate value)
        (raise-type-error (type-name type) expected value))]))
+
+; any -> bytes
+(define (serialize/bytes val)
+  (let ([out (open-output-bytes)])
+    (write (serialize val) out)
+    (get-output-bytes out)))
+
+; bytes -> any
+(define (deserialize/bytes val)
+  (let ([in (open-input-bytes val)])
+    (deserialize (read in))))
 
 ; Provide statements ---------------------------
 

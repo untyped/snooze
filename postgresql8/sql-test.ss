@@ -2,7 +2,8 @@
 
 (require "../test-base.ss")
 
-(require srfi/19
+(require scheme/serialize
+         srfi/19
          (spgsql-in spgsql)
          "../core/core.ss"
          "../sql/sql.ss"
@@ -146,6 +147,14 @@
         (check-equal? (escape-sql-value t time-utc3) "'9999-12-31 23:59:59.000000000'")
         (check-exn exn:fail:contract? (cut escape-sql-value t "123"))))
     
+    (test-case "escape-sql-value : binary"
+      (let ([t (make-binary-type #t)])
+        (check-equal? (escape-sql-value t #f) "NULL")
+        (check-equal? (escape-sql-value t #t) "CAST( E'((2) 0 () 0 () () #t)' AS bytea) ")
+        (check-equal? (escape-sql-value t '(a b c)) "CAST( E'((2) 0 () 0 () () (c a c b c c))' AS bytea) ")
+        (check-equal? (escape-sql-value t "Dave's stuff") "CAST( E'((2) 0 () 0 () () \"Dave\\'s stuff\")' AS bytea) ")
+        (check-exn exn:fail:contract? (cut escape-sql-value t (lambda (x) (add1 x))))))
+    
     (test-exn "escape-sql-value : unknown type"
       exn:fail:contract?
       (cut escape-sql-value 'foo "hello"))))
@@ -203,6 +212,13 @@
         (check-equal? (parse-value t (make-sql-timestamp 1234 12 23 12 34 56 123456000 0))
                       (date->time-utc (make-date 123456000 56 34 12 23 12 1234 0)))))
     
+    (test-case "parse-value : binary"
+      (let ([t (make-binary-type #t)])
+        (check-equal? (parse-value t sql-null) #f)
+        (check-equal? (parse-value t #"((2) 0 () 0 () () #t)") #t)
+        (check-equal? (parse-value t #"((2) 0 () 0 () () (c a c b c c))") '(a b c))
+        (check-equal? (parse-value t #"((2) 0 () 0 () () \"Dave\\'s stuff\")") "Dave's stuff")))
+
     (test-exn "parse-value : unknown type"
       exn:fail:contract?
       (cut parse-value 'foo "hello"))
@@ -254,20 +270,20 @@ ENDSQL
     (test-case "display-from"
       (check-equal? (from-sql p1 null)
                     #<<ENDSQL
-"people" AS "p1"
+"person" AS "p1"
 ENDSQL
                     "entity")
       
       (check-equal? (from-sql (sql:alias 'subq (sql:select #:from p1)) null)
                     #<<ENDSQL
-(SELECT "p1"."guid" AS "p1-guid", "p1"."revision" AS "p1-revision", "p1"."name" AS "p1-name" FROM "people" AS "p1") AS "subq"
+(SELECT "p1"."guid" AS "p1-guid", "p1"."revision" AS "p1-revision", "p1"."name" AS "p1-name" FROM "person" AS "p1") AS "subq"
 ENDSQL
                     "subquery")
       
       (check-equal? (from-sql (sql:inner p1 (sql:alias 'subq (sql:select #:from p2)) (sql:= (sql p1.guid) (sql p2.guid)))
                               (list (sql p2.guid) (sql p2.revision) (sql p2.name)))
                     #<<ENDSQL
-("people" AS "p1" INNER JOIN (SELECT "p2"."guid" AS "p2-guid", "p2"."revision" AS "p2-revision", "p2"."name" AS "p2-name" FROM "people" AS "p2") AS "subq" ON ("p1"."guid" = "p2-guid"))
+("person" AS "p1" INNER JOIN (SELECT "p2"."guid" AS "p2-guid", "p2"."revision" AS "p2-revision", "p2"."name" AS "p2-name" FROM "person" AS "p2") AS "subq" ON ("p1"."guid" = "p2-guid"))
 ENDSQL
                     "inner join"))
     
@@ -315,7 +331,7 @@ ENDSQL
       (check-equal? (expression-sql (sql:*) null) "1" "argumentless *")
       (check-equal? (expression-sql (sql:-) null) "0" "argumentless -")
       (check-equal? (expression-sql (sql:in (sql p1.guid) (sql:select #:what (sql p1.guid) #:from p1)) null)
-                    "(\"p1\".\"guid\" IN (SELECT \"p1\".\"guid\" AS \"p1-guid\" FROM \"people\" AS \"p1\"))"
+                    "(\"p1\".\"guid\" IN (SELECT \"p1\".\"guid\" AS \"p1-guid\" FROM \"person\" AS \"p1\"))"
                     "sql:in")
       (check-equal? (expression-sql (sql:regexp-replace     "a" "b" "c") null)    "(regexp_replace('a', 'b', 'c'))"       "sql:regexp-replace")
       (check-equal? (expression-sql (sql:regexp-replace-ci  "a" "b" "c") null)    "(regexp_replace('a', 'b', 'c', 'i'))"  "sql:regexp-replace-ci")
@@ -354,19 +370,19 @@ ENDSQL
         
         (define sql1
           #<<ENDSQL
-SELECT "a"."guid" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", "b"."guid" AS "b-guid", "b"."revision" AS "b-revision", "b"."owner" AS "b-owner", "b"."name" AS "b-name" FROM ("people" AS "a" INNER JOIN "pets" AS "b" ON ("a"."guid" = "b"."owner")) WHERE ("a"."name" = 'Jon Arbuckle') ORDER BY "a-name" ASC, "b-name" ASC LIMIT 10 OFFSET 20
+SELECT "a"."guid" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", "b"."guid" AS "b-guid", "b"."revision" AS "b-revision", "b"."owner" AS "b-owner", "b"."name" AS "b-name" FROM ("person" AS "a" INNER JOIN "pet" AS "b" ON ("a"."guid" = "b"."owner")) WHERE ("a"."name" = 'Jon Arbuckle') ORDER BY "a-name" ASC, "b-name" ASC LIMIT 10 OFFSET 20
 ENDSQL
           )
         
         (define sql2
           #<<ENDSQL
-SELECT "a-guid", "a-revision", "a-name", "b"."guid" AS "b-guid", "b"."revision" AS "b-revision", "b"."owner" AS "b-owner", "b"."name" AS "b-name" FROM ((SELECT "a"."guid" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name" FROM "people" AS "a") AS "subq" INNER JOIN "pets" AS "b" ON ("a-guid" = "b"."owner")) WHERE ("a-name" = "b"."name") ORDER BY "a-name" ASC, "b-name" ASC
+SELECT "a-guid", "a-revision", "a-name", "b"."guid" AS "b-guid", "b"."revision" AS "b-revision", "b"."owner" AS "b-owner", "b"."name" AS "b-name" FROM ((SELECT "a"."guid" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name" FROM "person" AS "a") AS "subq" INNER JOIN "pet" AS "b" ON ("a-guid" = "b"."owner")) WHERE ("a-name" = "b"."name") ORDER BY "a-name" ASC, "b-name" ASC
 ENDSQL
           )
         
         (define sql3
           #<<ENDSQL
-SELECT "a"."guid" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", count("b".*) AS "expr" FROM ("people" AS "a" INNER JOIN "pets" AS "b" ON ("a"."guid" = "b"."owner")) GROUP BY "a-guid", "a-revision", "a-name"
+SELECT "a"."guid" AS "a-guid", "a"."revision" AS "a-revision", "a"."name" AS "a-name", count("b".*) AS "expr" FROM ("person" AS "a" INNER JOIN "pet" AS "b" ON ("a"."guid" = "b"."owner")) GROUP BY "a-guid", "a-revision", "a-name"
 ENDSQL
           )
         
