@@ -110,6 +110,7 @@
                (raise-type-error 'custom-write-id "guid" guid))
              (let ([show   (if write? write display)]
                    [struct (and (not (in-cache-code?))
+                                (guid? guid)
                                 (with-handlers ([exn? (lambda (exn) 'uncached)])
                                   (guid-ref guid)))])
                (parameterize ([in-cache-code? #t])
@@ -118,12 +119,12 @@
                      (let* ([ans   (struct->vector struct)]
                             [guid* (vector-ref ans 1)])
                        (vector-set! ans 0 'id)
-                       (vector-set! ans 1 (list 'ext (guid-id+serial guid)
-                                                'int (and guid* (guid-id+serial guid*))))
+                       (vector-set! ans 1 (list 'ext (and (guid? guid)  (guid-id+serial guid))
+                                                'int (and (guid? guid*) (guid-id+serial guid*))))
                        (for ([i (in-range 2 (vector-length ans))])
                          (let ([val (vector-ref ans i)])
                            (when (guid? val)
-                             (vector-set! ans i (vector (string->symbol (format "guid:~a" (guid-id+serial guid))))))))
+                             (vector-set! ans i (vector (string->symbol (format "guid:~a" (guid-id+serial val))))))))
                        (show ans out))))))
            #:property
            prop:equal+hash
@@ -284,29 +285,22 @@
 
 ; type -> contract
 (define (type-contract type)
-  
-  ; boolean -> list
-  (define (null-name null?)
-    (if null?
-        '(#:allow-null? #t)
-        '(#:allow-null? #f)))
-  
   (flat-named-contract
    (match type
-     [(struct guid-type (null? entity))     `(foreign-key/c ,(entity-name entity) ,@(null-name null?))]
+     [(struct guid-type (null? entity))     `(foreign-key/c ,(entity-name entity))]
      [(? boolean-type?)                     '(boolean-attr/c)]
      [(struct numeric-type (null? min max)) `(,(if (integer-type? type) 'integer-attr/c 'real-attr/c)
                                               ,@(if min `(#:min-value ,min) null)
-                                              ,@(if max `(#:max-value ,max) null)
-                                              ,@(null-name null?))]
-     [(struct enum-type (null? _ _ values)) `(enum-attr/c #:values ,values ,@(null-name null?))]
+                                              ,@(if max `(#:max-value ,max) null))]
+     [(struct enum-type (null? _ _ values)) `(enum-attr/c #:values ,values)]
      [(struct character-type (null? max))   `(,(if (symbol-type? type) 'symbol-attr/c 'string-attr/c)
-                                              ,@(if max `(#:max-length ,max) null)
-                                              ,@(null-name null?))]
-     [(struct time-utc-type (null?))        `(time-utc-attr/c ,@(null-name null?))]
-     [(struct time-tai-type (null?))        `(time-tai-attr/c ,@(null-name null?))]
-     [(struct binary-type (null?))          `(binary-attr/c ,@(null-name null?))])
-   (cut type-valid? type <>)))
+                                              ,@(if max `(#:max-length ,max) null))]
+     [(struct time-utc-type (null?))        '(time-utc-attr/c)]
+     [(struct time-tai-type (null?))        '(time-tai-attr/c)]
+     [(struct binary-type (null?))          '(binary-attr/c)])
+   (lambda (val)
+     (or (equal? val (type-null type))
+         (type-valid? type val)))))
 
 ; type
 (define type:boolean  (make-boolean-type  #t))

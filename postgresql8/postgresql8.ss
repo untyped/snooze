@@ -158,7 +158,7 @@
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Deletes the database record for the supplied struct.
     (define/public (delete-struct conn old-struct [check-revision? #t])
-      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
+      (with-snooze-reraise (exn:fail? (format "could not delete database record for ~a" old-struct))
         (let ([cache    (send (get-snooze) get-current-cache)]
               [entity   (snooze-struct-entity old-struct)]
               [guid     (snooze-struct-guid old-struct)]

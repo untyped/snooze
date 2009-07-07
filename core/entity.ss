@@ -193,21 +193,17 @@
 ; snooze-struct output-port boolean -> void
 (define (snooze-struct-custom-write struct out write?)
   (parameterize ([in-cache-code? #t])
-    (let* ([show   (if write? write display)]
+    (let*/debug ([show   (if write? write display)]
            [entity (snooze-struct-entity struct)]
            [vals   (snooze-struct-ref* struct)]
            [guid   (car vals)]
            [rev    (cadr vals)])
-      (display "#(struct:" out)
-      (display (entity-name entity) out)
-      (display " " out)
-      (show (and guid (guid-id guid)) out)
-      (display " " out)
-      (show rev out)
-      (for ([val (in-list (cddr vals))])
-        (display " " out)
-        (show val out))
-      (display ")" out))))
+      (display (apply vector
+                      (symbol-append 'struct: (entity-name entity))
+                      (and guid (guid-id guid))
+                      rev
+                      (cddr vals))
+               out))))
 
 ; (listof procedure)
 (define snooze-struct-equal+hash
