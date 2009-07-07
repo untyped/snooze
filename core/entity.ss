@@ -193,7 +193,7 @@
 ; snooze-struct output-port boolean -> void
 (define (snooze-struct-custom-write struct out write?)
   (parameterize ([in-cache-code? #t])
-    (let*/debug ([show   (if write? write display)]
+    (let* ([show   (if write? write display)]
            [entity (snooze-struct-entity struct)]
            [vals   (snooze-struct-ref* struct)]
            [guid   (car vals)]
