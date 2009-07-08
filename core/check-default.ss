@@ -47,9 +47,9 @@
             [(guid-type? type)
              (let ([entity (guid-type-entity type)])
                (if (and (guid? val) (eq? (guid-entity val) entity))
-                   (if (snooze-struct-saved? val)
-                       (check-pass)
-                       (check-fail (format "~a: related record unsaved." (string-titlecase (attribute-pretty-name attr)))))
+                   (cond [(not (currently-saving))   (check-pass)]
+                         [(snooze-struct-saved? val) (check-pass)]
+                         [else (check-fail (format "~a: related record unsaved." (string-titlecase (attribute-pretty-name attr))))])
                    (let ([name (string-titlecase (entity-pretty-name entity))])
                      (check-fail (format "~a: must be~a~a."
                                          (string-titlecase (attribute-pretty-name attr))

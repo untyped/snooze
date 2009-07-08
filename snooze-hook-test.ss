@@ -26,6 +26,10 @@
 ; below seed the struct with different values to make different stages fail.
 (define (create-hook name box bad-value)
   (lambda (continue conn struct)
+    (unless (or (and (eq? name 'save)   (currently-saving))
+                (and (eq? name 'delete) (currently-deleting)))
+      (error "currently-saving/currently-deleting have bad values"
+             (list name (currently-saving) (currently-deleting))))
     (if (= (hooked-value struct) bad-value)
         (raise-exn exn:unhooked "Argh!")
         (begin (set-box! box struct)

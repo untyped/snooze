@@ -11,7 +11,12 @@
 
 ; Snooze objects ---------------------------------
 
+; (parameter (U snooze<%> #f))
 (define current-snooze (make-parameter #f))
+
+; (parameter (U guid #f))
+(define currently-saving   (make-parameter #f))
+(define currently-deleting (make-parameter #f))
 
 ; Guids ------------------------------------------
 
@@ -529,6 +534,8 @@
 
 (provide/contract
  [current-snooze                       (parameter/c (or/c (is-a?/c snooze<%>) #f))]
+ [currently-saving                     (parameter/c (or/c guid? #f))]
+ [currently-deleting                   (parameter/c (or/c guid? #f))]
  [guid?                                procedure?]
  [guid=?                               (-> guid? guid? boolean?)]
  [guid=?-hash-code                     (-> guid? number?)]
