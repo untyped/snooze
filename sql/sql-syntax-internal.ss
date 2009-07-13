@@ -164,7 +164,12 @@
                                                                                     #,(expand-expression+unquote expr-stx)])
                                                                                (syntax->list #'(test ...))
                                                                                (syntax->list #'(expr ...)))
-                                                                       [else #,(expand-expression+unquote #'else-expr)])]))
+                                                                       [else #,(expand-expression+unquote #'else-expr)])]
+    [(cond [test expr] ...)                  #`(sql:cond               #,@(map (lambda (test-stx expr-stx)
+                                                                                 #`[#,(expand-expression+unquote test-stx)
+                                                                                    #,(expand-expression+unquote expr-stx)])
+                                                                               (syntax->list #'(test ...))
+                                                                               (syntax->list #'(expr ...))))]))
                                              
 (define (expand-aggregate stx)
   (syntax-case* stx (count* count min max average) symbolic-identifier=?
