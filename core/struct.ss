@@ -449,6 +449,22 @@
 (define (entity-data-attributes entity)
   (cddr (entity-attributes entity)))
 
+; entity ((connection guid -> guid) connection guid -> guid) -> void
+(define (wrap-entity-on-save! entity hook)
+  (let ([default (entity-on-save entity)])
+    (set-entity-on-save!
+     entity
+     (lambda (continue conn guid)
+       (hook (cut default continue <> <>) conn guid)))))
+
+; entity ((connection guid -> guid) connection guid -> guid) -> void
+(define (wrap-entity-on-delete! entity hook)
+  (let ([default (entity-on-delete entity)])
+    (set-entity-on-delete!
+     entity
+     (lambda (continue conn guid)
+       (hook (cut default continue <> <>) conn guid)))))
+
 ; Relationships ----------------------------------
 
 ; Watch this space...
@@ -635,6 +651,8 @@
  [entity-guid-attribute?               (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-attribute                     (-> entity? (or/c symbol? attribute?) attribute?)]
  [entity-data-attributes               (-> entity? (listof attribute?))]
+ [wrap-entity-on-save!                 (-> entity? (-> (-> connection? guid? guid?) connection? guid? guid?) void?)]
+ [wrap-entity-on-delete!               (-> entity? (-> (-> connection? guid? guid?) connection? guid? guid?) void?)]
  [struct attribute                     ([name                 symbol?]
                                         [column-name          symbol?]
                                         [pretty-name          string?]

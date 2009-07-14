@@ -283,7 +283,7 @@
       [(list-rest curr rest)
        (when (memq (car names) (cdr names))
          (raise-exn exn:fail:contract
-           (format "~a: column selected more than once: ~a ~s" 'from-clause (car names) (car columns))))
+           (format "~a: column selected more than once: ~a ~s" 'what-clause (car names) (car columns))))
        (loop (cdr columns) (cdr names))])))
 
 ; symbol attribute-alias column-list -> void

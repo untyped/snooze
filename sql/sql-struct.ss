@@ -83,7 +83,7 @@
         [(time-tai? val) (make-literal type:time-tai val)]
         [(guid? val)     (make-literal (make-guid-type #f (guid-entity val)) val)]
         [else            (raise-exn exn:fail:contract
-                           (format "Expected (U boolean integer real string symbol time-tai time-utc), received ~s" val))]))
+                           (format "expected (U boolean integer real string symbol time-tai time-utc), received ~s" val))]))
 
 ; type -> literal
 (define (create-null type)
