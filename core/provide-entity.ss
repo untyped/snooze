@@ -92,6 +92,7 @@
                                       (#:snooze (is-a?/c snooze<%>)
                                                 find-kw-arg ...
                                                 #:what   sql:select-what/c
+                                                #:where  sql:select-where/c
                                                 #:order  sql:select-order/c
                                                 #:limit  sql:select-limit/c
                                                 #:offset sql:select-offset/c)
@@ -100,6 +101,7 @@
                                       (#:snooze (is-a?/c snooze<%>)
                                                 find-kw-arg ...
                                                 #:what   sql:select-what/c
+                                                #:where  sql:select-where/c
                                                 #:order  sql:select-order/c
                                                 #:limit  sql:select-limit/c
                                                 #:offset sql:select-offset/c)
@@ -108,6 +110,7 @@
                                       (#:snooze (is-a?/c snooze<%>)
                                                 find-kw-arg ...
                                                 #:what   sql:select-what/c
+                                                #:where  sql:select-where/c
                                                 #:order  sql:select-order/c
                                                 #:limit  sql:select-limit/c
                                                 #:offset sql:select-offset/c)
@@ -116,6 +119,7 @@
                                       (#:snooze (is-a?/c snooze<%>)
                                                 find-kw-arg ...
                                                 #:what   sql:select-what/c
+                                                #:where  sql:select-where/c
                                                 #:order  sql:select-order/c
                                                 #:limit  sql:select-limit/c
                                                 #:offset sql:select-offset/c)

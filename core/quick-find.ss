@@ -60,6 +60,7 @@
                    [proc          (lambda (key+arg ...
                                            #:snooze [snooze (current-snooze)]
                                            #:what   [what   #f]
+                                           #:where  [where  #f]
                                            #:order  [order  #f]
                                            #:limit  [limit  #f]
                                            #:offset [offset #f])
@@ -67,7 +68,8 @@
                                           (sql (select
                                                 #:what   ,(or what default-what)
                                                 #:from   entity
-                                                #:where  ,(sql:and (or (void? arg)
+                                                #:where  ,(sql:and (or where #t)
+                                                                   (or (void? arg)
                                                                        (quick-find-expression
                                                                         (sql entity.attr) 
                                                                         arg))
