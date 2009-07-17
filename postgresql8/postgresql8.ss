@@ -240,6 +240,8 @@
     (define/public (call-with-transaction conn body)
       ; symbol
       (define savepoint (gensym 'savepoint))
+      ; boolean
+      (define started-once? #f)
       ; (listof symbol)
       (define outermost? (not (connection-in-transaction? conn)))
       ; string
@@ -249,6 +251,10 @@
       ; Main body:
       (dynamic-wind
        (lambda ()
+         ; Can't jump out of and back into a transaction block:
+         (if started-once?
+             (error "attempt to re-enter a terminated transaction block")
+             (set! started-once? #t))
          ; If this is the outermost call to call-with-transaction, start a TRANSACTION:
          (when outermost?
            (send (connection-back-end conn) exec "BEGIN;")

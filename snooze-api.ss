@@ -110,12 +110,19 @@
 (define-syntax-rule (g:select args ...)
   (g:find (sql (select args ...))))
 
-; (_ expr ...)
-; (_ [#:snooze snooze] expr ...)
+; (_ [#:snooze snooze-expr] expr ...)
 (define-syntax (with-connection stx)
   (syntax-case stx ()
     [(_ #:snooze snooze expr ...) (syntax/loc stx (call-with-connection #:snooze snooze (lambda () expr ...)))]
     [(_ expr ...)                 (syntax/loc stx (call-with-connection (lambda () expr ...)))]))
+
+; (_ [#:snooze snooze-expr] [#:metadata list-expr] expr ...)
+(define-syntax (with-transaction stx)
+  (syntax-case stx ()
+    [(_ #:metadata metadata expr ...)                 (syntax/loc stx (call-with-transaction #:metadata metadata (lambda () expr ...)))]
+    [(_ #:snooze snooze #:metadata metadata expr ...) (syntax/loc stx (call-with-transaction #:snooze snooze #:metadata metadata (lambda () expr ...)))]
+    [(_ #:snooze snooze expr ...)                     (syntax/loc stx (call-with-transaction #:snooze snooze (lambda () expr ...)))]
+    [(_ expr ...)                                     (syntax/loc stx (call-with-transaction (lambda () expr ...)))]))
 
 ; Provide statements -----------------------------
 
@@ -123,7 +130,8 @@
          select-one
          select-all
          g:select
-         with-connection)
+         with-connection
+         with-transaction)
 
 (provide/contract
  [call-with-cache       (->* (procedure?) (#:snooze (is-a?/c snooze<%>)) any)]
