@@ -169,6 +169,9 @@
 (define interned-guids
   (make-weak-custom-hash guid=? guid=?-hash-code))
 
+(define interned-guids-semaphore
+  (make-semaphore 1))
+
 ; guid -> boolean
 (define (guid-interned? guid)
   (let ([box (dict-ref interned-guids guid #f)])
@@ -181,14 +184,17 @@
 
 ; guid -> guid
 (define (intern-guid guid)
-  (weak-box-value
-   (dict-ref interned-guids
-             guid
-             (lambda ()
-               (let* ([guid (copy-guid guid)]
-                      [box  (make-weak-box guid)])
-                 (dict-set! interned-guids guid box)
-                 box)))))
+  (call-with-semaphore
+   interned-guids-semaphore
+   (lambda ()
+     (weak-box-value
+      (dict-ref interned-guids
+                guid
+                (lambda ()
+                  (let* ([guid (copy-guid guid)]
+                         [box  (make-weak-box guid)])
+                    (dict-set! interned-guids guid box)
+                    box)))))))
 
 ; Attribute types --------------------------------
 

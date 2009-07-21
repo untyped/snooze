@@ -77,15 +77,16 @@
              [guid      (car row)]
              [revision  (cadr row)]
              [num-attrs (length (entity-attributes entity))])
-        (unless (or (not guid) (vanilla-guid? guid))
-          (raise-type-error 'row->struct "(U vanilla-guid #f)" guid))
-        (values (and guid                                  ; if id is #f, struct is null
-                     (or (send cache get-local-alias guid) ; if struct is cached (locally or in an ancestor cache), return a new local guid
-                         (send cache add-extracted-struct! ; else add the new struct to the cache, and return a new local guid
-                               (apply (entity-private-constructor entity)
-                                      guid
-                                      (cdr (take row num-attrs))))))
-                (drop row num-attrs))))))
+        (with-handlers ([exn? (lambda (exn) (error "could not parse entity" row entity exn))])
+          (unless (or (not guid) (vanilla-guid? guid))
+            (raise-type-error 'row->struct "(U vanilla-guid #f)" guid))
+          (values (and guid                                  ; if id is #f, struct is null
+                       (or (send cache get-local-alias guid) ; if struct is cached (locally or in an ancestor cache), return a new local guid
+                           (send cache add-extracted-struct! ; else add the new struct to the cache, and return a new local guid
+                                 (apply (entity-private-constructor entity)
+                                        guid
+                                        (cdr (take row num-attrs))))))
+                  (drop row num-attrs)))))))
 
 ; Provide statements -----------------------------
 
