@@ -85,11 +85,12 @@
     (send cache add-copied-struct! (apply real:make-snooze-struct/defaults entity args))))
 
 ; guid -> guid
-(define (copy-snooze-struct original)
-  (let ([cache  (send (guid-snooze original) get-current-cache)]
-        [entity (snooze-struct-entity original)])
-    (send cache add-copied-struct! (apply (entity-private-constructor entity)
-                                          (real:snooze-struct-ref* (guid-ref original))))))
+(define (snooze-struct-copy original)
+  (let ([entity (snooze-struct-entity original)])
+    (apply (entity-cached-constructor entity)
+           #f
+           #f
+           (real:snooze-struct-data-ref* (guid-ref original)))))
 
 ; guid any ... -> string
 (define (format-snooze-struct guid . rest)
@@ -136,7 +137,7 @@
  [snooze-struct-set               (->* (guid?) () #:rest attr/value-list? guid?)]
  [make-snooze-struct              (->* (entity?) () #:rest any/c guid?)]
  [make-snooze-struct/defaults     (->* (entity?) () #:rest attr/value-list? guid?)]
- [copy-snooze-struct              (-> guid? guid?)]
+ [snooze-struct-copy              (-> guid? guid?)]
  [format-snooze-struct            (->* (guid?) () #:rest any/c any)]
  [check-snooze-struct             (->* (guid?) () #:rest any/c any)]
  [check-old-snooze-struct         (->* (guid?) () #:rest any/c any)])

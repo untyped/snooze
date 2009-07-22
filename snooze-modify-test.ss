@@ -65,7 +65,17 @@
               [per2 (begin0 (person-set per #:name "Per2")
                             (collect-garbage)
                             (check-cache-size (list 3 1)))])
-         (list per per2)))))) ; safe for space
+         (list per per2)))) ; safe for space
+    
+    (test-case "snooze-struct-copy : creates a totally independent copy"
+      (let* ([test-person (save! (make-person "Per"))]
+             [copy-person (snooze-struct-copy test-person)])
+        (after (check-not-equal? copy-person test-person)
+               (check-pred integer? (snooze-struct-id       test-person))
+               (check-pred integer? (snooze-struct-revision test-person))
+               (check-false         (snooze-struct-id       copy-person))
+               (check-false         (snooze-struct-revision copy-person))
+               (delete! test-person))))))
 
 ; Provide statements -----------------------------
 

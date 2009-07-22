@@ -104,8 +104,12 @@
       (check-exn exn:fail:contract?
         (cut make-snooze-struct/defaults person (attr pet name) 123)))
     
-    (test-case "copy-snooze-struct"
-      (check-equal? test-person (copy-snooze-struct test-person)))
+    (test-case "snooze-struct-copy"
+      ; There's another test for this, with saving, in snooze-save-test.ss:
+      (let ([copy-person (snooze-struct-copy test-person)])
+        (check-not-eq? copy-person test-person)
+        (check-false         (snooze-struct-id       copy-person))
+        (check-false         (snooze-struct-revision copy-person))))
     
     (test-case "format-snooze-struct"
       (check-equal? (format-snooze-struct test-person) "Jon")

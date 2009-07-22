@@ -121,10 +121,11 @@
       (check-exn exn:fail:contract?
         (cut make-snooze-struct/defaults person (attr pet name) 123)))
     
-    (test-case "snooze-struct-set"
-      (let ([test-person2 (copy-snooze-struct test-person)])
-        (check-equal?     test-person test-person2)
-        (check-not-eq?    test-person test-person2)))))
+    (test-case "snooze-struct-copy"
+      (let ([copy-person (snooze-struct-copy test-person)])
+        (check-not-eq? copy-person test-person)
+        (check-false      (snooze-struct-id       copy-person))
+        (check-false      (snooze-struct-revision copy-person))))))
 
 ; Provide statements -----------------------------
 

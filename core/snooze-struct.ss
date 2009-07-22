@@ -43,6 +43,10 @@
 (define (snooze-struct-ref* struct)
   (cdr (vector->list (struct->vector struct))))
 
+; guid -> list
+(define (snooze-struct-data-ref* struct)
+  (cddr (snooze-struct-ref* struct)))
+
 ; snooze-struct <attr any> ... -> snooze-struct
 (define (snooze-struct-set original . args)
   (let*-values ([(entity)             (snooze-struct-entity original)]
@@ -77,9 +81,11 @@
                 (attribute-default #:snooze snooze attr)))))))
 
 ; snooze-struct -> snooze-struct
-(define (copy-snooze-struct original)
+(define (snooze-struct-copy original)
   (apply (entity-private-constructor (snooze-struct-entity original))
-         (snooze-struct-ref* original)))
+         #f
+         #f
+         (snooze-struct-data-ref* original)))
 
 ; Provide statements -----------------------------
 
@@ -95,10 +101,11 @@
  [snooze-struct-revision      (-> snooze-struct? (or/c natural-number/c #f))]
  [snooze-struct-ref           (-> snooze-struct? (or/c attribute? symbol?) any)]
  [snooze-struct-ref*          (-> snooze-struct? list?)]
+ [snooze-struct-data-ref*     (-> snooze-struct? list?)]
  [snooze-struct-set           (->* (snooze-struct?) () #:rest attr/value-list? snooze-struct?)]
  [make-snooze-struct          (->* (entity?) () #:rest attr-value-list/c snooze-struct?)]
  [make-snooze-struct/defaults (->* (entity?)
                                    (#:snooze (is-a?/c snooze<%>))
                                    #:rest attr/value-list?
                                    snooze-struct?)]
- [copy-snooze-struct          (-> snooze-struct? snooze-struct?)])
+ [snooze-struct-copy          (-> snooze-struct? snooze-struct?)])
