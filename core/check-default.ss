@@ -63,29 +63,25 @@
                  (check-fail (format "~a: must be a yes/no value."
                                      (string-titlecase (attribute-pretty-name attr)))))]
             [(integer-type? type)
-             (if (integer? val)
-                 (check-pass)
-                 (check-fail (format "~a: must be~a a whole number."
-                                     (string-titlecase (attribute-pretty-name attr))
-                                     (if allow-null? " blank or" ""))))]
+             (let ([min-value (numeric-type-min-value type)]
+                   [max-value (numeric-type-max-value type)])
+               (check-integer attr allow-null? min-value max-value val))]
             [(real-type? type)
-             (if (real? val)
-                 (check-pass)
-                 (check-fail (format "~a: must be~a a number."
-                                     (string-titlecase (attribute-pretty-name attr))
-                                     (if allow-null? " blank or" ""))))]
+             (let ([min-value (numeric-type-min-value type)]
+                   [max-value (numeric-type-max-value type)])
+               (check-real attr allow-null? min-value max-value val))]
             [(enum-type? type)
              (if (memq val (enum-type-values type))
                  (check-pass)
                  (check-fail (format "~a: must be~a one of the values: ~a."
                                      (string-titlecase (attribute-pretty-name attr))
                                      (if allow-null? " blank or" "")
-                                         
-                                         (string-join (map (cut format "~s" <>)
-                                                           (if (enum-type-enum type)
-                                                               (enum-pretty-values (enum-type-enum type))
-                                                               (enum-type-values type)))
-                                                      ", "))))]
+                                     
+                                     (string-join (map (cut format "~s" <>)
+                                                       (if (enum-type-enum type)
+                                                           (enum-pretty-values (enum-type-enum type))
+                                                           (enum-type-values type)))
+                                                  ", "))))]
             [(string-type? type)
              (let ([max-length (character-type-max-length type)])
                (check-string attr allow-null? max-length val))]
@@ -126,10 +122,10 @@
     (let ([results (check-snooze-struct guid)])
       (if (check-errors? results)
           (raise-exn exn:fail:snooze:check
-            (format "failed validation: could not save ~s:~n~a"
-                    guid
-                    (pretty-format results))
-            results)
+                     (format "failed validation: could not save ~s:~n~a"
+                             guid
+                             (pretty-format results))
+                     results)
           (continue conn guid)))))
 
 ; entity -> ((connection guid -> guid) connection guid -> guid)
@@ -138,10 +134,10 @@
     (let ([results (check-old-snooze-struct guid)])
       (if (check-errors? results)
           (raise-exn exn:fail:snooze:check
-            (format "failed validation: could not delete ~s:~n~a"
-                    guid
-                    (pretty-format results))
-            results)
+                     (format "failed validation: could not delete ~s:~n~a"
+                             guid
+                             (pretty-format results))
+                     results)
           (continue conn guid)))))
 
 ; Helpers ----------------------------------------
@@ -156,6 +152,32 @@
                           (if max-length
                               (format " of ~a characters or less" max-length)
                               " of any length")))))
+
+; attribute boolean (U natural #f) (U string any) -> (listof check-result)
+(define (check-integer attr allow-null? min-value max-value val)
+  (if (and (integer? val) (or (not max-value) (<= val max-value)) (or (not min-value) (>= val min-value)))
+      (check-pass)
+      (check-fail (format "~a: must be~a a whole number~a."
+                          (attribute-pretty-name attr)
+                          (if allow-null? " blank or" "")
+                          (if (or min-value max-value) 
+                              (format " n, where ~an~a"
+                                      (if min-value (format "~a <= " min-value) "")
+                                      (if max-value (format " <= ~a" max-value) ""))
+                              "")))))
+
+(define (check-real attr allow-null? min-value max-value val)
+  (if (and (real? val) (or (not max-value) (not (> val max-value))) (or (not min-value) (not (< val min-value))))
+      (check-pass)
+      (check-fail (format "~a: must be~a a number~a."
+                          (attribute-pretty-name attr)
+                          (if allow-null? " blank or" "")
+                          (if (or min-value max-value) 
+                              (format " n, where ~an~a"
+                                      (if min-value (format "~a <= " min-value) "")
+                                      (if max-value (format " <= ~a" max-value) ""))
+                              "")))))
+
 
 ; Provide statements -----------------------------
 
