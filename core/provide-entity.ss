@@ -65,7 +65,19 @@
                    [(make-kw-arg ...)    (interleave (syntax->list #'(attr-kw ...))
                                                      (syntax->list #'(attr-contract ...)))]
                    [(find-kw-arg ...)    (interleave (syntax->list #'(guid-kw revision-kw attr-kw ...))
-                                                     (syntax->list #'(guid-contract revision-contract attr-contract ...)))])
+                                                     (syntax->list #'((or/c guid-contract
+                                                                            (listof guid-contract)
+                                                                            procedure?
+                                                                            void?)
+                                                                      (or/c revision-contract
+                                                                            (listof revision-contract)
+                                                                            procedure?
+                                                                            void?)
+                                                                      (or/c attr-contract
+                                                                            (listof attr-contract)
+                                                                            procedure?
+                                                                            void?)
+                                                                      ...)))])
       (values
        ; provide
        (list id-stx)
