@@ -232,14 +232,31 @@
           (let ([bob (save! (person-set jon #:name "Bob"))])
             (check-equal? jon (pet-owner garfield)))))
     
-    (test-case "foreign-key behaviour under update of dependent struct"
+    ; This one seems a little bizarre if uniquing is allowed. It implies that the behaviour
+    ; of foreign-key dereferencing changes, when another copy of the same struct is saved.
+    ; This makes me feel a bit queasy, since the behaviour of a single struct can't be predicted.
+    ; Seems to fit better with the fixed-dereferencing model above.
+    (test-case "CONTROVERSIAL! foreign-key behaviour under update of dependent struct"
       (let* ([jon      (save! (make-person/defaults #:name "Jon"))]
              [bob      (save! (make-person/defaults #:name "Bob"))]
              [garfield (save! (make-pet/defaults #:name "Garfield" #:owner jon))])
         (check-equal? jon (pet-owner garfield))
         (let ([garf2 (save! (pet-set garfield #:owner bob))])
           (check-equal? jon (pet-owner garfield) "original struct should be unchanged")
-          (check-equal? bob (pet-owner garf2)    "updated struct should reflect change.")))))
+          (check-equal? bob (pet-owner garf2)    "updated struct should reflect change in database"))))
+    
+    
+    ; This one seems a little bizarre if uniquing is allowed. It implies that the behaviour
+    ; of foreign-key dereferencing changes, when another copy of the same struct is saved.
+    ; This makes me feel a bit queasy, since the behaviour of a single struct can't be predicted.
+    (test-case "CONTROVERSIAL! foreign-key behaviour under update of dependent struct"
+      (let* ([jon      (save! (make-person/defaults #:name "Jon"))]
+             [bob      (save! (make-person/defaults #:name "Bob"))]
+             [garfield (save! (make-pet/defaults #:name "Garfield" #:owner jon))])
+        (check-equal? jon (pet-owner garfield))
+        (let ([garf2 (save! (pet-set garfield #:owner bob))])
+          (check-equal? jon (pet-owner garfield) "original struct should be unchanged")
+          (check-equal? bob (pet-owner garf2)    "updated struct should reflect change in database")))))
   
   
   
