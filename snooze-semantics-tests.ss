@@ -6,6 +6,12 @@
          (planet untyped/snooze:3)
          (planet untyped/snooze:3/postgresql8/postgresql8))
 
+; This file contains a quick, self-contained setup for Snooze3
+; The aim is to define the behaviour presented to the programmer,
+; such that a quick-start guide can be generated easily, with
+; the semantics of Snooze tightly defined in all circumstances.
+; Contentious semantics are denoted with CONTROVERSIAL!
+
 ; Database creation and configuration ------------
 (define my-db (make-postgresql8-database #:database "mydb" #:username "myuser"))
 (current-snooze (make-snooze my-db))
@@ -195,25 +201,45 @@
              [garfield (make-pet/defaults #:name "Garfield" #:owner jon)])
         (check-equal?  jon (pet-owner garfield))
         (check-not-eq? jon (pet-owner garfield))))
+    
     (test-case "foreign-key accessors return the snooze-struct referenced (saved independent structs)"
       (let* ([jon      (save! (make-person/defaults #:name "Jon"))]
              [garfield (make-pet/defaults #:name "Garfield" #:owner jon)])
         (check-equal?  jon (pet-owner garfield))
         (check-not-eq? jon (pet-owner garfield))))
+    
     (test-case "foreign-key accessors return the snooze-struct referenced (saved independent/dependent structs)"
       (let* ([jon      (save! (make-person/defaults #:name "Jon"))]
              [garfield (save! (make-pet/defaults #:name "Garfield" #:owner jon))])
         (check-equal?  jon (pet-owner garfield))
         (check-not-eq? jon (pet-owner garfield))))
-    #;(test-case "foreign-key accessors retain references after update"
-        (let* ([jon      (save! (make-person/defaults #:name "Jon"))]
+    
+    ; CONTROVERSIAL!
+    ; This is the "uniquing" case, where dereferencing a foreign-key always gets the database state.
+    ; The alternative is to have the foreign-key reference "fixed" the first time it is dereferenced,
+    ; with subsequent dereferences always returning the same struct.
+    (test-case "CONTROVERSIAL!: foreign-key accessors retain references after update"
+      ; Uniquing
+      (let* ([jon      (save! (make-person/defaults #:name "Jon"))]
+             [garfield (save! (make-pet/defaults #:name "Garfield" #:owner jon))])
+        (check-equal? jon (pet-owner garfield))
+        (let ([bob (save! (person-set jon #:name "Bob"))])
+          (check-equal? bob (pet-owner garfield))))
+      ; The alternative: fixed dereferencing
+      #;(let* ([jon      (save! (make-person/defaults #:name "Jon"))]
                [garfield (save! (make-pet/defaults #:name "Garfield" #:owner jon))])
-          (check-equal?  jon (pet-owner garfield))
-          (check-not-eq? jon (pet-owner garfield))
+          (check-equal? jon (pet-owner garfield))
           (let ([bob (save! (person-set jon #:name "Bob"))])
-            (check-equal?     jon (pet-owner garfield))
-            (check-not-eq?    jon (pet-owner garfield))
-            (check-not-equal? bob (pet-owner garfield))))))
+            (check-equal? jon (pet-owner garfield)))))
+    
+    (test-case "foreign-key behaviour under update of dependent struct"
+      (let* ([jon      (save! (make-person/defaults #:name "Jon"))]
+             [bob      (save! (make-person/defaults #:name "Bob"))]
+             [garfield (save! (make-pet/defaults #:name "Garfield" #:owner jon))])
+        (check-equal? jon (pet-owner garfield))
+        (let ([garf2 (save! (pet-set garfield #:owner bob))])
+          (check-equal? jon (pet-owner garfield) "original struct should be unchanged")
+          (check-equal? bob (pet-owner garf2)    "updated struct should reflect change.")))))
   
   
   
