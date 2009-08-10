@@ -189,7 +189,9 @@
                                   (escape-sql-name (entity-table-name entity))
                                   (guid-id guid)))])
         (unless (equal? actual expected)
-          (error (format "revision mismatch: database ~a, struct ~a" actual expected)))))
+          (raise-exn exn:fail:snooze:revision
+            (format "revision mismatch: database ~a, struct ~a" actual expected)
+            guid))))
     
     ; (listof vanilla-guid) -> (listof local-guid)
     (define/public (direct-find conn guids)
