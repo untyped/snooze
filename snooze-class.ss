@@ -140,7 +140,7 @@
     ; guid -> guid
     (define/public (delete! guid)
       (unless (snooze-struct-saved? guid)
-        (raise-exn exn:fail:snooze "unsaved structs cannot be deleted"))
+        (raise-exn exn:fail:snooze (format "unsaved structs cannot be deleted ~a" guid)))
       (auto-connect)
       (parameterize ([currently-deleting guid])
         (let ([entity (guid-entity guid)]
