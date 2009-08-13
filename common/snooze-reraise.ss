@@ -10,8 +10,8 @@
   (syntax-case stx ()
     [(_ (exn-pred message) expr ...)
      #'(with-handlers
-           ([exn-pred (lambda (exn)
-                        (reraise-exn exn exn:fail:snooze message))])
+           ([exn:fail:snooze? (lambda (exn) (raise exn))]
+            [exn-pred         (lambda (exn) (reraise-exn exn exn:fail:snooze message))])
          expr ...)]))
 
 ; Provide statements -----------------------------
