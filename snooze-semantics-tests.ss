@@ -95,6 +95,31 @@
         (check-not-exn (cut delete! garfield))
         (check-not-exn (cut delete! jon)))))
   
+  (test-suite "snooze-struct-saved?"
+    
+    (test-case "returns #f for unsaved structs"
+      (check-false (snooze-struct-saved? (make-person/defaults #:name "Jon"))))
+    
+    (test-case "returns #t for saved structs"
+      (let ([jon (save! (make-person/defaults #:name "Jon"))])
+        (after (check-pred snooze-struct-saved? jon)
+               (delete! jon))))
+    
+    (test-case "returns #f for deleted structs"
+      (let ([jon (save! (make-person/defaults #:name "Jon"))])
+        (after (check-pred snooze-struct-saved? jon)
+               (delete! jon))
+        (check-false (snooze-struct-saved? jon))))
+    
+    ; CONTROVERSIAL? we should have some kind of "snooze-struct-on-database?" predicate, too
+    (test-case "CONTROVERSIAL! returns #f for copies of deleted structs"
+      (let* ([jon (save! (make-person/defaults #:name "Jon"))]
+             [bob (person-set jon #:name "Bob")])
+        (after (check-pred snooze-struct-saved? jon)
+               (delete! jon))
+        (check-false (snooze-struct-saved? jon))
+        (check-false (snooze-struct-saved? bob)))))
+  
   
   
   
@@ -145,6 +170,7 @@
              [sam (person-set jon #:name "Sam")])
         (check-not-exn (cut save! bob))
         (check-exn exn:fail:snooze? (cut save! sam))))
+    
     
     
     
