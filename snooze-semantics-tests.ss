@@ -48,6 +48,30 @@
 (define/provide-test-suite snooze-semantics-tests
   (recreate-tables)
   
+  (test-suite "snooze-struct-saved?"
+    (test-case "returns #f for unsaved snooze-structs"
+      (check-false (snooze-struct-saved? (make-person/defaults #:name "Jon"))))
+    
+    (test-case "returns #t for saved snooze-structs"
+      (let ([jon (save! (make-person/defaults #:name "Jon"))])
+        (check-pred snooze-struct-saved? jon)
+        (delete! jon)))
+    
+    (test-case "returns #f for deleted snooze-structs"
+      (let ([jon (save! (make-person/defaults #:name "Jon"))])
+        (check-pred snooze-struct-saved? jon)
+        (delete! jon)
+        (check-false (snooze-struct-saved? jon))))
+    
+    ; CONTROVERSIAL? we should have some kind of "snooze-struct-on-database?" predicate, too
+    #;(test-case "CONTROVERSIAL! returns #f for copies of deleted snooze-structs"
+        (let* ([jon (save! (make-person/defaults #:name "Jon"))]
+               [bob (person-set jon #:name "Bob")])
+          (check-pred snooze-struct-saved? jon)
+          (delete! jon)
+          (check-false (snooze-struct-saved? jon))
+          (check-false (snooze-struct-saved? bob)))))
+  
   (test-suite "creating and deleting snooze-structs"
     (test-case "creating an unsaved snooze-struct"
       (let ([unsaved-struct (make-person/defaults #:name "Jon")])
@@ -95,30 +119,65 @@
         (check-not-exn (cut delete! garfield))
         (check-not-exn (cut delete! jon)))))
   
-  (test-suite "snooze-struct-saved?"
+  
+  
+  (test-suite "post-save! and post-delete! queries"
+    (test-case "save! several structs, run a query, same results expected"
+      (recreate-tables)
+      (let ([jon1 (save! (make-person/defaults #:name "Jon"))]
+            [jon2 (save! (make-person/defaults #:name "Jon"))]
+            [jon3 (save! (make-person/defaults #:name "Jon"))]
+            [jon4 (save! (make-person/defaults #:name "Jon"))]
+            [jon5 (save! (make-person/defaults #:name "Jon"))])
+        (let ([jons (select-all #:from person #:where (= person.name "Jon"))])
+          (check-true (= 5 (length jons)))
+          (for ([pers (in-list jons)])
+            (check-equal? (person-name pers) "Jon")))))
     
-    (test-case "returns #f for unsaved structs"
-      (check-false (snooze-struct-saved? (make-person/defaults #:name "Jon"))))
+    (test-case "save! several structs, run a query, update saved struct, re-run query: different results expected"
+      (recreate-tables)
+      (let ([jon1 (save! (make-person/defaults #:name "Jon"))]
+            [jon2 (save! (make-person/defaults #:name "Jon"))]
+            [jon3 (save! (make-person/defaults #:name "Jon"))]
+            [jon4 (save! (make-person/defaults #:name "Jon"))]
+            [jon5 (save! (make-person/defaults #:name "Jon"))])
+        (let ([jons (select-all #:from person #:where (= person.name "Jon"))])
+          (check-true (= 5 (length jons)))
+          (for ([pers (in-list jons)])
+            (check-equal? (person-name pers) "Jon")))
+        ; rename one to "Bob"
+        (let ([bob (save! (person-set jon5 #:name "Bob"))])
+          (let ([jons (select-all #:from person #:where (= person.name "Jon"))])
+            (check-true (= 4 (length jons)))
+            (for ([pers (in-list jons)])
+              (check-equal? (person-name pers) "Jon")))
+          (let ([bobs (select-all #:from person #:where (= person.name "Bob"))])
+            (check-true (= 1 (length bobs)))
+            (for ([pers (in-list bobs)])
+              (check-equal? (person-name pers) "Bob"))))))
     
-    (test-case "returns #t for saved structs"
-      (let ([jon (save! (make-person/defaults #:name "Jon"))])
-        (after (check-pred snooze-struct-saved? jon)
-               (delete! jon))))
-    
-    (test-case "returns #f for deleted structs"
-      (let ([jon (save! (make-person/defaults #:name "Jon"))])
-        (after (check-pred snooze-struct-saved? jon)
-               (delete! jon))
-        (check-false (snooze-struct-saved? jon))))
-    
-    ; CONTROVERSIAL? we should have some kind of "snooze-struct-on-database?" predicate, too
-    (test-case "CONTROVERSIAL! returns #f for copies of deleted structs"
-      (let* ([jon (save! (make-person/defaults #:name "Jon"))]
-             [bob (person-set jon #:name "Bob")])
-        (after (check-pred snooze-struct-saved? jon)
-               (delete! jon))
-        (check-false (snooze-struct-saved? jon))
-        (check-false (snooze-struct-saved? bob)))))
+    (test-case "save! several structs, run a query, update saved struct, re-run query checks: different results expected"
+      (recreate-tables)
+      (let ([jon1 (save! (make-person/defaults #:name "Jon"))]
+            [jon2 (save! (make-person/defaults #:name "Jon"))]
+            [jon3 (save! (make-person/defaults #:name "Jon"))]
+            [jon4 (save! (make-person/defaults #:name "Jon"))]
+            [jon5 (save! (make-person/defaults #:name "Jon"))])
+        (let ([jons (select-all #:from person #:where (= person.name "Jon"))])
+          (check-true (= 5 (length jons)))
+          (for ([pers (in-list jons)])
+            (check-equal? (person-name pers) "Jon"))
+          ; modify and re-run same tests
+          (let ([bob (save! (person-set jon5 #:name "Bob"))])
+            ; re-run previous tests, to ensure jons are still jons (local GUIDs)
+            (check-true (= 5 (length jons)))
+            (for ([pers (in-list jons)])
+              (check-equal? (person-name pers) "Jon"))
+            ; similar tests for bobs
+            (let ([bobs (select-all #:from person #:where (= person.name "Bob"))])
+              (check-true (= 1 (length bobs)))
+              (for ([pers (in-list bobs)])
+                (check-equal? (person-name pers) "Bob"))))))))
   
   
   
@@ -241,22 +300,28 @@
         (check-not-eq? jon (pet-owner garfield))))
     
     ; CONTROVERSIAL!
-    ; This is the "uniquing" case, where dereferencing a foreign-key always gets the database state.
+    ; This is the "uniquing" or "interning" case, where dereferencing a foreign-key always gets the database state.
     ; The alternative is to have the foreign-key reference "fixed" the first time it is dereferenced,
     ; with subsequent dereferences always returning the same struct.
     (test-case "CONTROVERSIAL!: foreign-key accessors retain references after update"
+      (recreate-tables)
       ; Uniquing
       (let* ([jon      (save! (make-person/defaults #:name "Jon"))]
-             [garfield (save! (make-pet/defaults #:name "Garfield" #:owner jon))])
+             [garfield (save! (make-pet/defaults #:name "Garfield" #:owner jon))]) ; original owner
         (check-equal? jon (pet-owner garfield))
-        (let ([bob (save! (person-set jon #:name "Bob"))])
-          (check-equal? bob (pet-owner garfield))))
-      ; The alternative: fixed dereferencing
-      #;(let* ([jon      (save! (make-person/defaults #:name "Jon"))]
-               [garfield (save! (make-pet/defaults #:name "Garfield" #:owner jon))])
+        ; edit independent struct, but don't save
+        (let ([bob (person-set (person-set jon) #:name "Bob")])                    ; edit owner, don't save - UNCHANGED!
           (check-equal? jon (pet-owner garfield))
-          (let ([bob (save! (person-set jon #:name "Bob"))])
-            (check-equal? jon (pet-owner garfield)))))
+          (let ([saved-bob (save! bob)])                                           ; save updated owner - CHANGED!
+            (check-equal? saved-bob (pet-owner garfield)))))
+      ; The alternative: fixed dereferencing
+      #;(let* ([jon      (save! (make-person/defaults #:name "Jon"))] 
+               [garfield (save! (make-pet/defaults #:name "Garfield" #:owner jon))]) ; original owner
+          (check-equal? jon (pet-owner garfield))
+          (let ([bob (person-set (person-set jon) #:name "Bob")])                    ; edit owner, don't save - UNCHANGED!
+            (check-equal? jon (pet-owner garfield))
+            (let ([saved-bob (save! bob)])                                           ; save updated owner - UNCHANGED!
+              (check-equal? jon (pet-owner garfield))))))
     
     ; This one seems a little bizarre if uniquing is allowed. It implies that the behaviour
     ; of foreign-key dereferencing changes, when another copy of the same struct is saved.
@@ -269,20 +334,74 @@
         (check-equal? jon (pet-owner garfield))
         (let ([garf2 (save! (pet-set garfield #:owner bob))])
           (check-equal? jon (pet-owner garfield) "original struct should be unchanged")
-          (check-equal? bob (pet-owner garf2)    "updated struct should reflect change in database"))))
+          (check-equal? bob (pet-owner garf2)    "updated struct should reflect change in database")))
+      ; alternative
+      #;(let* ([jon      (save! (make-person/defaults #:name "Jon"))]
+               [bob      (save! (make-person/defaults #:name "Bob"))]
+               [garfield (save! (make-pet/defaults #:name "Garfield" #:owner jon))])
+          (check-equal? jon (pet-owner garfield))
+          (let ([garf2 (save! (pet-set garfield #:owner bob))])
+            (check-equal? bob (pet-owner garfield) "original struct should reflect change in database")
+            (check-equal? bob (pet-owner garf2)    "updated struct should reflect change in database")))))
+  
+  
+  
+  
+  (test-suite "functional update on cache"
+    ; [1] establish cache
+    ; [2] save some data into cache
+    ; [3] update and save data in cache -> cache'
+    ; [4] step back to original cache, and ensure data still correct and unchanged.
+    )
+  
+  
+  ; Thoughts on caching and transactions
+  ; A) Caching here refers to a functional hashtable mapping saved struct GUIDs to snooze-structs. Unsaved
+  ;    structs should not be stored in the cache; only saved structs should be present in the cache.
+  ;    Each time save! or delete! is called, a new functional hashtable is created.
+  ;    NOTE: save! and delete! should update the cache only, not the database, for thread safety.
+  ;          Database commission should only occur at the end of a transaction.
+  ; B) Foreign key references are stored as (U snooze-struct GUID), where:
+  ;     - snooze structs are used for unsaved structs (be they modified version of saved structs, or entirely new).
+  ;     - GUIDs are used when the struct is present in the cache.
+  ;    Since structs are immutable, "setting" foreign-key references involves copying the original struct,
+  ;    which is continuation safe.
+  ; C) The dereferencing a foreign-key will always yield the latest version of a struct, as defined in the cache.
+  ;    If the struct is not already in the cache, it will be fetched and cached.
+  ; D) To modify a saved struct, we first fetch it into the cache, then take a local copy, stored in a variable.
+  ;    Local copies do not enter the cache. To create a foreign-key reference from one struct to a local copy,
+  ;    we simply overwrite the foreign-key field with the local copy.
+  ; E) Saving a local copy (or unsaved struct) writes through to the cache.
+  ;    PROBLEM:
+  
+  (let* ([santa   (make-person/defaults #:name "Santa")]
+         [dasher  (make-pet/defaults #:name "Dasher"  #:owner santa)]
+         [prancer (make-pet/defaults #:name "Prancer" #:owner santa)]
+         [vixen   (make-pet/defaults #:name "Vixen"   #:owner santa)])
+    (save! santa) ; functional update on cache...
+    ; ... but what about those three references? Snooze needs to replace the references with the GUID,
+    ; but can't do this without mutating the three referring structs. This leaves inconsistency in that either:
+    ;   (i) the three struct FKs are not mutated, meaning that traversing them can yield inconsistent data;
+    ;  (ii) the three struct FKs are mutated, meaning lots of work for Snooze, and no continuation safety
+    ;
+    ; ================ THIS IS WHY WE INTRODUCED THE LOCAL->VANILLA INDIRECTION! =====================
+    ;
+    ; The aim was to retain struct immutability, transferring the mutation to the _cache_ 
+    ; This should preserve continuation safety on local variables, and facilitate easy update.
+    )
     
-    
-    ; This one seems a little bizarre if uniquing is allowed. It implies that the behaviour
-    ; of foreign-key dereferencing changes, when another copy of the same struct is saved.
-    ; This makes me feel a bit queasy, since the behaviour of a single struct can't be predicted.
-    (test-case "CONTROVERSIAL! foreign-key behaviour under update of dependent struct"
-      (let* ([jon      (save! (make-person/defaults #:name "Jon"))]
-             [bob      (save! (make-person/defaults #:name "Bob"))]
-             [garfield (save! (make-pet/defaults #:name "Garfield" #:owner jon))])
-        (check-equal? jon (pet-owner garfield))
-        (let ([garf2 (save! (pet-set garfield #:owner bob))])
-          (check-equal? jon (pet-owner garfield) "original struct should be unchanged")
-          (check-equal? bob (pet-owner garf2)    "updated struct should reflect change in database")))))
+  ; B) Caches must be established outside transactions. Functional treatment of the cache is of little use if
+  ;    it doesn't exist in between transactions. Perhaps an argument for "with-cache"? We did have this already, however...
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
   
   
