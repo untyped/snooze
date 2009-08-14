@@ -59,3 +59,5 @@
     (async-channel-put channel 'done))
   
   (void))
+
+(provide interleave)
