@@ -20,9 +20,9 @@
 (define-alias course2 course)
 (define-alias course3 course)
 
-; Helpers ----------------------------------------
-
-
+; These tables are used to test that columns are retrieved in the correct order:
+(define-entity order-test1 ([col-a integer] [col-b string]) #:table-name 'ordertest)
+(define-entity order-test2 ([col-b string] [col-a integer]) #:table-name 'ordertest)
 
 ; Tests ------------------------------------------
 
@@ -261,6 +261,30 @@
                                                           (= course.active? #f))
                                              #:order ((desc course.value)))))
                       #f))
+      
+      (test-case "order of columns : standard find"
+        (around (begin (create-table order-test1)
+                       (save! (make-order-test1 1 "x"))
+                       (save! (make-order-test1 2 "y"))
+                       (save! (make-order-test1 3 "z")))
+                (begin (cache-clear!)
+                       ; If the columns come out in the wrong order, we'll get a parse exn:
+                       (check-not-exn find-order-test2s))
+                (begin (drop-table order-test1))))
+      
+      (test-case "order of columns : direct find"
+        (let ([ids null])
+          (around (begin (create-table order-test1)
+                         (set! ids (map snooze-struct-id
+                                        (list (save! (make-order-test1 1 "x"))
+                                              (save! (make-order-test1 2 "y"))
+                                              (save! (make-order-test1 3 "z"))))))
+                  (begin (cache-clear!)
+                         ; If the columns come out in the wrong order, we'll get a parse exn:
+                         (check-not-exn
+                           (lambda ()
+                             (map (cut find-by-id order-test2 <>) ids))))
+                  (begin (drop-table order-test1)))))
       
       (test-case "expressions in #:what clause"
         (let ([close-enough?

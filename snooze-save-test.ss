@@ -183,10 +183,7 @@
         (for ([attr (in-list attrs)]
               [val1 (in-list vals1)]
               [val2 (in-list vals2)])
-          (check-equal?
-           val1 val2
-           (format "attribute failed: ~a"
-                   (attribute-name attr))))))))
+          (check-equal? val1 val2 (format "attribute failed: ~a" (attribute-name attr))))))))
 
 ; Provide statements -----------------------------
 

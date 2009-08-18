@@ -27,7 +27,10 @@
       (let* ([entity    (guid-entity (car guids))]
              [attrs     (entity-attributes entity)]
              [guid-type (attribute-type (car attrs))])
-        (format "SELECT * FROM ~a WHERE ~a IN (~a);"
+        (format "SELECT ~a FROM ~a WHERE ~a IN (~a);"
+                (string-join (for/list ([attr (in-list attrs)])
+                               (escape-sql-name (attribute-column-name attr)))
+                             ", ")
                 (escape-sql-name (entity-table-name entity))
                 (escape-sql-name (attribute-column-name (car attrs)))
                 (string-join (for/list ([guid (in-list guids)])
