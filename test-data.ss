@@ -8,6 +8,7 @@
 
 (define-entity person
   ([name     string])
+  #:order ((asc person.name))
   #:plural people
   #:pretty-formatter
   (lambda (person)

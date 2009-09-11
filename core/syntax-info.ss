@@ -21,6 +21,7 @@
    pretty-formatter-id
    defaults-constructor-id
    copy-constructor-id
+   natural-order-id
    guid-id
    guid-constructor-id
    guid-predicate-id
