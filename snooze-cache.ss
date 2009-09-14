@@ -42,9 +42,10 @@
     ; guid -> guid struct
     (define (vanilla+struct-ref guid)
       (let ([vanilla+struct (dict-ref data guid #f)])
-        (and vanilla+struct
-             (values (car vanilla+struct)
-                     (cdr vanilla+struct)))))
+        (if vanilla+struct
+            (values (car vanilla+struct)
+                    (cdr vanilla+struct))
+            (values #f #f))))
     
     ; snooze-struct (U interned-vanilla-guid #f) -> local-guid
     ; Returns a cached local guid pointing to the supplied struct / vanilla guid.
