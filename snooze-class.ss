@@ -77,29 +77,23 @@
         (send database disconnect (thread-cell-ref current-connection-cell))
         (thread-cell-set! current-connection-cell #f)))
     
-    ; -> void
-    (define (auto-connect)
-      (connect))
-    
     ; -> connection
     ;
     ; Returns the current database connection One connection is stored per thread.
     ; If the thread is suspended or killed, the connection is disconnected and set to #f.
     (define/public (current-connection)
-      (define conn (thread-cell-ref current-connection-cell))
-      (if conn
-          conn
+      (or (thread-cell-ref current-connection-cell)
           (raise-exn exn:fail:snooze
             "No database connection: use call-with-connection to set one up.")))
     
     ; entity -> void
     (define/public (create-table entity)
-      (auto-connect)
+      (connect)
       (send database create-table (current-connection) entity))
     
     ; entity -> void
     (define/public (drop-table entity)
-      (auto-connect)
+      (connect)
       (send database drop-table (current-connection) entity))
     
     ; persistent-struct -> persistent-struct
@@ -110,7 +104,7 @@
       (define revision (struct-revision struct))
       ; entity
       (define entity (struct-entity struct))
-      (auto-connect)
+      (connect)
       (call-with-transaction
        (lambda ()
          (if id
@@ -146,7 +140,7 @@
       (define entity (struct-entity struct))
       ; (U integer #f)
       (define revision (struct-revision struct))
-      (auto-connect)
+      (connect)
       (if id
           (call-with-transaction
            (lambda ()
@@ -171,7 +165,7 @@
       (define id (struct-id struct))
       ; entity
       (define entity (struct-entity struct))
-      (auto-connect)
+      (connect)
       (call-with-pipeline pipeline
                           (cut send database insert-record/id <> <>)
                           (current-connection)
@@ -184,7 +178,7 @@
       (define id (struct-id struct))
       ; entity
       (define entity (struct-entity struct))
-      (auto-connect)
+      (connect)
       (call-with-pipeline pipeline
                           (cut send database update-record <> <>)
                           (current-connection)
@@ -199,7 +193,7 @@
       (define entity (struct-entity struct))
       ; (U integer #f)
       (define revision (struct-revision struct))
-      (auto-connect)
+      (connect)
       (call-with-pipeline pipeline
                           (lambda (conn struct)
                             (send database delete-record (current-connection) (struct-guid struct)))
@@ -218,7 +212,7 @@
     
     ; select -> result-generator
     (define/public (g:find select)
-      (auto-connect)
+      (connect)
       (send database g:find (current-connection) select))
     
     ; thunk any ... -> any
@@ -240,22 +234,22 @@
     ; The extra arguments are passed to the transaction pipeline (if it is present)
     ; but *not* to the body thunk.
     (define/public (call-with-transaction body . metadata-args)
+      (connect)
       ; connection
-      (define conn (current-connection))
-      (auto-connect)
-      ; Main procedure body:
-      (if (send database transaction-allowed? conn)
-          (call-with-transaction-frame 
-           (cut send database call-with-transaction
-                conn
-                (lambda ()
-                  (apply call-with-pipeline
-                         (get-transaction-pipeline)
-                         ; Don't pass the pipeline arguments to the body thunk:
-                         (lambda args (body))
-                         conn
-                         metadata-args))))
-          (body)))
+      (let ([conn (current-connection)])
+        ; Main procedure body:
+        (if (send database transaction-allowed? conn)
+            (call-with-transaction-frame 
+             (cut send database call-with-transaction
+                  conn
+                  (lambda ()
+                    (apply call-with-pipeline
+                           (get-transaction-pipeline)
+                           ; Don't pass the pipeline arguments to the body thunk:
+                           (lambda args (body))
+                           conn
+                           metadata-args))))
+            (body))))
     
     ; entity (U integer #f) -> (U persistent-struct #f)
     (define/public (find-by-id entity id)
@@ -272,12 +266,12 @@
     
     ; -> (listof symbol)
     (define/public (table-names)
-      (auto-connect)
+      (connect)
       (send database table-names (current-connection)))
     
     ; (U symbol entity) -> boolean
     (define/public (table-exists? table)
-      (auto-connect)
+      (connect)
       (send database table-exists? (current-connection) table))
     
     ; query -> string
