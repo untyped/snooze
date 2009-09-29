@@ -5,11 +5,11 @@
 (require scheme/string
          (unlib-in enumeration)
          "../common/connection.ss"
-         "cached-struct.ss"
          "check.ss"
          "check-annotation.ss"
          "check-result.ss"
          "check-syntax.ss"
+         "snooze-struct.ss"
          (except-in "struct.ss"
                     make-check-success
                     make-check-problem
@@ -47,8 +47,7 @@
             [(guid-type? type)
              (let ([entity (guid-type-entity type)])
                (if (and (guid? val) (eq? (guid-entity val) entity))
-                   (cond [(not (currently-saving))   (check-pass)]
-                         [(snooze-struct-saved? val) (check-pass)]
+                   (cond [(snooze-struct-saved? val) (check-pass)]
                          [else (check-fail (format "~a: related record unsaved." (string-titlecase (attribute-pretty-name attr))))])
                    (let ([name (string-titlecase (entity-pretty-name entity))])
                      (check-fail (format "~a: must be~a~a."

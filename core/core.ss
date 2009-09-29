@@ -2,8 +2,7 @@
 
 (require "../base.ss")
 
-(require "cached-struct.ss"
-         "check.ss"
+(require "check.ss"
          "check-annotation.ss"
          "check-default.ss"
          "check-result.ss"
@@ -25,8 +24,7 @@
 
 ; Provide statements ---------------------------
 
-(provide (all-from-out "cached-struct.ss"
-                       "check.ss"
+(provide (all-from-out "check.ss"
                        "check-annotation.ss"
                        "check-default.ss"
                        "check-result.ss"

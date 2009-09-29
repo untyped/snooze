@@ -100,8 +100,6 @@
      0                          ; number of auto-value fields
      (void)                     ; values for auto-value fields
      (list* (cons prop:entity entity)
-            (cons prop:custom-write snooze-struct-custom-write)
-            (cons prop:equal+hash snooze-struct-equal+hash)
             properties)         ; properties
      #f))                       ; inspector-or-#f
   
@@ -134,21 +132,15 @@
                       [default-maker (in-list attr-defaults)])
              (create-attribute name col pretty pretty-plural type entity index default-maker struct-accessor struct-mutator))))
   
-  ; vanilla-guid revision any ... -> guid
-  (define cached-constructor
-    (make-cached-constructor
-     entity
-     (symbol-append 'make- name)
-     struct-constructor
-     (length attributes)))
+  ; guid revision any ... -> guid
+  (define constructor struct-constructor)
   
   ; any ... -> guid
-  (define (public-constructor #:snooze [snooze (current-snooze)]. args)
-    (apply cached-constructor #:snooze snooze #f #f args))
+  (define (public-constructor . args)
+    (apply constructor (entity-make-temporary-guid entity) #f args))
   
   ; any -> boolean
-  (define cached-predicate
-    (make-cached-predicate struct-predicate))
+  (define predicate struct-predicate)
   
   ; Patch the entity:
   (set-entity-struct-type! entity struct-type)
@@ -156,15 +148,15 @@
   (set-entity-private-predicate!   entity struct-predicate)
   (set-entity-private-accessor!    entity struct-accessor)
   (set-entity-private-mutator!     entity struct-mutator)
-  (set-entity-cached-constructor!  entity cached-constructor)
-  (set-entity-cached-predicate!    entity cached-predicate)
+  (set-entity-constructor!         entity constructor)
+  (set-entity-predicate!           entity predicate)
   (set-entity-attributes!          entity attributes)
   (set-entity-save-check!          entity (or save-check   default-check-snooze-struct))
   (set-entity-delete-check!        entity (or delete-check default-check-old-snooze-struct))
   (set-entity-on-save!             entity (or on-save      (make-default-save-hook    entity)))
   (set-entity-on-delete!           entity (or on-delete    (make-default-delete-hook  entity)))
   
-  (values entity struct-type public-constructor cached-predicate))
+  (values entity struct-type public-constructor predicate))
 
 ; Helpers ----------------------------------------
 
@@ -180,90 +172,30 @@
 (define (create-attribute name col pretty pretty-plural type entity index default-maker struct-accessor struct-mutator)
   (let* ([private-accessor (make-struct-field-accessor struct-accessor index name)]
          [private-mutator  (make-struct-field-mutator  struct-mutator index name)]
-         [cached-accessor  (make-cached-accessor private-accessor)]
-         [cached-mutator   (make-cached-mutator  private-mutator)])
+         [accessor         (make-accessor private-accessor)]
+         [mutator          private-mutator])
     (make-attribute name col pretty pretty-plural
                     type entity index
                     default-maker
                     private-accessor
                     private-mutator
-                    cached-accessor
-                    cached-mutator)))
-
-; snooze-struct output-port boolean -> void
-(define (snooze-struct-custom-write struct out write?)
-  (parameterize ([in-cache-code? #t])
-    (let* ([show   (if write? write display)]
-           [entity (snooze-struct-entity struct)]
-           [vals   (snooze-struct-ref* struct)]
-           [guid   (car vals)]
-           [rev    (cadr vals)])
-      (display (apply vector
-                      (symbol-append 'struct: (entity-name entity))
-                      (and guid (guid-id guid))
-                      rev
-                      (cddr vals))
-               out))))
-
-; (listof procedure)
-(define snooze-struct-equal+hash
-  (list (lambda (struct1 struct2 same?)
-          (let* ([vec1  (struct->vector struct1)]
-                 [vec2  (struct->vector struct2)]
-                 [type1 (vector-ref vec1 0)]
-                 [type2 (vector-ref vec2 0)]
-                 [guid1 (vector-ref vec1 1)]
-                 [guid2 (vector-ref vec2 1)])
-            (and (same? type1 type2)
-                 (same? (and guid1 (guid-id guid1))
-                        (and guid2 (guid-id guid2)))
-                 (for/and ([item1 (in-vector vec1 2)]
-                           [item2 (in-vector vec2 2)])
-                   (same? item1 item2)))))
-        (lambda (struct recur)
-          (recur struct))
-        (lambda (struct recur)
-          (recur struct))))
-
-; entity symbol (any ... -> snooze-struct) natural -> ([#:snooze snooze<%>] any ... -> guid)
-;
-; The returned constructor has the same number of arguments as (entity-private-constructor entity):
-; it takes a guid and revision as well as regular data attributes.
-(define (make-cached-constructor
-         entity
-         procedure-name
-         struct-constructor
-         expected-arity)
-  (lambda (#:snooze [snooze (current-snooze)] . args)
-    (let ([cache (send snooze get-current-cache)])
-      (unless (= (length args) expected-arity)
-        (raise-exn exn:fail:contract
-          (format "~a: expected ~a non-keyword argument(s), received ~s"
-                  procedure-name
-                  expected-arity
-                  args)))
-      (send cache add-copied-struct! (apply struct-constructor args)))))
-
-; (any -> boolean) -> (any -> boolean)
-(define (make-cached-predicate struct-predicate)
-  (lambda (guid)
-    (and (guid? guid)
-         (struct-predicate (guid-ref guid)))))
+                    accessor
+                    mutator)))
 
 ; (struct -> any) -> (guid -> any)
-(define (make-cached-accessor struct-accessor)
-  (lambda (guid)
-    (let ([ans (struct-accessor (guid-ref guid))])
+(define (make-accessor struct-accessor)
+  (lambda (struct)
+    (let ([ans (struct-accessor struct)])
       (if (guid? ans)
-          (send (guid-snooze ans) find-by-guid ans)
+          (send (current-snooze) find-by-guid ans)
           ans))))
 
-; (struct any -> void) -> (guid any -> void)
-(define (make-cached-mutator struct-mutator)
-  (lambda (guid val)
-    (struct-mutator (guid-ref guid) val)))
-
 ; Provide statements -----------------------------
+
+(define snooze-struct-property-list/c
+  (listof (cons/c (and/c struct-type-property?
+                         (not/c (cut eq? <> prop:entity)))
+                  any/c)))
 
 (provide/contract
  [rename create-entity make-entity
@@ -282,11 +214,7 @@
                             #:attr-pretty-names-plural (listof string?)
                             #:on-save                  procedure?
                             #:on-delete                procedure?
-                            #:properties               (listof (cons/c
-                                                                (and/c struct-type-property?
-                                                                       (not/c (cut eq? <> prop:entity))
-                                                                       (not/c (cut eq? <> prop:equal+hash)))
-                                                                any/c))
+                            #:properties               snooze-struct-property-list/c
                             #:pretty-formatter         procedure?)
               (values entity?
                       struct-type?

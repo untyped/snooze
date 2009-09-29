@@ -14,10 +14,9 @@
          scheme/serialize
          "../sql/sql.ss"
          (except-in "struct.ss" make-entity)
-         "cached-struct.ss"
          "entity.ss"
          "pretty.ss"
-         (prefix-in real: "snooze-struct.ss")
+         "snooze-struct.ss"
          "syntax-info.ss"
          (prefix-in sql: "../sql/sql-lang.ss"))
 
@@ -42,8 +41,6 @@
   
   (define id-accessor-stx #f)             ; person-id
   (define saved-predicate-stx #f)         ; person-saved?
-  (define vanilla-predicate-stx #f)       ; person-vanilla?
-  (define local-predicate-stx #f)         ; person-local?
   (define pretty-formatter-stx #f)        ; format-person
   (define defaults-constructor-stx #f)    ; make-person/defaults
   (define copy-constructor-stx #f)        ; person-set
@@ -82,8 +79,6 @@
               (set! entity-guid-predicate-stx   (make-id #'name 'guid: #'name '?))
               (set! id-accessor-stx             (make-id #'name #'name '-id))
               (set! saved-predicate-stx         (make-id #'name #'name '-saved?))
-              (set! vanilla-predicate-stx       (make-id #'name #'name '-vanilla?))
-              (set! local-predicate-stx         (make-id #'name #'name '-local?))
               (set! pretty-formatter-stx        (make-id #'name 'format- #'name))
               (set! defaults-constructor-stx    (make-id #'name 'make- #'name '/defaults))
               (set! copy-constructor-stx        (make-id #'name #'name '-set))
@@ -252,8 +247,6 @@
                   
                   [id-accessor              id-accessor-stx]
                   [saved-predicate          saved-predicate-stx]
-                  [vanilla-predicate        vanilla-predicate-stx]
-                  [local-predicate          local-predicate-stx]
                   [pretty-formatter         pretty-formatter-stx]
                   [defaults-constructor     defaults-constructor-stx]
                   [copy-constructor         copy-constructor-stx]
@@ -311,7 +304,7 @@
                                       (syntax/loc entity-id-stx
                                         (list (cons prop:serializable
                                                     (make-serialize-info
-                                                     (lambda (struct) (list->vector (real:snooze-struct-ref* struct)))
+                                                     (lambda (struct) (list->vector (snooze-struct-ref* struct)))
                                                      (quote-syntax deserialize-info)
                                                      #t
                                                      (or (current-load-relative-directory) (current-directory))))
@@ -326,38 +319,41 @@
                  (apply values (entity-attributes entity-private)))
                
                (define-values (guid-accessor revision-accessor accessor ...)
-                 (apply values (map attribute-cached-accessor (entity-attributes entity-private))))
+                 (apply values (map attribute-accessor (entity-attributes entity-private))))
                
                (define-values (revision-mutator mutator ...)
-                 (apply values (map attribute-cached-mutator (cdr (entity-attributes entity-private)))))
+                 (apply values (map attribute-mutator (cdr (entity-attributes entity-private)))))
                
                (define id-accessor snooze-struct-id)
                (define saved-predicate snooze-struct-saved?)
-               (define vanilla-predicate guid-vanilla?)
-               (define local-predicate guid-local?)
                (define pretty-formatter format-snooze-struct)
                
                (define (defaults-constructor
-                         #:snooze   [snooze   (current-snooze)]
                          #,@(append-map (lambda (kw attr name)
                                           (list kw #`[#,name (attribute-default #:snooze snooze #,attr)]))
                                         (syntax->list #'(attr-kw ...))
                                         (syntax->list #'(attr-private ...))
                                         (syntax->list #'(attr ...))))
-                 ((entity-cached-constructor entity-private) #:snooze snooze #f #f attr ...))
+                 ((entity-constructor entity-private)
+                  (entity-make-temporary-guid entity-private)
+                  #f
+                  attr
+                  ...))
                
                (define (copy-constructor
                         original
-                        #:snooze   [snooze   (guid-snooze original)]
                         #,@(append-map (lambda (kw accessor name)
                                          (list kw #`[#,name (#,accessor original)]))
                                        (syntax->list #'(attr-kw ...))
                                        (syntax->list #'(accessor ...))
                                        (syntax->list #'(attr ...))))
                  (let* ([struct   (guid-ref original)]
-                        [guid     (real:snooze-struct-guid struct)]
-                        [revision (real:snooze-struct-revision struct)])
-                   ((entity-cached-constructor entity-private) #:snooze snooze guid revision attr ...)))
+                        [guid     (snooze-struct-guid struct)]
+                        [revision (snooze-struct-revision struct)])
+                   ((entity-constructor entity-private)
+                    guid
+                    revision
+                    attr ...)))
                
                #,(if (eq? (syntax-local-context) 'module)
                      (syntax/loc entity-id-stx
@@ -418,7 +414,6 @@
                      (certify #'predicate)
                      (certify #'id-accessor)
                      (certify #'saved-predicate)
-                     (certify #'vanilla-predicate)
                      (certify #'local-predicate)
                      (certify #'pretty-formatter)
                      (certify #'defaults-constructor)

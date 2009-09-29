@@ -86,9 +86,9 @@
     (test-case "entity-guid-constructor"
       (check-pred procedure? (entity-guid-constructor person)))
     
-    (test-case "entity-cached-constructor"
+    (test-case "entity-constructor"
       ; see cache-test.ss for more tests
-      (check-pred procedure? (entity-cached-constructor person)))
+      (check-pred procedure? (entity-constructor person)))
     
     (test-case "entity-private-predicate"
       (check-pred procedure? (entity-private-predicate person))
@@ -98,9 +98,8 @@
                    #f
                    "Dave")))
     
-    (test-case "entity-cached-predicate"
-      ; see cache-test.ss for more tests
-      (check-pred procedure? (entity-cached-predicate person)))
+    (test-case "entity-predicate"
+      (check-pred procedure? (entity-predicate person)))
     
     (test-case "entity-guid-constructor"
       (check-pred procedure? (entity-guid-constructor person)))
@@ -159,7 +158,7 @@
               (attribute-column-name attr)
               (attribute-index attr)
               (procedure? (attribute-private-accessor attr))
-              (procedure? (attribute-cached-accessor attr))
+              (procedure? (attribute-accessor attr))
               (attribute-type attr)))
       
       (define-check (check-attribute attr+name expected)

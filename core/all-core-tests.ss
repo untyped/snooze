@@ -1,7 +1,6 @@
 #lang scheme/base
   
 (require "../test-base.ss"
-         "cached-struct-test.ss"
          "check-annotation-test.ss"
          "check-result-test.ss"
          "check-test.ss"
@@ -17,7 +16,6 @@
   (test-suite "core"
     core-tests
     snooze-struct-tests
-    cached-struct-tests
     define-entity-tests
     pretty-tests
     check-result-tests

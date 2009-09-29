@@ -14,23 +14,20 @@
 ; (parameter (U snooze<%> #f))
 (define current-snooze (make-parameter #f))
 
-; (parameter (U guid #f))
-(define currently-saving   (make-parameter #f))
-(define currently-deleting (make-parameter #f))
-
 ; Guids ------------------------------------------
 
-; (struct snooze<%> integer)
-(define-serializable-struct guid
-  (id+serial snooze)
-  #:transparent
-  #:property
-  prop:custom-write
-  (lambda (guid out write?)
-    (define show (if write? write display))
-    (unless (guid? guid)
-      (raise-type-error 'guid.custom-write "guid" guid))
-    (show (vector (string->symbol (format "guid:~a" (guid-id+serial guid)))) out)))
+; (struct symbol (U natural symbol))
+(define-serializable-struct guid (id) #:transparent)
+
+; guid -> boolean
+(define (temporary-guid? guid)
+  (and (guid? guid)
+       (symbol? (guid-id guid))))
+
+; guid -> boolean
+(define (database-guid? guid)
+  (and (guid? guid)
+       (integer? (guid-id guid))))
 
 ; property
 ; guid -> boolean
@@ -38,70 +35,15 @@
 (define-values (prop:guid-entity-box guid-entity? guid-entity-box)
   (make-struct-type-property 'guid-entity-box))
 
-; guid -> guid
-(define (copy-guid guid)
-  (unless (guid? guid)
-    (raise-type-error 'copy-guid "guid" guid))
-  ((entity-guid-constructor (guid-entity guid))
-   (guid-id+serial guid)
-   (guid-snooze guid)))
-
-; guid -> (U integer #f)
-(define (guid-id guid)
-  (unless (guid? guid)
-    (raise-type-error 'guid-id "guid" guid))
-  (let ([id+serial (guid-id+serial guid)])
-    (and (number? id+serial)
-         id+serial)))
-
-; guid -> (U symbol #f)
-(define (guid-serial guid)
-  (unless (guid? guid)
-    (raise-type-error 'guid-serial "guid" guid))
-  (let ([id+serial (guid-id+serial guid)])
-    (and (symbol? id+serial)
-         id+serial)))
-
-; guid guid -> boolean
-(define (guid=? guid1 guid2)
-  (unless (guid? guid1) (raise-type-error 'guid=?-first-arg "guid" guid1))
-  (unless (guid? guid2) (raise-type-error 'guid=?-second-arg "guid" guid2))
-  (and (eq? (guid-id+serial guid1)
-            (guid-id+serial guid2))
-       (eq? (guid-entity guid1)
-            (guid-entity guid2))
-       (eq? (guid-snooze guid1)
-            (guid-snooze guid2))))
-
-; guid guid -> boolean
-(define (guid=?-hash-code guid)
-  (unless (guid? guid) (raise-type-error 'guid=?-hash-code "guid" guid))
-  (equal-hash-code
-   (list (guid-id+serial guid)
-         (entity-name (guid-entity guid))
-         (guid-snooze guid))))
-
-; guid -> boolean
-(define (guid-local? guid)
-  (and (guid-serial guid) #t))
-
-; guid -> boolean
-(define (guid-vanilla? guid)
-  (not (guid-serial guid)))
-
-; any -> boolean
-(define (local-guid? guid)
-  (and (guid? guid) (guid-local? guid)))
-
-; any -> boolean
-(define (vanilla-guid? guid)
-  (and (guid? guid) (guid-vanilla? guid)))
+; guid -> entity
+(define (guid-entity guid)
+  (unbox (guid-entity-box guid)))
 
 ; (_ id entity)
 (define-syntax (define-guid-type stx)
   (syntax-case stx ()
     [(_ id)
-     (with-syntax ([custom-write-id (make-id #f #'id '.custom-write)])
+     (with-syntax ([struct-id (make-id #f #'id '-guid)])
        #'(define-serializable-struct (id guid)
            ()
            #:transparent
@@ -111,90 +53,13 @@
            #:property
            prop:custom-write
            (lambda (guid out write?)
-             (unless (guid? guid)
-               (raise-type-error 'custom-write-id "guid" guid))
-             (let ([show   (if write? write display)]
-                   [struct (and (not (in-cache-code?))
-                                (guid? guid)
-                                (with-handlers ([exn? (lambda (exn) 'uncached)])
-                                  (guid-ref guid)))])
-               (parameterize ([in-cache-code? #t])
-                 (if (eq? struct 'uncached)
-                     (show (vector 'id 'uncached) out)
-                     (let* ([ans   (struct->vector struct)]
-                            [guid* (vector-ref ans 1)])
-                       (vector-set! ans 0 'id)
-                       (vector-set! ans 1 (list 'ext (and (guid? guid)  (guid-id+serial guid))
-                                                'int (and (guid? guid*) (guid-id+serial guid*))))
-                       (for ([i (in-range 2 (vector-length ans))])
-                         (let ([val (vector-ref ans i)])
-                           (when (guid? val)
-                             (vector-set! ans i (vector (string->symbol (format "guid:~a" (guid-id+serial val))))))))
-                       (show ans out))))))
-           #:property
-           prop:equal+hash
-           (list (lambda (guid1 guid2 same?)
-                   (let ([struct1 (guid-ref guid1)]
-                         [struct2 (guid-ref guid2)])
-                     (or (and (not struct1)
-                              (not struct2))
-                         (and struct1
-                              struct2
-                              (for/and ([a (in-vector (struct->vector (guid-ref guid1)))]
-                                        [b (in-vector (struct->vector (guid-ref guid2)))])
-                                (if (guid? a)
-                                    (if (guid? b)
-                                        (guid=? a b)
-                                        #f)
-                                    (if (guid? b)
-                                        #f
-                                        (same? a b))))))))
-                 (lambda (guid recur) (recur guid))
-                 (lambda (guid recur) (recur guid)))))]))
-
-; guid -> entity
-(define (guid-entity guid)
-  (unbox (guid-entity-box guid)))
-
-; guid -> snooze-struct
-(define (guid-ref guid)
-  (parameterize ([in-cache-code? #t])
-    (or (send (send (guid-snooze guid) get-current-cache) cache-ref/local guid)
-        (raise-exn exn:fail:snooze:cache
-          (format "guid not cached: ~s" guid)))))
-
-; Interning guids --------------------------------
-
-; (weak-custom-hashof guid (weak-box guid))
-(define interned-guids
-  (make-weak-custom-hash guid=? guid=?-hash-code))
-
-(define interned-guids-semaphore
-  (make-semaphore 1))
-
-; guid -> boolean
-(define (guid-interned? guid)
-  (let ([box (dict-ref interned-guids guid #f)])
-    (and box (eq? (weak-box-value box) guid))))
-
-; any -> boolean
-(define (interned-guid? guid)
-  (and (guid? guid)
-       (guid-interned? guid)))
+             ((if write? write display)
+              (vector 'struct-id (guid-id guid))
+              out))))]))
 
 ; guid -> guid
-(define (intern-guid guid)
-  (call-with-semaphore
-   interned-guids-semaphore
-   (lambda ()
-     (weak-box-value
-      (dict-ref interned-guids
-                guid
-                (lambda ()
-                  (let* ([guid (copy-guid guid)]
-                         [box  (make-weak-box guid)])
-                    (dict-set! interned-guids guid box)
-                    box)))))))
+(define (copy-guid guid)
+  ((entity-guid-constructor (guid-entity guid)) (guid-id guid)))
 
 ; Attribute types --------------------------------
 
@@ -246,7 +111,7 @@
   (if (equal? val (type-null type))
       (type-allows-null? type)
       (match type
-        [(struct guid-type (_ entity))     ((entity-cached-predicate entity) val)]
+        [(struct guid-type (_ entity))     ((entity-predicate entity) val)]
         [(? boolean-type?)                 (boolean? val)]
         [(struct integer-type (_ min max)) (and (integer? val)
                                                 (or (not min) (>= val min))
@@ -357,8 +222,8 @@
    private-predicate
    private-accessor
    private-mutator
-   cached-constructor
-   cached-predicate
+   constructor
+   predicate
    defaults-constructor
    copy-constructor
    guid-constructor
@@ -414,13 +279,13 @@
                  empty-check              ; validation
                  empty-check)))           ;
 
-; entity [#:snooze snooze] natural -> guid
-(define (entity-make-vanilla-guid #:snooze [snooze (current-snooze)] entity id)
-  ((entity-guid-constructor entity) id snooze))
+; entity natural -> guid
+(define (entity-make-guid entity id)
+  ((entity-guid-constructor entity) id))
 
-; entity [#:snooze snooze] -> guid
-(define (entity-make-local-guid #:snooze [snooze (current-snooze)] entity)
-  ((entity-guid-constructor entity) (gensym (entity-name entity)) snooze))
+; entity -> temporary-guid
+(define (entity-make-temporary-guid entity)
+  (entity-make-guid entity (gensym (entity-name entity))))
 
 ; entity any -> boolean
 (define (entity-guid? entity guid)
@@ -500,8 +365,8 @@
    default-maker
    private-accessor
    private-mutator
-   cached-accessor
-   cached-mutator)
+   accessor
+   mutator)
   #:transparent
   #:property
   prop:custom-write
@@ -511,9 +376,8 @@
              (attribute-name attribute))))
 
 ; type -> any
-(define (attribute-default attr #:snooze [snooze (current-snooze)])
-  (parameterize ([current-snooze snooze])
-    ((attribute-default-maker attr))))
+(define (attribute-default attr)
+  ((attribute-default-maker attr)))
 
 ; Snooze structs ---------------------------------
 
@@ -556,25 +420,13 @@
 
 (provide/contract
  [current-snooze                       (parameter/c (or/c (is-a?/c snooze<%>) #f))]
- [currently-saving                     (parameter/c (or/c guid? #f))]
- [currently-deleting                   (parameter/c (or/c guid? #f))]
  [guid?                                procedure?]
- [guid=?                               (-> guid? guid? boolean?)]
- [guid=?-hash-code                     (-> guid? number?)]
- [guid-local?                          (-> guid? boolean?)]
- [guid-vanilla?                        (-> guid? boolean?)]
- [local-guid?                          (-> any/c boolean?)]
- [vanilla-guid?                        (-> any/c boolean?)]
- [guid-snooze                          (-> guid? (is-a?/c snooze<%>))]
+ [temporary-guid?                      (-> any/c boolean?)]
+ [database-guid?                       (-> any/c boolean?)]
  [copy-guid                            (-> guid? guid?)]
- [guid-id                              (-> guid? (or/c natural-number/c #f))]
- [guid-serial                          (-> guid? (or/c symbol? #f))]
+ [guid-id                              (-> guid? (or/c natural-number/c symbol?))]
  [guid-entity-box                      (-> struct-type? box?)]
  [guid-entity                          (-> guid? entity?)]
- [guid-ref                             (-> guid? snooze-struct?)]
- [guid-interned?                       (-> guid? boolean?)]
- [interned-guid?                       (-> any/c boolean?)]
- [intern-guid                          (-> (and/c guid? (not/c guid-local?)) guid?)]
  [struct type                          ([allows-null? boolean?])]
  [struct (guid-type type)              ([allows-null? boolean?] [entity entity?])]
  [struct (boolean-type type)           ([allows-null? boolean?])]
@@ -626,14 +478,11 @@
                                         [private-predicate    procedure?]
                                         [private-accessor     procedure?]
                                         [private-mutator      procedure?]
-                                        [cached-constructor   procedure?]
-                                        [cached-predicate     procedure?]
+                                        [constructor          procedure?]
+                                        [predicate            procedure?]
                                         [defaults-constructor procedure?]
                                         [copy-constructor     procedure?]
-                                        [guid-constructor     (-> (or/c natural-number/c #f)
-                                                                  (or/c symbol? #f)
-                                                                  (is-a?/c snooze<%>)
-                                                                  guid?)]
+                                        [guid-constructor     (-> (or/c natural-number/c symbol?) guid?)]
                                         [guid-predicate       (-> any/c boolean?)]
                                         [attributes           (listof attribute?)]
                                         [default-alias        any/c]
@@ -650,15 +499,25 @@
                                            procedure?
                                            procedure?
                                            entity?)]
- [entity-make-vanilla-guid             (->* (entity? natural-number/c) (#:snooze (is-a?/c snooze<%>)) guid?)]
- [entity-make-local-guid               (->* (entity?) (#:snooze (is-a?/c snooze<%>)) guid?)]
+ [entity-make-guid                     (-> entity? (or/c natural-number/c symbol?) guid?)]
+ [entity-make-temporary-guid           (-> entity? temporary-guid?)]
  [entity-guid?                         (-> entity? any/c boolean?)]
  [entity-has-attribute?                (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-guid-attribute?               (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-attribute                     (-> entity? (or/c symbol? attribute?) attribute?)]
  [entity-data-attributes               (-> entity? (listof attribute?))]
- [wrap-entity-on-save!                 (-> entity? (-> (-> connection? guid? guid?) connection? guid? guid?) void?)]
- [wrap-entity-on-delete!               (-> entity? (-> (-> connection? guid? guid?) connection? guid? guid?) void?)]
+ [wrap-entity-on-save!                 (-> entity?
+                                           (-> (-> connection? guid? guid?)
+                                               connection?
+                                               guid?
+                                               guid?)
+                                           void?)]
+ [wrap-entity-on-delete!               (-> entity?
+                                           (-> (-> connection? guid? guid?)
+                                               connection?
+                                               guid?
+                                               guid?)
+                                           void?)]
  [struct attribute                     ([name                 symbol?]
                                         [column-name          symbol?]
                                         [pretty-name          string?]
@@ -669,9 +528,9 @@
                                         [default-maker        procedure?]
                                         [private-accessor     procedure?]
                                         [private-mutator      procedure?]
-                                        [cached-accessor      procedure?]
-                                        [cached-mutator       procedure?])]
- [attribute-default                    (->* (attribute?) (#:snooze (is-a?/c snooze<%>)) any/c)]
+                                        [accessor             procedure?]
+                                        [mutator              procedure?])]
+ [attribute-default                    (-> attribute? any/c)]
  [prop:entity                          struct-type-property?]
  [prop:entity-set?                     (-> any/c boolean?)]
  [prop:entity-ref                      (-> any/c entity?)]
