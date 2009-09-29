@@ -361,9 +361,7 @@
                                 (make-deserialize-info
                                  ; maker
                                  (lambda args
-                                   (let ([struct (apply (entity-private-constructor entity-private) args)])
-                                     (send (send (current-snooze) get-current-cache) cache-add! struct)
-                                     struct))
+                                   (apply (entity-private-constructor entity-private) args))
                                  ; cycle-maker
                                  (lambda ()
                                    (values defaults-constructor copy-constructor))))

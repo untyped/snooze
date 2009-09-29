@@ -16,19 +16,7 @@
          srfi/26
          (unlib-in debug exn time))
 
-; (parameter boolean)
-(define in-cache-code? (make-parameter #f))
-
 ; Logging --------------------------------------
-
-; logger
-(define cache-logger
-  (make-logger 'cache (current-logger)))
-
-; string [any] [log-level-symbol] -> void
-(define (log-cache message [data (void)] [level 'info])
-  #;(printf "log-cache ~a: ~a~n" level message)
-  (void))
 
 ; Exception types ------------------------------
 
@@ -43,9 +31,6 @@
 
 ; Raised when Snooze tries to roll back a non-existant transaction.
 (define-struct (exn:fail:snooze:transaction exn:fail:snooze) () #:transparent)
-
-; Raised when Snooze cannot retrieve data from the cache.
-(define-struct (exn:fail:snooze:cache exn:fail:snooze) () #:transparent)
 
 ; Raised when a struct cannot be saved/deleted because of failed checks.
 (define-struct (exn:fail:snooze:check exn:fail:snooze) (results) #:transparent)

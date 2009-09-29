@@ -50,9 +50,7 @@
     ; delete-guid
     
     ; connection (listof vanilla-guid) -> (listof interned-vanilla-guid)
-    ; Selects a number of similarly typed structs by guid, stores their
-    ; vanilla verisons in the cache and returns the interned guids needed
-    ; to access them.
+    ; Selects a number of similarly typed structs by guid.
     direct-find
     
     ; connection query -> (gen-> result)

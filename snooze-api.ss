@@ -10,10 +10,6 @@
 ; API procedures ---------------------------------
 
 ; (-> any) -> any
-(define (call-with-cache #:snooze [snooze (current-snooze)] thunk)
-  (send snooze call-with-cache thunk))
-
-; (-> any) -> any
 (define (call-with-connection #:snooze [snooze (current-snooze)] thunk)
   (send snooze call-with-connection thunk))
 
@@ -134,7 +130,6 @@
          with-transaction)
 
 (provide/contract
- [call-with-cache       (->* (procedure?) (#:snooze (is-a?/c snooze<%>)) any)]
  [call-with-connection  (->* (procedure?) (#:snooze (is-a?/c snooze<%>)) any)]
  [connect               (->* () (#:snooze (is-a?/c snooze<%>)) void?)]
  [disconnect            (->* () (#:snooze (is-a?/c snooze<%>)) void?)]

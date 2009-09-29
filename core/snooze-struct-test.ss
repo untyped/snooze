@@ -75,17 +75,13 @@
       (check-exn exn:fail? (cut snooze-struct-ref test-normal 'guid)))
     
     (test-case "snooze-struct-ref*"
-      (parameterize ([in-cache-code? #t])
-        (map (lambda (x y)
-               (if (or (guid? x) (guid? y))
-                   (check guid=? x y)
-                   (check-equal? x y)))
-             (snooze-struct-ref* test-pet)
-             (list (snooze-struct-guid test-pet)
-                   #f
-                   (snooze-struct-guid test-person)
-                   "Garfield"))
-        (check-exn exn:fail? (cut snooze-struct-ref* test-normal))))
+      (for ([actual   (in-list (snooze-struct-ref* test-pet))]
+            [expected (in-list (list (snooze-struct-guid test-pet)
+                                     #f
+                                     (snooze-struct-guid test-person)
+                                     "Garfield"))])
+        (check-equal? x y))
+      (check-exn exn:fail? (cut snooze-struct-ref* test-normal)))
     
     (test-case "snooze-struct-set"
       (let* ([test-person2      (snooze-struct-set test-person)]
@@ -100,16 +96,15 @@
                           (cdr (snooze-struct-ref* test-person3)))))
     
     (test-case "make-snooze-struct/defaults"
-      (parameterize ([in-cache-code? #t])
-        (check-equal? (snooze-struct-entity (make-snooze-struct/defaults person)) person)
-        (let ([test-person2 (make-snooze-struct/defaults person)]
-              [test-person3 (make-snooze-struct/defaults
-                             person
-                             (attr person guid)
-                             (entity-make-vanilla-guid person 321))])
-          (check-equal? (snooze-struct-id test-person)  123)
-          (check-equal? (snooze-struct-id test-person2) #f)
-          (check-equal? (snooze-struct-id test-person3) 321)))
+      (check-equal? (snooze-struct-entity (make-snooze-struct/defaults person)) person)
+      (let ([test-person2 (make-snooze-struct/defaults person)]
+            [test-person3 (make-snooze-struct/defaults
+                           person
+                           (attr person guid)
+                           (entity-make-vanilla-guid person 321))])
+        (check-equal? (snooze-struct-id test-person)  123)
+        (check-equal? (snooze-struct-id test-person2) #f)
+        (check-equal? (snooze-struct-id test-person3) 321)))
       
       ; Bad attribute/value arguments:
       (check-exn exn:fail:contract?

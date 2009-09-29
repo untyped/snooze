@@ -73,64 +73,53 @@
     ; Inserts a new database record for the supplied struct.
     (define/public (insert-struct conn old-struct)
       (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
-        (let* ([cache        (send (get-snooze) get-current-cache)]
-               [entity       (snooze-struct-entity old-struct)]
-               [guid-type    (attribute-type (car (entity-attributes entity)))]
-               [seq-name     (symbol-append (entity-table-name entity) '_seq)]
-               [guid         (snooze-struct-guid old-struct)]
-               [revision     (snooze-struct-revision old-struct)]
-               [new-struct   (apply (entity-private-constructor entity)
-                                    guid
-                                    (or revision 0)
-                                    (for/list ([val (in-list (cddr (snooze-struct-ref* old-struct)))])
-                                      (if (guid? val)
-                                          (send cache get-saveable-guid val)
-                                          val)))])
+        (let* ([entity       (snooze-struct-entity   old-struct)]
+               [guid         (snooze-struct-guid     old-struct)]
+               [revision     (snooze-struct-revision old-struct)])
           (send (connection-back-end conn) exec (insert-sql new-struct))
-          (let ([id (sqlite:insert (connection-back-end conn) (insert-sql new-struct))])
+          (let ([id (sqlite:insert (connection-back-end conn) (insert-sql old-struct))])
             (apply (entity-private-constructor entity)
-                   (parse-value guid-type id)
-                   (cdr (snooze-struct-ref* new-struct)))))))
+                   (entity-make-guid entity id)
+                   (or revision 0)
+                   (for/list ([val (in-list (cddr (snooze-struct-ref* old-struct)))])
+                     (if (snooze-struct? val)
+                         (snooze-struct-guid val)
+                         val)))))))
     
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Updates the existing database record for the supplied struct.
     (define/public (update-struct conn old-struct [check-revision? #t])
       (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
-        (let ([cache    (send (get-snooze) get-current-cache)]
-              [entity   (snooze-struct-entity old-struct)]
-              [guid     (snooze-struct-guid old-struct)]
+        (let ([entity   (snooze-struct-entity   old-struct)]
+              [guid     (snooze-struct-guid     old-struct)]
               [revision (snooze-struct-revision old-struct)])
-          (when check-revision?
-            (check-revision conn entity guid revision))
-          (let ([new-struct (apply (entity-private-constructor entity)
-                                   guid
-                                   (add1 revision)
-                                   (for/list ([val (in-list (cddr (snooze-struct-ref* old-struct)))])
-                                     (if (guid? val)
-                                         (send cache get-saveable-guid val)
-                                         val)))])
-            (sqlite:exec/ignore (connection-back-end conn) (update-sql new-struct))
-            new-struct))))
+          (when check-revision? (check-revision conn entity guid revision))
+          (let ([ans (apply (entity-private-constructor entity)
+                            guid
+                            (add1 revision)
+                            (for/list ([val (in-list (cddr (snooze-struct-ref* old-struct)))])
+                              (if (snooze-struct? val)
+                                  (snooze-struct-guid val)
+                                  val)))])
+            (sqlite:exec/ignore (connection-back-end conn) (update-sql ans))
+            ans))))
     
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Deletes the database record for the supplied struct.
     (define/public (delete-struct conn old-struct [check-revision? #t])
       (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
-        (let ([cache    (send (get-snooze) get-current-cache)]
-              [entity   (snooze-struct-entity old-struct)]
+        (let ([entity   (snooze-struct-entity old-struct)]
               [guid     (snooze-struct-guid old-struct)]
               [revision (snooze-struct-revision old-struct)])
-          (when check-revision?
-            (check-revision conn entity guid revision))
-          (let ([new-struct (apply (entity-private-constructor entity)
-                                   #f
-                                   #f
-                                   (for/list ([val (in-list (cddr (snooze-struct-ref* old-struct)))])
-                                     (if (guid? val)
-                                         (send cache get-saveable-guid val)
-                                         val)))])
-            (send (connection-back-end conn) exec (delete-sql (snooze-struct-guid old-struct)))
-            new-struct))))
+          (when check-revision? (check-revision conn entity guid revision))
+          (send (connection-back-end conn) exec (delete-sql (snooze-struct-guid old-struct)))
+          (apply (entity-private-constructor entity)
+                 guid
+                 #f
+                 (for/list ([val (in-list (cddr (snooze-struct-ref* old-struct)))])
+                   (if (snooze-struct? val)
+                       (snooze-struct-guid val)
+                       val))))))
     
     ; connection vanilla-guid -> void
     ; Deletes the database record for the supplied guid.
@@ -157,10 +146,9 @@
           (let ([sql    (direct-find-sql guids)]
                 [entity (guid-entity (car guids))])
             (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
-              (g:collect
-               (g:map (make-single-item-extractor entity)
-                      (g:map (make-parser (map attribute-type (entity-attributes entity)))
-                             (g:list (send (connection-back-end conn) map sql list)))))))))
+              (g:collect (g:map (make-single-item-extractor entity)
+                                (g:map (make-parser (map attribute-type (entity-attributes entity)))
+                                       (g:list (send (connection-back-end conn) map sql list)))))))))
     
     ; snooze<%> connection query -> result-generator
     (define/public (g:find snooze conn query)

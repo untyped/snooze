@@ -2,52 +2,6 @@
 
 (require "../base.ss")
 
-(define snooze-cache<%>
-  (interface ()
-    
-    ; -> (U snooze-cache<%> #f)
-    ; Returns the parent of this cache.
-    get-parent
-    
-    ; local-guid -> snooze-struct
-    ; Dereferences a local guid.
-    cache-ref/local
-    
-    ; local-guid -> (U snooze-struct #f)
-    ; Dereferences a vanilla guid, promoting it to the current cache if necessary.
-    ; Returns the mapped struct, or #f if the guid was not found in any cache.
-    cache-ref/vanilla
-    
-    ; snooze-struct -> new-local-guid
-    ; - creates a new local-guid -> (cons (U vanilla-guid #f) struct) entry;
-    ; - returns local-guid.
-    add-copied-struct!
-    
-    ; snooze-struct -> new-local-guid
-    ; - creates new vanilla-guid -> (cons #f struct) entries in all ancestor caches;
-    ; - creates a new local-guid -> (cons vanilla-guid struct) entry;
-    ; - returns local-guid.
-    add-extracted-struct!
-    
-    ; snooze-struct old-local-guid -> new-local-guid
-    ; - creates new vanilla-guid -> (cons #f struct) entries in all ancestor caches;
-    ; - creates a new local-guid -> (cons vanilla-guid struct) entry;
-    ; - remaps old-guid -> (cons vanilla-guid struct);
-    ; - returns the new local-guid.
-    add-saved-struct!
-    
-    ; snooze-struct old-local-guid -> new-local-guid
-    ; - creates new vanilla-guid -> (cons #f #f) entries in all ancestor caches;
-    ; - creates a new local-guid -> (cons vanilla-guid struct) entry;
-    ; - remaps old-guid -> (cons vanilla-guid struct);
-    ; - returns the new local-guid.
-    add-deleted-struct!
-    
-    ; guid -> (U local-guid #f)
-    ; Searches for guid in this cache (and its ancestors, performing fetches, if applicable).
-    ; Returns a local guid pointing to the same struct, or #f if the struct is not in the cache.
-    get-local-alias))
-
 (define snooze<%>
   (interface ()
     
@@ -64,58 +18,20 @@
     current-connection
     
     ; entity -> void
-    ;
     ; Creates a table for the supplied entity. Raises exn:fail:snooze if the table already exists.
     create-table
     
     ; entity -> void
-    ;
     ; Drops the supplied table (or table name). Does nothing if the table does not exist.
     drop-table
     
     ; guid -> guid
-    ;
-    ; Saves a struct to the database. Implementations:
-    ;   - database - do revision check, run hook, perform update/insert, mutate guid with new ID;
-    ;   - cache    - already stored locally - add a clone to parent, propagate, reintern entity/id.
+    ; Saves a struct to the database.
     save!
     
     ; guid -> guid
-    ;
-    ; Deletes a struct from the database. Implementations:
-    ;   - database - do revision check, run hook, perform delete, mutate guid with #f ID;
-    ;   - cache    - propagate, unintern entity/id.
+    ; Deletes a struct from the database.
     delete!
-    
-    ; snooze-struct [(listof stage)] -> snooze-struct
-    ;
-    ; Used to specifically insert a snooze-struct with a particular ID and revision.
-    ; Does not check or update the revision number of the record. Does not run the default
-    ; hooks, although a pipeline may be specified as the optional second argument.
-    ; 
-    ; Only use this method if you want to bypass the default behaviour of allocating and
-    ; checking IDs and revision numbers.
-    insert/id+revision!
-    
-    ; snooze-struct [(listof stage)] -> snooze-struct
-    ;
-    ; Used to specifically update a snooze-struct with a particular ID and revision.
-    ; Does not check or update the revision number of the record. Does not run the default
-    ; pipelines, although a pipeline may be specified as the optional second argument.
-    ; 
-    ; Only use this method if you want to bypass the default behaviour of checking IDs and
-    ; revision numbers.
-    update/id+revision!
-    
-    ; snooze-struct [(listof stage)] -> snooze-struct
-    ;
-    ; Used to specifically delete a snooze-struct with a particular ID and revision.
-    ; Does not check or update the revision number of the record. Does not run the default
-    ; pipelines, although a pipeline may be specified as the optional second argument.
-    ; 
-    ; Only use this method if you want to bypass the default behaviour of checking IDs and
-    ; revision numbers.
-    delete/id+revision!
     
     ; select -> (U result #f)
     find-one
@@ -160,5 +76,4 @@
 ; Provide statements -----------------------------
 
 (provide/contract
- [snooze-cache<%> interface?]
- [snooze<%>       interface?])
+ [snooze<%> interface?])

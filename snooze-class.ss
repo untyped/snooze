@@ -7,7 +7,6 @@
          (planet untyped/unlib:3/gen)
          (planet untyped/unlib:3/parameter)
          (prefix-in real: (only-in "core/snooze-struct.ss" make-snooze-struct))
-         "snooze-cache.ss"
          "core/core.ss"
          "common/common.ss"
          "sql/sql.ss")
@@ -29,15 +28,12 @@
     ; See the current-connection method below for more information.
     (field [current-connection-cell (make-thread-cell #f)])
     
-    ; (connection guid -> any) connection guid -> any
+    ; (connection snooze-struct -> any) connection snooze-struct -> any
     ;
     ; A transparent procedure that wraps the body of any
     ; call-with-transaction block. Must return the same value
     ; as the transaction body.
-    (field [transaction-hook (lambda (continue conn guid) (continue conn guid))])
-    
-    ; (parameter snooze-cache%)
-    (field [current-cache (make-parameter (new snooze-cache% [snooze this]))])
+    (field [transaction-hook (lambda (continue conn struct) (continue conn struct))])
     
     ; Constructor --------------------------------
     
@@ -53,15 +49,6 @@
     
     ; Public interface ---------------------------
     
-    ; (-> any) -> any
-    (define/public (call-with-cache thunk)
-      (parameterize ([current-cache (new snooze-cache% [snooze this] [parent (current-cache)])])
-        (thunk)))
-    
-    ; -> snooze-cache%
-    (define/public (get-current-cache)
-      (current-cache))
-    
     ; -> database<%>
     (define/public (get-database)
       database)
@@ -70,11 +57,11 @@
     (define/public (set-database! new-database)
       (set! database new-database))
     
-    ; -> ((connection guid -> any) connection guid -> any)
+    ; -> ((connection snooze-struct -> any) connection snooze-struct -> any)
     (define/public (get-transaction-hook)
       transaction-hook)
     
-    ; ((connection guid -> any) connection guid -> any) -> void
+    ; ((connection snooze-struct -> any) connection snooze-struct -> any) -> void
     (define/public (set-transaction-hook! hook)
       (set! transaction-hook hook))
     
@@ -120,69 +107,34 @@
       (auto-connect)
       (call-with-transaction (cut send database drop-table (current-connection) entity)))
     
-    ; guid -> guid
-    (define/public (save! guid)
+    ; snooze-struct -> snooze-struct
+    (define/public (save! struct)
       (auto-connect)
-      (parameterize ([currently-saving guid])
-        (let ([entity (guid-entity guid)]
-              [cache  (get-current-cache)])
-          (call-with-transaction
-           (lambda ()
-             ((entity-on-save entity)
-              (lambda (conn guid)
-                (let ([saved-struct (if (snooze-struct-saved? guid)
-                                        (send database update-struct conn (guid-ref guid))
-                                        (send database insert-struct conn (guid-ref guid)))])
-                  (send cache add-saved-struct! saved-struct guid)))
-              (current-connection)
-              guid))))))
+      (let ([entity (snooze-struct-entity struct)])
+        (call-with-transaction
+         (lambda ()
+           ((entity-on-save entity)
+            (lambda (conn struct)
+              (if (snooze-struct-saved? struct)
+                  (send database update-struct conn struct)
+                  (send database insert-struct conn struct)))
+            (current-connection)
+            struct)))))
     
-    ; guid -> guid
-    (define/public (delete! guid)
-      (unless (snooze-struct-saved? guid)
-        (raise-exn exn:fail:snooze (format "unsaved structs cannot be deleted ~a" guid)))
+    ; snooze-struct -> snooze-struct
+    (define/public (delete! struct)
+      (unless (snooze-struct-saved? struct)
+        (raise-exn exn:fail:snooze (format "unsaved structs cannot be deleted ~a" struct)))
       (auto-connect)
-      (parameterize ([currently-deleting guid])
-        (let ([entity (guid-entity guid)]
-              [cache  (get-current-cache)])
+      (parameterize ([currently-deleting struct])
+        (let ([entity (snooze-struct-entity struct)])
           (call-with-transaction
            (lambda ()
              ((entity-on-delete entity)
-              (lambda (conn guid)
-                (let ([deleted-struct (send database delete-struct conn (guid-ref guid))])
-                  (send cache add-deleted-struct! deleted-struct guid)))
+              (lambda (conn struct)
+                (send database delete-struct conn struct))
               (current-connection)
-              guid))))))
-    
-    ; guid [((connection guid -> any) connection guid -> any)] -> guid
-    (define/public (insert/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])
-      (auto-connect)
-      (parameterize ([currently-saving guid])
-        (hook (lambda (conn guid)
-                (send database insert-record/id conn guid)
-                guid)
-              (current-connection)
-              guid)))
-    
-    ; guid [((connection guid -> any) connection guid -> any)] -> guid
-    (define/public (update/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])
-      (auto-connect)
-      (parameterize ([currently-saving guid])
-        (hook (lambda (conn guid)
-                (send database update-record conn guid)
-                guid)
-              (current-connection)
-              guid)))
-    
-    ; guid [((connection guid -> any) connection guid -> any)] -> guid
-    (define/public (delete/id+revision! guid [hook (lambda (continue conn guid) (continue conn guid))])
-      (auto-connect)
-      (parameterize ([currently-deleting guid])
-        (hook (lambda (conn guid)
-                (send database delete-record conn guid)
-                guid)
-              (current-connection)
-              guid)))
+              struct))))))
     
     ; query -> (list-of result)
     (define/public (find-all query)
@@ -200,13 +152,12 @@
     
     ; entity natural -> local-guid
     (define/public (find-by-id entity id)
-      (find-by-guid (entity-make-vanilla-guid #:snooze this entity id)))
-
+      (find-by-guid (entity-make-guid entity id)))
+    
     ; guid -> local-guid
     (define/public (find-by-guid guid)
       (auto-connect)
-      (or (send (get-current-cache) get-local-alias guid)
-          (car (send (get-database) direct-find (current-connection) (list guid)))))
+      (car (send (get-database) direct-find (current-connection) (list guid))))
     
     ; thunk [#:metadata list] -> any
     ;

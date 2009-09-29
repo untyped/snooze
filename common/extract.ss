@@ -67,25 +67,20 @@
     ;  (listof (U snooze-struct #f))
     ;  (listof scheme-primitive)
     ;
-    ; Loads a snooze-struct, either from the cache or from created from the first N
-    ; columns of the row.
+    ; Loads a snooze-struct, either from a temporary query cache or from the first N columns of the row.
     ;
     ; The procedure returns two values: the struct, and the rest of the row following
     ; the struct's attributes.
     (define (row->struct row entity)
-      (let* ([cache     (send (get-snooze) get-current-cache)]
-             [guid      (car row)]
+      (let* ([guid      (car row)]
              [revision  (cadr row)]
              [num-attrs (length (entity-attributes entity))])
         (with-handlers ([exn? (lambda (exn) (error "could not parse entity" row entity exn))])
           (unless (or (not guid) (vanilla-guid? guid))
             (raise-type-error 'row->struct "(U vanilla-guid #f)" guid))
-          (values (and guid                                  ; if id is #f, struct is null
-                       (or (send cache get-local-alias guid) ; if struct is cached (locally or in an ancestor cache), return a new local guid
-                           (send cache add-extracted-struct! ; else add the new struct to the cache, and return a new local guid
-                                 (apply (entity-private-constructor entity)
-                                        guid
-                                        (cdr (take row num-attrs))))))
+          (values (and guid (apply (entity-private-constructor entity)
+                                   guid
+                                   (cdr (take row num-attrs))))
                   (drop row num-attrs)))))))
 
 ; Provide statements -----------------------------

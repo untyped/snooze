@@ -30,142 +30,35 @@
   (test-suite "snooze-find-tests"
     
     (test-suite "Basic behaviour of find-one, find-all, and g:find"
-      (test-case "find-one cached struct : returns a local GUID"
-        (recreate-test-tables/cache)
+      
+      (test-case "find-one"
+        (recreate-test-tables)
         (let* ([per1 (save! (make-person "Jon"))]
                [per2 (select-one #:from person)])
-          (check-pred guid-local? per2)))
-      
-      (test-case "find-one cached struct : correct cache sizes" 
-        (recreate-test-tables/cache)
-        (with-cache
-         (let* ([per1 (save! (make-person "Jon"))]
-                [per2 (select-one #:from person)])
-           (collect-garbage)
-           (check-cache-size (list 3 1))
-           (list per1 per2)))) ; safe for space
-      
-      (test-case "find-one uncached struct : returns a local GUID"
-        (recreate-test-tables/cache)
-        (let ([per1 (save! (make-person "Jon"))])
-          (cache-clear!)
-          (let ([per2 (select-one #:from person)])
-            (check-pred guid-local? per2))))
-      
-      (test-case "find-one uncached struct : correct cache sizes"
-        (recreate-test-tables/cache)
-        (with-cache
-         (let ([per1 (save! (make-person "Jon"))])
-           (collect-garbage)
-           (check-cache-size (list 2 1)) ; currently fails as GC doesn't remove (make-person ...) local-guid
-           (cache-clear!)
-           (check-cache-size (list 0 0))
-           (let ([per2 (select-one #:from person)])
-             (check-cache-size (list 2 1))
-             (list per1 per2))))) ; safe for space
+          (check-equal? per1 per2)
+          (check-not-eq? per1 per2)))
       
       (test-case "g:find generates local GUIDs"
-        (recreate-test-tables/cache)
+        (recreate-test-tables)
         (let* ([per1  (save! (make-person "Dave"))]
                [per2  (save! (make-person "David"))]
                [per3  (save! (make-person "Noel"))]
-               [peeps (g:find (sql (select #:from person)))])
-          (for ([pers (in-gen peeps)])
-            (check-true (local-guid? pers) (format "~s is not a local guid" pers)))))
-      
-      (test-case "g:find : correct cache sizes during iteration"
-        (recreate-test-tables/cache)
-        (with-cache
-         (let* ([per1  (save! (make-person "Dave"))]
-                [per2  (save! (make-person "David"))]
-                [per3  (save! (make-person "Noel"))])
-           (cache-clear!)
-           (check-cache-size (list 0 0))
-           (let ([peeps (g:select #:from person)])
-             (check-cache-size (list 0 0))
-             (for ([pers (in-gen peeps)]
-                   [i    (in-naturals 1)])
-               (check-cache-size (list (* 2 i) i))
-               (check-true (local-guid? pers) (format "~s is not a local guid" pers)))))))
-      
-      (test-case "find-all with some cached, some uncached structs"
-        (recreate-test-tables/cache)
-        (with-cache
-         (let* ([per1  (save! (make-person "Dave"))]
-                [per2  (save! (make-person "David"))])
-           (cache-clear!)
-           (let ([per3  (save! (make-person "Noel"))]
-                 [peeps (find-all (sql (select #:from person)))])
-             ; list length correct
-             (check-true (= (length peeps) 3))
-             ; all accounted for
-             (let-values ([(rem vis)
-                           (for/fold ([remaining-members (list "Dave" "David" "Noel")]
-                                      [visited-members   null])
-                             ([pers (in-list peeps)])
-                             (check-not-false (member (person-name pers) remaining-members)
-                                              (format "~s is not one of ~s" (person-name pers) remaining-members))
-                             (check-true (local-guid? pers)
-                                         (format "~s is not a local guid" pers))
-                             (values (remove pers remaining-members (lambda (p n) (equal? (person-name p) n)))
-                                     (cons pers visited-members)))])
-               (check-true (null? rem)))))))
-      
-      (test-case "find-all with some cached, some uncached structs: correct cache sizes"
-        (recreate-test-tables/cache)
-        (with-cache
-         (let* ([per1  (save! (make-person "Dave"))]
-                [per2  (save! (make-person "David"))])
-           (cache-clear!)
-           (let ([per3  (save! (make-person "Noel"))]
-                 [peeps (select-all #:from person)])
-             ; list length correct
-             (collect-garbage)
-             (check-cache-size (list 7 3))
-             (list per1 per2 per3 peeps)))))) ; safe for space
-    
-    
-    
-    
-    (test-suite "Interaction of queries and the cache"
-      
-      (test-case "structs already present in the cache are not reloaded; local versions retained"
-        (recreate-test-tables/cache)
-        (let ([perA (save! (make-person "A"))]
-              [perB (save! (make-person "B"))]
-              [perC (save! (make-person "C"))]
-              [perD (save! (make-person "D"))]
-              [perE (save! (make-person "E"))]
-              [perF (save! (make-person "F"))])
-          (cache-clear!)
-          (let ([perDD (save! (person-set (select-one #:from person #:where (= person.name "D")) #:name "DD"))]
-                [perEE (save! (person-set (select-one #:from person #:where (= person.name "E")) #:name "EE"))]
-                [perFF (save! (person-set (select-one #:from person #:where (= person.name "F")) #:name "FF"))])
-            (let ([peeps (find-all (sql (select #:from person)))])
-              (let-values ([(rem vis)
-                            (for/fold ([remaining-members (list "A" "B" "C" "DD" "EE" "FF")]
-                                       [visited-members   null])
-                              ([pers (in-list peeps)])
-                              (check-not-false (member (person-name pers) remaining-members)
-                                               (format "~s is not one of ~s" (person-name pers) remaining-members))
-                              (check-true (local-guid? pers)
-                                          (format "~s is not a local guid" pers))
-                              (values (remove pers remaining-members (lambda (p n) (equal? (person-name p) n)))
-                                      (cons pers visited-members)))])
-                (check-true (null? rem)))))))
-      
-      
-      
-      )
-    
-    
-    
-    
-    
-    
-    
-    
-    
+               [peeps (g:find (sql (select #:from person #:order ((asc person.name)))))])
+          (for ([i (in-naturals)]
+                [a (in-gen peeps)]
+                [b (in-list (list per1 per2 per3))])
+            (check-eq? a b (format "iteration ~a" i)))))
+            
+      (test-case "find-all"
+        (recreate-test-tables)
+        (let* ([per1  (save! (make-person "Dave"))]
+               [per2  (save! (make-person "David"))]
+               [per3  (save! (make-person "Noel"))]
+               [peeps (find-all (sql (select #:from person #:order ((asc person.name)))))])
+          (for ([i (in-naturals)]
+                [a (in-list peeps)]
+                [b (in-list (list per1 per2 per3))])
+            (check-eq? a b (format "iteration ~a" i))))))
     
     ; Tests ----------------------------------------
     
@@ -174,7 +67,7 @@
       
       #:before
       (lambda ()
-        (recreate-test-tables/cache)
+        (recreate-test-tables)
         (set! c1 (save! (make-course 'course1 "Course 1" 1 0.1 #f (string->time-tai "2001-01-01 01:01:01") #f)))
         (set! c2 (save! (make-course 'course2 "Course 2" 2 0.2 #t (string->time-tai "2002-02-02 02:02:02") #f)))
         (set! c3 (save! (make-course 'course3 "Course 3" 3 0.3 #f (string->time-tai "2003-03-03 03:03:03") #f)))
@@ -221,16 +114,15 @@
                                                       #:order ((desc course.value))))))
                       null))
       
-      (test-case "g:find: structs are equal? and struct-eq? to cached originals, but not eq?"
+      (test-case "g:find: structs are equal? but not eq? to originals"
         (for ([index    (in-naturals)]
               [actual   (in-list (g:collect (g:find (sql (select #:what  course
                                                                  #:from  course
                                                                  #:order ((asc course.value)))))))]
               [expected (in-list (list c1 c2 c3 c4))])
           (with-check-info (['index index])
-                           (check-not-eq? actual expected)
-                           (check-equal? actual expected)
-                           (check-true (snooze-struct-eq? actual expected)))))
+            (check-not-eq? actual expected)
+            (check-equal?  actual expected))))
       
       (test-case "find-all"
         (check-equal? (find-all (sql (select #:from  course
@@ -267,9 +159,8 @@
                        (save! (make-order-test1 1 "x"))
                        (save! (make-order-test1 2 "y"))
                        (save! (make-order-test1 3 "z")))
-                (begin (cache-clear!)
-                       ; If the columns come out in the wrong order, we'll get a parse exn:
-                       (check-not-exn find-order-test2s))
+                ; If the columns come out in the wrong order, we'll get a parse exn:
+                (begin (check-not-exn find-order-test2s))
                 (begin (drop-table order-test1))))
       
       (test-case "order of columns : direct find"
@@ -279,9 +170,8 @@
                                         (list (save! (make-order-test1 1 "x"))
                                               (save! (make-order-test1 2 "y"))
                                               (save! (make-order-test1 3 "z"))))))
-                  (begin (cache-clear!)
-                         ; If the columns come out in the wrong order, we'll get a parse exn:
-                         (check-not-exn
+                  ; If the columns come out in the wrong order, we'll get a parse exn:
+                  (begin (check-not-exn
                            (lambda ()
                              (map (cut find-by-id order-test2 <>) ids))))
                   (begin (drop-table order-test1)))))
