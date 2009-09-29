@@ -76,8 +76,8 @@
              [revision  (cadr row)]
              [num-attrs (length (entity-attributes entity))])
         (with-handlers ([exn? (lambda (exn) (error "could not parse entity" row entity exn))])
-          (unless (or (not guid) (vanilla-guid? guid))
-            (raise-type-error 'row->struct "(U vanilla-guid #f)" guid))
+          (unless (or (database-guid? guid) (not guid))
+            (raise-type-error 'row->struct "(U database-guid #f)" guid))
           (values (and guid (apply (entity-private-constructor entity)
                                    guid
                                    (cdr (take row num-attrs))))

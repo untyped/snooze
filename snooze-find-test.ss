@@ -38,7 +38,7 @@
           (check-equal? per1 per2)
           (check-not-eq? per1 per2)))
       
-      (test-case "g:find generates local GUIDs"
+      (test-case "g:find"
         (recreate-test-tables)
         (let* ([per1  (save! (make-person "Dave"))]
                [per2  (save! (make-person "David"))]

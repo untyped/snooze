@@ -77,8 +77,8 @@
     (test-case "escape-sql-value : guid"
       (let ([t (make-guid-type #t #f person)])
         (check-equal? (escape-sql-value t #f) "NULL")
-        (check-equal? (escape-sql-value t (entity-make-vanilla-guid person 123)) "123")
-        (check-exn exn:fail:contract? (cut escape-sql-value t (entity-make-vanilla-guid course 123)))))
+        (check-equal? (escape-sql-value t (entity-make-guid person 123)) "123")
+        (check-exn exn:fail:contract? (cut escape-sql-value t (entity-make-guid course 123)))))
     
     (test-case "escape-sql-value : boolean"
       (let ([t (make-boolean-type #t #f)])

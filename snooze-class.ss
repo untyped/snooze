@@ -150,11 +150,11 @@
       (auto-connect)
       (send database g:find (current-connection) select))
     
-    ; entity natural -> local-guid
+    ; entity natural -> snooze-struct
     (define/public (find-by-id entity id)
       (find-by-guid (entity-make-guid entity id)))
     
-    ; guid -> local-guid
+    ; guid -> snooze-struct
     (define/public (find-by-guid guid)
       (auto-connect)
       (car (send (get-database) direct-find (current-connection) (list guid))))

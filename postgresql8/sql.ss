@@ -144,7 +144,7 @@
     (define (private-parse-value type val)
       (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
         (cond [(sql-null? val)     #f]
-              [(guid-type? type)     (entity-make-vanilla-guid #:snooze (get-snooze) (guid-type-entity type) (inexact->exact val))]
+              [(guid-type? type)     (entity-make-guid (guid-type-entity type) (inexact->exact val))]
               [(boolean-type? type)  val]
               [(integer-type? type)  (inexact->exact val)]
               [(real-type? type)     val]

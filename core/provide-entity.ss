@@ -42,8 +42,6 @@
                    [constructor          (entity-info-constructor-id          info)]
                    [id-accessor          (entity-info-id-accessor-id          info)]
                    [saved-predicate      (entity-info-saved-predicate-id      info)]
-                   [vanilla-predicate    (entity-info-vanilla-predicate-id    info)]
-                   [local-predicate      (entity-info-local-predicate-id      info)]
                    [pretty-formatter     (entity-info-pretty-formatter-id     info)]
                    [defaults-constructor (entity-info-defaults-constructor-id info)]
                    [copy-constructor     (entity-info-copy-constructor-id     info)]
@@ -91,8 +89,6 @@
                                       guid-predicate)]
            [id-accessor          (-> guid-predicate (or/c natural-number/c #f))]
            [saved-predicate      (-> guid-predicate boolean?)]
-           [vanilla-predicate    (-> guid-predicate boolean?)]
-           [local-predicate      (-> guid-predicate boolean?)]
            [pretty-formatter     (->* (guid-predicate) () #:rest any/c string?)]
            [defaults-constructor (->* ()
                                       (#:snooze (is-a?/c snooze<%>) make-kw-arg ...)
@@ -152,8 +148,6 @@
         (let ([info (entity-info-ref #'id)])
           (map create-export (list (entity-info-id-accessor-id          info)
                                    (entity-info-saved-predicate-id      info)
-                                   (entity-info-vanilla-predicate-id    info)
-                                   (entity-info-local-predicate-id      info)
                                    (entity-info-pretty-formatter-id     info)
                                    (entity-info-defaults-constructor-id info)
                                    (entity-info-copy-constructor-id     info)

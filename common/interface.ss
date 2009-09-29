@@ -49,7 +49,7 @@
     ; Deletes the database record for the given guid.
     ; delete-guid
     
-    ; connection (listof vanilla-guid) -> (listof interned-vanilla-guid)
+    ; connection (listof database-guid) -> (listof snooze-struct)
     ; Selects a number of similarly typed structs by guid.
     direct-find
     
@@ -125,7 +125,7 @@
 (define sql-query<%>
   (interface ()
     
-    ; (listof vanilla-guid) -> string
+    ; (listof database-guid) -> string
     direct-find-sql
     
     ; query -> string

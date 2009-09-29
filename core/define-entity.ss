@@ -412,7 +412,6 @@
                      (certify #'predicate)
                      (certify #'id-accessor)
                      (certify #'saved-predicate)
-                     (certify #'local-predicate)
                      (certify #'pretty-formatter)
                      (certify #'defaults-constructor)
                      (certify #'copy-constructor)

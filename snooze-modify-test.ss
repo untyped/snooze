@@ -12,18 +12,16 @@
 (define snooze-modify-tests
   (test-suite "snooze-modify-tests"
     
-    (test-case "copying a saved struct : creates an independent copy, unsaved, with the same vanilla guid"
+    (test-case "copying a saved struct : creates an independent copy, unsaved, with the same guid"
       (recreate-test-tables)
-      (let* ([per      (save! (make-person "Per"))]                   ; saved
-             [per2     (person-set per #:name "Per2")])               ; unsaved
-        (check-true (guid-local? per))
-        (check-true (guid-local? per2))
+      (let* ([per  (save! (make-person "Per"))]                   ; saved
+             [per2 (person-set per #:name "Per2")])               ; unsaved
         (check-not-eq? per per2))) ; different structs in memory
     
     (test-case "saving a copy of a struct updates the original struct, so that they refer to the same struct"
       (recreate-test-tables)
-      (let* ([per      (save! (make-person "Per"))]                   ; saved
-             [per2     (save! (person-set per #:name "Per2"))])       ; saved
+      (let* ([per   (save! (make-person "Per"))]                   ; saved
+             [per2 (save! (person-set per #:name "Per2"))])       ; saved
         (check-equal? (person-name per)  "Per")
         (check-equal? (person-name per2) "Per2")
         (check-bit-eq? per per2))) ; different structs in memory

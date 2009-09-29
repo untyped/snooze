@@ -138,7 +138,7 @@
     ; type string -> any
     (define (private-parse-value type value)
       (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
-        (cond [(guid-type? type)     (entity-make-vanilla-guid #:snooze (get-snooze) (guid-type-entity type) (inexact->exact value))]
+        (cond [(guid-type? type)     (entity-make-guid (guid-type-entity type) (inexact->exact value))]
               [(boolean-type? type)  (equal? value "1")]
               [(not value)           #f]
               [(integer-type? type)  (inexact->exact (string->number value))]

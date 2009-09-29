@@ -23,38 +23,19 @@
     #:before
     recreate-test-tables
     
-    (test-case "entity-make-local-guid, entity-make-vanilla-guid, guid-id, guid-serial"
-      (let* ([local1   (entity-make-local-guid person)]
-             [local2   (entity-make-local-guid person)]
-             [vanilla1 (entity-make-vanilla-guid person 123)]
-             [vanilla2 (entity-make-vanilla-guid person 123)])
-        (check-not-eq? local1 local2)
-        (check-false (guid=? local1 local2))
-        (check-not-eq? vanilla1 vanilla2)
-        (check guid=? vanilla1 vanilla2)
-        (check-equal? (guid-id local1) #f)
-        (check-equal? (guid-id vanilla1) 123)
-        (check-equal? (guid-id vanilla2) 123)
-        (check-pred symbol? (guid-serial local1))
-        (check-pred symbol? (guid-serial local2))
-        (check-not-eq? (guid-serial local1) (guid-serial local2))
-        (check-false (guid-serial vanilla1))
-        (check-false (guid-serial vanilla2))))
-    
-    (test-case "intern-guid"
-      (let* ([vanilla1 (entity-make-vanilla-guid person 123)]
-             [vanilla2 (intern-guid vanilla1)]
-             [vanilla3 (intern-guid vanilla1)])
-        (check-not-eq? vanilla1 vanilla2)
-        (check-not-eq? vanilla1 vanilla3)
-        (check-eq? vanilla2 vanilla3)
-        (check guid=? vanilla1 vanilla2)
-        (check guid=? vanilla1 vanilla3)
-        (check-equal? (dict-count interned-guids) 1)))
-    
-    (test-case "intern-guid gc"
-      (collect-garbage)
-      (check-equal? (dict-count interned-guids) 0))))
+    (test-case "entity-make-guid, guid-id, guid-serial"
+      (let* ([temp1 (entity-make-guid person 'unsaved)]
+             [temp2 (entity-make-guid person 'unsaved)]
+             [data1 (entity-make-guid person 123)]
+             [data2 (entity-make-guid person 123)])
+        (check-pred temporary-guid? temp1)
+        (check-pred database-guid?  data1)
+        (check-equal? temp1 temp2)
+        (check-equal? data1 data2)
+        (check-not-eq? temp1 temp2)
+        (check-not-eq? data1 data2)
+        (check-pred symbol? (guid-id temp1))
+        (check-pred number? (guid-id data1))))))
 
 ; Type tests -----------------------------------
 

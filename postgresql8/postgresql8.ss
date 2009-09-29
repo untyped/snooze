@@ -164,14 +164,14 @@
                        (snooze-struct-guid val)
                        val)))))))
   
-  ; connection vanilla-guid -> void
+  ; connection database-guid -> void
   ; Deletes the database record for the supplied guid.
   (define/public (delete-guid conn guid)
     (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" guid))
       (send (connection-back-end conn) exec (delete-sql guid))
       (void)))
   
-  ; connection entity vanilla-guid natural -> void
+  ; connection entity database-guid natural -> void
   (define (check-revision conn entity guid expected)
     (let ([actual (send (connection-back-end conn) query-value
                         (format "SELECT revision FROM ~a WHERE guid = ~a;"
@@ -182,7 +182,7 @@
           (format "revision mismatch: database ~a, struct ~a" actual expected)
           guid))))
   
-  ; (listof vanilla-guid) -> (listof local-guid)
+  ; (listof database-guid) -> (listof snooze-struct)
   (define/public (direct-find conn guids)
     (if (null? guids)
         null

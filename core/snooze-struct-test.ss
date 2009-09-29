@@ -25,7 +25,7 @@
     
     #:before
     (lambda ()
-      (set! test-person-guid (entity-make-vanilla-guid person 123))
+      (set! test-person-guid (entity-make-guid person 123))
       (set! test-person      (make-snooze-struct person test-person-guid #f "Jon"))
       (set! test-pet         (make-snooze-struct pet #f #f test-person-guid "Garfield")))
     
@@ -57,7 +57,7 @@
       (check-equal? (snooze-struct-id (snooze-struct-set
                                 test-person
                                 (attr person guid)
-                                (entity-make-vanilla-guid person 1))) 1))
+                                (entity-make-guid person 1))) 1))
     
     (test-case "snooze-struct-revision"
       (check-equal? (snooze-struct-revision test-person) #f)
@@ -85,7 +85,7 @@
     
     (test-case "snooze-struct-set"
       (let* ([test-person2      (snooze-struct-set test-person)]
-             [test-person-guid3 (entity-make-vanilla-guid person 321)]
+             [test-person-guid3 (entity-make-guid person 321)]
              [test-person3      (snooze-struct-set test-person
                                                    (attr person guid)
                                                    test-person-guid3)])
@@ -101,7 +101,7 @@
             [test-person3 (make-snooze-struct/defaults
                            person
                            (attr person guid)
-                           (entity-make-vanilla-guid person 321))])
+                           (entity-make-guid person 321))])
         (check-equal? (snooze-struct-id test-person)  123)
         (check-equal? (snooze-struct-id test-person2) #f)
         (check-equal? (snooze-struct-id test-person3) 321)))

@@ -14,7 +14,7 @@
 (define snooze-make-tests
   (test-suite "snooze-make-tests"
     
-    (test-case "make-person : returns a local guid"
+    (test-case "make-person"
       (recreate-test-tables)
       (let* ([per (make-person "Per")])
         (check-false (snooze-struct-saved? per))

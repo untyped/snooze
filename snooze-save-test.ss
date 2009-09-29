@@ -15,15 +15,15 @@
 (define snooze-save-tests
   (test-suite "snooze-save-tests"
     
-    (test-case "save! : returns a local guid"
+    (test-case "save! : affects snooze-struct-saved?, temporary-guid? and database-guid?"
       (recreate-test-tables)
       (let* ([per1 (make-person "Dave")]
              [per2 (save! per1)])
         (collect-garbage)
-        (check-pred guid-local?          per1)
-        (check-pred snooze-struct-saved? per1)
-        (check-pred guid-local?          per2)
-        (check-pred snooze-struct-saved? per2)))
+        (check-pred  temporary-guid? (snooze-struct-guid per1))
+        (check-false (snooze-struct-saved? per1))
+        (check-pred  database-guid? (snooze-struct-guid per2))
+        (check-pred  snooze-struct-saved? per2)))
     
     (test-case "save!, person-set : remaps guids appropriately"
       (recreate-test-tables)
