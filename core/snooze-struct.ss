@@ -103,6 +103,28 @@
            #f
            (snooze-struct-data-ref* original))))
 
+; snooze-struct any ... -> (listof check-result)
+(define (check-snooze-struct struct . rest)
+  (let* ([entity (snooze-struct-entity struct)]
+         [ans    (apply (entity-save-check entity) struct rest)])
+    (if (and (list? ans) (andmap check-result? ans))
+        ans
+        (raise-exn exn:fail:contract
+          (format "check-snooze-struct: validation for ~a returned ~a, expected (listof check-result)"
+                  (entity-name entity)
+                  ans)))))
+
+; snooze-struct any ... -> (listof check-result)
+(define (check-old-snooze-struct struct . rest)
+  (let* ([entity (snooze-struct-entity struct)]
+         [ans    (apply (entity-delete-check entity) struct rest)])
+    (if (and (list? ans) (andmap check-result? ans))
+        ans
+        (raise-exn exn:fail:contract
+          (format "check-snooze-struct: validation for ~a returned ~a, expected (listof check-result)"
+                  (entity-name struct)
+                  ans)))))
+
 ; Provide statements -----------------------------
 
 (define revision/c
@@ -124,4 +146,6 @@
  [snooze-struct-set           (->* (snooze-struct?) () #:rest attr/value-list? snooze-struct?)]
  [make-snooze-struct          (->* (entity?) () #:rest attr-value-list/c snooze-struct?)]
  [make-snooze-struct/defaults (->* (entity?) () #:rest attr/value-list? snooze-struct?)]
- [snooze-struct-copy          (-> snooze-struct? snooze-struct?)])
+ [snooze-struct-copy          (-> snooze-struct? snooze-struct?)]
+ [check-snooze-struct         (->* (snooze-struct?) () #:rest any/c (listof check-result?))]
+ [check-old-snooze-struct     (->* (snooze-struct?) () #:rest any/c (listof check-result?))])
