@@ -349,10 +349,10 @@
     [find-one                  (-> query? any)]
     [g:find                    (-> query? procedure?)]
     
-    [call-with-transaction     (->* (procedure?) ((or/c string? false/c)) any)]
+    [call-with-transaction     (->* (procedure?) () #:rest any/c any)]
     
-    [find-by-id                (-> entity? (or/c integer? false/c) (or/c persistent-struct? false/c))]
-    [find-by-guid              (-> guid? (or/c persistent-struct? false/c))]
+    [find-by-id                (-> entity? (or/c integer? #f) (or/c persistent-struct? #f))]
+    [find-by-guid              (-> guid? (or/c persistent-struct? #f))]
     
     [table-names               (-> (listof symbol?))]
     [table-exists?             (-> (or/c entity? symbol?) boolean?)]
