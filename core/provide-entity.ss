@@ -84,55 +84,45 @@
         (quasisyntax/loc id-stx
           ([struct-type          struct-type?]
            [predicate            (-> any/c boolean?)]
-           [constructor          (->* (attr-contract ...)
-                                      (#:snooze (is-a?/c snooze<%>))
-                                      guid-predicate)]
-           [id-accessor          (-> guid-predicate (or/c natural-number/c #f))]
-           [saved-predicate      (-> guid-predicate boolean?)]
-           [pretty-formatter     (->* (guid-predicate) () #:rest any/c string?)]
-           [defaults-constructor (->* ()
-                                      (#:snooze (is-a?/c snooze<%>) make-kw-arg ...)
-                                      guid-predicate)]
-           [copy-constructor     (->* (guid-predicate)
-                                      (#:snooze (is-a?/c snooze<%>) make-kw-arg ...)
-                                      guid-predicate)]
-           [find-one             (->* ()
-                                      (#:snooze (is-a?/c snooze<%>)
-                                                find-kw-arg ...
-                                                #:what   sql:select-what/c
-                                                #:where  sql:select-where/c
-                                                #:order  sql:select-order/c
-                                                #:limit  sql:select-limit/c
-                                                #:offset sql:select-offset/c)
-                                      (or/c guid-predicate #f))]
-           [find-all             (->* ()
-                                      (#:snooze (is-a?/c snooze<%>)
-                                                find-kw-arg ...
-                                                #:what   sql:select-what/c
-                                                #:where  sql:select-where/c
-                                                #:order  sql:select-order/c
-                                                #:limit  sql:select-limit/c
-                                                #:offset sql:select-offset/c)
-                                      (listof guid-predicate))]
-           [find-count           (->* ()
-                                      (#:snooze (is-a?/c snooze<%>)
-                                                find-kw-arg ...
-                                                #:what   sql:select-what/c
-                                                #:where  sql:select-where/c
-                                                #:order  sql:select-order/c
-                                                #:limit  sql:select-limit/c
-                                                #:offset sql:select-offset/c)
+           [constructor          (-> attr-contract ... predicate)]
+           [id-accessor          (-> predicate (or/c natural-number/c #f))]
+           [saved-predicate      (-> predicate boolean?)]
+           [pretty-formatter     (->* (predicate) () #:rest any/c string?)]
+           [defaults-constructor (->* ()          (make-kw-arg ...) predicate)]
+           [copy-constructor     (->* (predicate) (make-kw-arg ...) predicate)]
+           [find-one             (->* () (#:snooze (is-a?/c snooze<%>)
+                                                   find-kw-arg ...
+                                                   #:what   sql:select-what/c
+                                                   #:where  sql:select-where/c
+                                                   #:order  sql:select-order/c
+                                                   #:limit  sql:select-limit/c
+                                                   #:offset sql:select-offset/c)
+                                      (or/c predicate #f))]
+           [find-all             (->* () (#:snooze (is-a?/c snooze<%>)
+                                                   find-kw-arg ...
+                                                   #:what   sql:select-what/c
+                                                   #:where  sql:select-where/c
+                                                   #:order  sql:select-order/c
+                                                   #:limit  sql:select-limit/c
+                                                   #:offset sql:select-offset/c)
+                                      (listof predicate))]
+           [find-count           (->* () (#:snooze (is-a?/c snooze<%>)
+                                                   find-kw-arg ...
+                                                   #:what   sql:select-what/c
+                                                   #:where  sql:select-where/c
+                                                   #:order  sql:select-order/c
+                                                   #:limit  sql:select-limit/c
+                                                   #:offset sql:select-offset/c)
                                       natural-number/c)]
-           [g:find               (->* ()
-                                      (#:snooze (is-a?/c snooze<%>)
-                                                find-kw-arg ...
-                                                #:what   sql:select-what/c
-                                                #:where  sql:select-where/c
-                                                #:order  sql:select-order/c
-                                                #:limit  sql:select-limit/c
-                                                #:offset sql:select-offset/c)
+           [g:find               (->* () (#:snooze (is-a?/c snooze<%>)
+                                                   find-kw-arg ...
+                                                   #:what   sql:select-what/c
+                                                   #:where  sql:select-where/c
+                                                   #:order  sql:select-order/c
+                                                   #:limit  sql:select-limit/c
+                                                   #:offset sql:select-offset/c)
                                       procedure?)]
-           [attr-accessor        (-> guid-predicate attr-contract)]
+           [attr-accessor        (-> predicate attr-contract)]
            ...)))))))
 
 ; (_ struct-id)

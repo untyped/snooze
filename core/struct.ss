@@ -17,7 +17,7 @@
 ; Guids ------------------------------------------
 
 ; (struct symbol (U natural symbol))
-(define-serializable-struct guid (id) #:transparent)
+(define-serializable-struct guid (id) #:transparent #:mutable)
 
 ; guid -> boolean
 (define (temporary-guid? guid)
@@ -384,15 +384,8 @@
 ; property
 ; any -> boolean
 ; any -> (U entity #f)
-(define-values (prop:entity prop:entity-set? prop:entity-ref)
-  (make-struct-type-property 'entity))
-
-; any -> boolean
-; Used in this module only... the public procedure of the same name
-; recognises guids rather than structs.
-(define (snooze-struct? struct)
-  (and (struct? struct)
-       (prop:entity-set? struct)))
+(define-values (prop:snooze-struct-entity snooze-struct? snooze-struct-entity)
+  (make-struct-type-property 'snooze-struct-entity))
 
 ; Check results ----------------------------------
 
@@ -531,9 +524,9 @@
                                         [accessor             procedure?]
                                         [mutator              procedure?])]
  [attribute-default                    (-> attribute? any/c)]
- [prop:entity                          struct-type-property?]
- [prop:entity-set?                     (-> any/c boolean?)]
- [prop:entity-ref                      (-> any/c entity?)]
+ [prop:snooze-struct-entity            struct-type-property?]
+ [snooze-struct?                       (-> any/c boolean?)]
+ [snooze-struct-entity                 (-> snooze-struct? entity?)]
  [struct check-result                  ([message string?] [annotations annotations/c])]
  [struct (check-success check-result)  ([message string?] [annotations annotations/c])]
  [struct (check-problem check-result)  ([message string?] [annotations annotations/c])]

@@ -34,24 +34,12 @@
   (send snooze drop-table entity))
 
 ; guid -> guid
-(define (save! guid)
-  (send (guid-snooze guid) save! guid))
+(define (save! #:snooze [snooze (current-snooze)] guid)
+  (send snooze save! guid))
 
 ; guid -> guid
-(define (delete! guid)
-  (send (guid-snooze guid) delete! guid))
-
-; guid (connection guid -> guid) -> guid
-(define (insert/id+revision! guid on-save)
-  (send (guid-snooze guid) insert/id+revision! guid on-save))
-
-; guid (connection guid -> guid) -> guid
-(define (update/id+revision! guid on-save)
-  (send (guid-snooze guid) update/id+revision! guid on-save))
-
-; guid (connection guid -> guid) -> guid
-(define (delete/id+revision! guid on-delete)
-  (send (guid-snooze guid) delete/id+revision! guid on-delete))
+(define (delete! #:snooze [snooze (current-snooze)] guid)
+  (send snooze delete! guid))
 
 ; select -> (U result #f)
 (define (find-one #:snooze [snooze (current-snooze)] select)
@@ -136,11 +124,8 @@
  [current-connection    (->* () (#:snooze (is-a?/c snooze<%>)) connection?)]
  [create-table          (->* (entity?) (#:snooze (is-a?/c snooze<%>)) void?)]
  [drop-table            (->* ((or/c entity? symbol?)) (#:snooze (is-a?/c snooze<%>)) void?)]
- [save!                 (-> guid? guid?)]
- [delete!               (-> guid? guid?)]
- [insert/id+revision!   (-> guid? (-> connection? guid? guid?) guid?)]
- [update/id+revision!   (-> guid? (-> connection? guid? guid?) guid?)]
- [delete/id+revision!   (-> guid? (-> connection? guid? guid?) guid?)]
+ [save!                 (->* (guid?) (#:snooze (is-a?/c snooze<%>)) guid?)]
+ [delete!               (->* (guid?) (#:snooze (is-a?/c snooze<%>)) guid?)]
  [find-one              (->* (query?) (#:snooze (is-a?/c snooze<%>)) any)]
  [find-all              (->* (query?) (#:snooze (is-a?/c snooze<%>)) (or/c null? pair?))]
  [g:find                (->* (query?) (#:snooze (is-a?/c snooze<%>)) procedure?)]

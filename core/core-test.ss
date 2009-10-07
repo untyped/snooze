@@ -9,9 +9,6 @@
          "struct.ss"
          (only-in "define-entity.ss" attr))
 
-(require/expose "struct.ss"
-  (interned-guids))
-
 (define (hash->alist hash)
   (for/list ([item (in-dict-pairs hash)]) item))
 

@@ -6,7 +6,6 @@
          srfi/26
          (planet untyped/unlib:3/gen)
          (planet untyped/unlib:3/parameter)
-         (prefix-in real: (only-in "core/snooze-struct.ss" make-snooze-struct))
          "core/core.ss"
          "common/common.ss"
          "sql/sql.ss")
@@ -126,15 +125,14 @@
       (unless (snooze-struct-saved? struct)
         (raise-exn exn:fail:snooze (format "unsaved structs cannot be deleted ~a" struct)))
       (auto-connect)
-      (parameterize ([currently-deleting struct])
-        (let ([entity (snooze-struct-entity struct)])
-          (call-with-transaction
-           (lambda ()
-             ((entity-on-delete entity)
-              (lambda (conn struct)
-                (send database delete-struct conn struct))
-              (current-connection)
-              struct))))))
+      (let ([entity (snooze-struct-entity struct)])
+        (call-with-transaction
+         (lambda ()
+           ((entity-on-delete entity)
+            (lambda (conn struct)
+              (send database delete-struct conn struct))
+            (current-connection)
+            struct)))))
     
     ; query -> (list-of result)
     (define/public (find-all query)

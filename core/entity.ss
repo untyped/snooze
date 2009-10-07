@@ -99,7 +99,7 @@
      num-attrs                  ; number of fields passed in constructor (excludes fields from supertype)
      0                          ; number of auto-value fields
      (void)                     ; values for auto-value fields
-     (list* (cons prop:entity entity)
+     (list* (cons prop:snooze-struct-entity entity)
             properties)         ; properties
      #f))                       ; inspector-or-#f
   
@@ -194,7 +194,7 @@
 
 (define snooze-struct-property-list/c
   (listof (cons/c (and/c struct-type-property?
-                         (not/c (cut eq? <> prop:entity)))
+                         (not/c (cut eq? <> prop:snooze-struct-entity)))
                   any/c)))
 
 (provide/contract

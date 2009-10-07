@@ -30,21 +30,9 @@
     
     ; type any -> string
     (define/public (escape-sql-value type value)
-      (cond [(boolean-type? type)  (guard type value boolean?  "boolean")             (if value "true" "false")]
+      (cond [(boolean-type? type)  (guard type value boolean?      "boolean")         (if value "true" "false")]
             [(not value)           "NULL"]
-            [(guid-type? type)     (guard type value guid?     "(U guid #f)")         (cond [(not (eq? (guid-entity value) (guid-type-entity type)))
-                                                                                             (raise-exn exn:fail:snooze:query
-                                                                                               (format "wrong guid entity: expected ~a, received ~a."
-                                                                                                       (entity-name (guid-entity value))
-                                                                                                       (entity-name (guid-type-entity type))))]
-                                                                                            [(guid-id value) => number->string]
-                                                                                            [(with-handlers ([exn? #f])
-                                                                                               (and (guid? value) (guid-ref value)))
-                                                                                             => (lambda (struct)
-                                                                                                  (number->string (snooze-struct-id struct)))]
-                                                                                            [else (raise-exn exn:fail:snooze:query
-                                                                                                    (format "cannot use unsaved struct in a query: ~s" value)
-                                                                                                    #f)])]
+            [(guid-type? type)     (guard type value guid?         "(U guid #f)")     (escape-guid type value)]
             [(integer-type? type)  (guard type value integer?      "(U integer #f)")  (number->string value)]
             [(real-type? type)     (guard type value real?         "(U real #f)")     (number->string value)]
             [(string-type? type)   (guard type value string?       "(U string #f)")   (string-append "'" (regexp-replace* #rx"'" value "''") "'")]

@@ -20,6 +20,7 @@
                     make-check-fatal)
          "define-entity.ss"
          "provide-entity.ss"
+         "snooze-struct.ss"
          "syntax-info.ss")
 
 ; Provide statements ---------------------------
@@ -32,5 +33,6 @@
                        "struct.ss"
                        "define-entity.ss"
                        "provide-entity.ss"
+                       "snooze-struct.ss"
                        "syntax-info.ss"))
 

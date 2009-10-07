@@ -6,14 +6,6 @@
          "attribute-keyword.ss"
          "struct.ss")
 
-; any -> boolean
-(define (snooze-struct? struct)
-  (prop:entity-set? struct))
-
-; snooze-struct -> entity
-(define snooze-struct-entity
-  prop:entity-ref)
-
 ; snooze-struct -> guid
 (define (snooze-struct-guid struct)
   ((entity-private-accessor (snooze-struct-entity struct)) struct 0))
@@ -103,6 +95,18 @@
            #f
            (snooze-struct-data-ref* original))))
 
+
+; guid any ... -> string
+(define (format-snooze-struct struct . rest)
+  (let* ([entity (snooze-struct-entity struct)]
+         [ans    (apply (entity-pretty-formatter entity) struct rest)])
+    (if (string? ans)
+        ans
+        (raise-exn exn:fail:contract
+          (format "format-snooze-struct: pretty-formatter for ~a returned ~a, expected a string"
+                  (entity-name entity)
+                  ans)))))
+
 ; snooze-struct any ... -> (listof check-result)
 (define (check-snooze-struct struct . rest)
   (let* ([entity (snooze-struct-entity struct)]
@@ -134,9 +138,7 @@
   (cons/c guid? (cons/c revision/c any/c)))
 
 (provide/contract
- [snooze-struct?              (-> any/c boolean?)]
- [snooze-struct-entity        (-> (or/c snooze-struct? prop:entity-set?) entity?)]
- [snooze-struct-guid          (-> (or/c snooze-struct? prop:entity-set?) guid?)]
+ [snooze-struct-guid          (-> snooze-struct? guid?)]
  [snooze-struct-id            (-> snooze-struct? (or/c natural-number/c symbol?))]
  [snooze-struct-saved?        (-> snooze-struct? boolean?)]
  [snooze-struct-revision      (-> snooze-struct? revision/c)]
@@ -147,5 +149,6 @@
  [make-snooze-struct          (->* (entity?) () #:rest attr-value-list/c snooze-struct?)]
  [make-snooze-struct/defaults (->* (entity?) () #:rest attr/value-list? snooze-struct?)]
  [snooze-struct-copy          (-> snooze-struct? snooze-struct?)]
+ [format-snooze-struct        (->* (snooze-struct?) () #:rest any/c string?)]
  [check-snooze-struct         (->* (snooze-struct?) () #:rest any/c (listof check-result?))]
  [check-old-snooze-struct     (->* (snooze-struct?) () #:rest any/c (listof check-result?))])

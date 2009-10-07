@@ -208,11 +208,14 @@
        (begin (set! natural-order-stx #'(sql-list expr ...))
               (parse-entity-kws #'(other ...)))]
       [(#:order expr other ...)
-       (raise-syntax-error #f "#:order must be in the form ((asc foo.bar) ...)" complete-stx #'expr)]
-      [(#:property prop:entity val other ...)
-       (raise-syntax-error #f "prop:entity cannot be specified in a define-entity form" complete-stx #'(#:property prop:entity val))]
+       (raise-syntax-error #f "#:order must be in the form ((asc foo.bar) ...)"
+                           complete-stx #'expr)]
+      [(#:property prop:snooze-struct-entity val other ...)
+       (raise-syntax-error #f "prop:snooze-struct-entity cannot be specified in a define-entity form"
+                           complete-stx #'(#:property prop:snooze-struct-entity val))]
       [(#:property prop:serializable val other ...)
-       (raise-syntax-error #f "prop:serializable cannot be specified in a define-entity form" complete-stx #'(#:property prop:entity val))]
+       (raise-syntax-error #f "prop:serializable cannot be specified in a define-entity form"
+                           complete-stx #'(#:property prop:snooze-struct-entity val))]
       [(#:property name val other ...)
        (identifier? #'name)
        (begin (set! property-stxs (cons #'(cons name val) property-stxs))
@@ -330,7 +333,7 @@
                
                (define (defaults-constructor
                          #,@(append-map (lambda (kw attr name)
-                                          (list kw #`[#,name (attribute-default #:snooze snooze #,attr)]))
+                                          (list kw #`[#,name (attribute-default #,attr)]))
                                         (syntax->list #'(attr-kw ...))
                                         (syntax->list #'(attr-private ...))
                                         (syntax->list #'(attr ...))))
@@ -347,11 +350,10 @@
                                        (syntax->list #'(attr-kw ...))
                                        (syntax->list #'(accessor ...))
                                        (syntax->list #'(attr ...))))
-                 (let* ([struct   (guid-ref original)]
-                        [guid     (snooze-struct-guid struct)]
-                        [revision (snooze-struct-revision struct)])
+                 (let* ([guid     (snooze-struct-guid original)]
+                        [revision (snooze-struct-revision original)])
                    ((entity-constructor entity-private)
-                    guid
+                    original
                     revision
                     attr ...)))
                
@@ -474,7 +476,7 @@
 ; (listof (cons property any)) -> boolean
 (define (reserved-properties? prop-alist)
   (ormap (lambda (prop)
-           (or (eq? prop prop:entity)
+           (or (eq? prop prop:snooze-struct-entity)
                (eq? prop prop:serializable)))
          (map car prop-alist)))
 

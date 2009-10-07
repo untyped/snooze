@@ -75,34 +75,28 @@
       (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
         (let* ([entity       (snooze-struct-entity   old-struct)]
                [guid         (snooze-struct-guid     old-struct)]
-               [revision     (snooze-struct-revision old-struct)])
-          (send (connection-back-end conn) exec (insert-sql new-struct))
-          (let ([id (sqlite:insert (connection-back-end conn) (insert-sql old-struct))])
-            (apply (entity-private-constructor entity)
-                   (entity-make-guid entity id)
-                   (or revision 0)
-                   (for/list ([val (in-list (cddr (snooze-struct-ref* old-struct)))])
-                     (if (snooze-struct? val)
-                         (snooze-struct-guid val)
-                         val)))))))
+               [revision     (snooze-struct-revision old-struct)]
+               [new-struct   (let ([id (sqlite:insert (connection-back-end conn) (insert-sql old-struct))])
+                               (apply (entity-private-constructor entity)
+                                      (entity-make-guid entity id)
+                                      (or revision 0)
+                                      (cddr (snooze-struct-ref* old-struct))))])
+          (send (connection-back-end conn) exec (insert-sql new-struct)))))
     
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Updates the existing database record for the supplied struct.
     (define/public (update-struct conn old-struct [check-revision? #t])
       (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
-        (let ([entity   (snooze-struct-entity   old-struct)]
-              [guid     (snooze-struct-guid     old-struct)]
-              [revision (snooze-struct-revision old-struct)])
+        (let* ([entity     (snooze-struct-entity   old-struct)]
+               [guid       (snooze-struct-guid     old-struct)]
+               [revision   (snooze-struct-revision old-struct)]
+               [new-struct (apply (entity-private-constructor entity)
+                                  guid
+                                  (add1 revision)
+                                  (cddr (snooze-struct-ref* old-struct)))])
           (when check-revision? (check-revision conn entity guid revision))
-          (let ([ans (apply (entity-private-constructor entity)
-                            guid
-                            (add1 revision)
-                            (for/list ([val (in-list (cddr (snooze-struct-ref* old-struct)))])
-                              (if (snooze-struct? val)
-                                  (snooze-struct-guid val)
-                                  val)))])
-            (sqlite:exec/ignore (connection-back-end conn) (update-sql ans))
-            ans))))
+          (sqlite:exec/ignore (connection-back-end conn) (update-sql new-struct))
+          new-struct)))
     
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Deletes the database record for the supplied struct.
@@ -116,10 +110,7 @@
           (apply (entity-private-constructor entity)
                  guid
                  #f
-                 (for/list ([val (in-list (cddr (snooze-struct-ref* old-struct)))])
-                   (if (snooze-struct? val)
-                       (snooze-struct-guid val)
-                       val))))))
+                 (cddr (snooze-struct-ref* old-struct))))))
     
     ; connection database-guid -> void
     ; Deletes the database record for the supplied guid.

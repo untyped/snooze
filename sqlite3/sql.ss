@@ -2,7 +2,8 @@
 
 (require "../base.ss")
 
-(require srfi/13
+(require scheme/serialize
+         srfi/13
          srfi/19
          "../core/struct.ss"
          "../core/snooze-struct.ss"
@@ -28,27 +29,16 @@
     
     ; type any -> string
     (define/public (escape-sql-value type value)
-      (cond [(boolean-type? type)  (guard type value boolean?  "boolean")         (if value "1" "0")]
+      (cond [(boolean-type? type)  (guard type value boolean?      "boolean")         (if value "1" "0")]
             [(not value)           "NULL"]
-            [(guid-type? type)     (guard type value guid? "(U guid #f)")         (cond [(not (eq? (guid-entity value) (guid-type-entity type)))
-                                                                                         (raise-exn exn:fail:snooze:query
-                                                                                           (format "wrong guid entity: expected ~a, received ~a."
-                                                                                                   (entity-name (guid-entity value))
-                                                                                                   (entity-name (guid-type-entity type))))]
-                                                                                        [(guid-id value) => number->string]
-                                                                                        [(with-handlers ([exn? #f])
-                                                                                           (and (guid? value) (guid-ref value)))
-                                                                                         => (lambda (struct)
-                                                                                              (number->string (snooze-struct-id struct)))]
-                                                                                        [else (raise-exn exn:fail:snooze:query
-                                                                                                (format "cannot use unsaved struct in a query: ~s" value)
-                                                                                                #f)])]
-            [(integer-type? type)  (guard type value integer?  "(U integer #f)")  (number->string value)]
-            [(real-type? type)     (guard type value real?     "(U real #f)")     (number->string value)]
-            [(string-type? type)   (guard type value string?   "(U string #f)")   (string-append "'" (regexp-replace* #rx"'" value "''") "'")]
-            [(symbol-type? type)   (guard type value symbol?   "(U symbol #f)")   (string-append "'" (regexp-replace* #rx"'" (symbol->string value) "''") "'")]
-            [(time-tai-type? type) (guard type value time-tai? "(U time-tai #f)") (escape-time time-tai value)]
-            [(time-utc-type? type) (guard type value time-utc? "(U time-utc #f)") (escape-time time-utc value)]
+            [(guid-type? type)     (guard type value guid?         "(U guid #f)")     (escape-guid type value)]
+            [(integer-type? type)  (guard type value integer?      "(U integer #f)")  (number->string value)]
+            [(real-type? type)     (guard type value real?         "(U real #f)")     (number->string value)]
+            [(string-type? type)   (guard type value string?       "(U string #f)")   (string-append "'" (regexp-replace* #rx"'" value "''") "'")]
+            [(symbol-type? type)   (guard type value symbol?       "(U symbol #f)")   (string-append "'" (regexp-replace* #rx"'" (symbol->string value) "''") "'")]
+            [(time-tai-type? type) (guard type value time-tai?     "(U time-tai #f)") (escape-time time-tai value)]
+            [(time-utc-type? type) (guard type value time-utc?     "(U time-utc #f)") (escape-time time-utc value)]
+            [(binary-type? type)   (guard type value serializable? "serializable")    (string-append "'" (regexp-replace* #rx"'" (serialize/string value) "''") "'")]
             [else                  (raise-type-error #f "unrecognised type" type)]))
     
     ; srfi19-time-type (U time-tai time-utc) -> string
@@ -331,6 +321,17 @@
     [(guard type value predicate expected)
      (unless (predicate value)
        (raise-type-error (type-name type) expected value))]))
+
+; any -> bytes
+(define (serialize/string val)
+  (let ([out (open-output-string)])
+    (write (serialize val) out)
+    (get-output-string out)))
+
+; bytes -> any
+(define (deserialize/bytes val)
+  (let ([in (open-input-bytes val)])
+    (deserialize (read in))))
 
 ; Provide statements ---------------------------
 
