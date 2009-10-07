@@ -46,16 +46,21 @@
                                      (string-titlecase (attribute-pretty-name attr)))))]
             [(guid-type? type)
              (let ([entity (guid-type-entity type)])
-               (if (and (guid? val) (eq? (guid-entity val) entity))
-                   (cond [(snooze-struct-saved? val) (check-pass)]
-                         [else (check-fail (format "~a: related record unsaved." (string-titlecase (attribute-pretty-name attr))))])
-                   (let ([name (string-titlecase (entity-pretty-name entity))])
-                     (check-fail (format "~a: must be~a~a."
-                                         (string-titlecase (attribute-pretty-name attr))
-                                         (if allow-null? " blank or" "")
-                                         (if (memq (string-ref name 0) '(#\a #\e #\i #\o #\u #\A #\E #\I #\O #\U))
-                                             (format "an ~a" name)
-                                             (format "a ~a" name)))))))]
+               (or (cond [(database-guid? val)
+                          (and (eq? (guid-entity val) entity)
+                               (check-pass))]
+                         [(snooze-struct? val)
+                          (and (eq? (snooze-struct-entity val) entity)
+                               (if (snooze-struct-saved? val)
+                                   (check-pass)
+                                   (check-fail (format "~a: related record unsaved." (string-titlecase (attribute-pretty-name attr))))))]
+                         [else (raise-type-error 'check-attribute-value "(U database-guid snooze-struct #f)" val)])
+                   (check-fail (format "~a: must be~a~a."
+                                       (string-titlecase (attribute-pretty-name attr))
+                                       (if allow-null? " blank or" "")
+                                       (if (memq (string-ref name 0) '(#\a #\e #\i #\o #\u #\A #\E #\I #\O #\U))
+                                           (format " an ~a" name)
+                                           (format " a ~a" name))))))]
             [(boolean-type? type)
              (if (boolean? val)
                  (check-pass)
@@ -181,7 +186,13 @@
 ; Provide statements -----------------------------
 
 (provide/contract
- [default-check-snooze-struct     (-> guid? (listof check-result?))]
- [default-check-old-snooze-struct (-> guid? (listof check-result?))]
- [make-default-save-hook          (-> entity? (-> (-> connection? guid? guid?) connection? guid? guid?))]
- [make-default-delete-hook        (-> entity? (-> (-> connection? guid? guid?) connection? guid? guid?))])
+ [default-check-snooze-struct     (-> snooze-struct? (listof check-result?))]
+ [default-check-old-snooze-struct (-> snooze-struct? (listof check-result?))]
+ [make-default-save-hook          (-> entity? (-> (-> connection? snooze-struct? snooze-struct?)
+                                                  connection?
+                                                  snooze-struct?
+                                                  snooze-struct?))]
+ [make-default-delete-hook        (-> entity? (-> (-> connection? snooze-struct? snooze-struct?)
+                                                  connection?
+                                                  snooze-struct?
+                                                  snooze-struct?))])

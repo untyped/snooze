@@ -172,7 +172,7 @@
 (define (create-attribute name col pretty pretty-plural type entity index default-maker struct-accessor struct-mutator)
   (let* ([private-accessor (make-struct-field-accessor struct-accessor index name)]
          [private-mutator  (make-struct-field-mutator  struct-mutator index name)]
-         [accessor         (make-accessor private-accessor)]
+         [accessor         (make-accessor private-accessor (and (eq? name 'guid) private-mutator))]
          [mutator          private-mutator])
     (make-attribute name col pretty pretty-plural
                     type entity index
@@ -182,12 +182,15 @@
                     accessor
                     mutator)))
 
-; (struct -> any) -> (guid -> any)
-(define (make-accessor struct-accessor)
+; (struct -> any) (U (struct any -> void) #f) -> (guid -> any)
+(define (make-accessor struct-accessor struct-mutator!)
   (lambda (struct)
     (let ([ans (struct-accessor struct)])
-      (if (guid? ans)
-          (send (current-snooze) find-by-guid ans)
+      (if (and (database-guid? ans) struct-mutator!)
+          ; struct-mutator! is #f for primary keys:
+          (let ([ans (send (current-snooze) find-by-guid ans)])
+            (struct-mutator! struct ans)
+            ans)
           ans))))
 
 ; Provide statements -----------------------------

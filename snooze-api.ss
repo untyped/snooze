@@ -33,13 +33,13 @@
 (define (drop-table #:snooze [snooze (current-snooze)] entity)
   (send snooze drop-table entity))
 
-; guid -> guid
-(define (save! #:snooze [snooze (current-snooze)] guid)
-  (send snooze save! guid))
+; snooze-struct -> snooze-struct
+(define (save! #:snooze [snooze (current-snooze)] struct)
+  (send snooze save! struct))
 
-; guid -> guid
-(define (delete! #:snooze [snooze (current-snooze)] guid)
-  (send snooze delete! guid))
+; snooze-struct -> snooze-struct
+(define (delete! #:snooze [snooze (current-snooze)] struct)
+  (send snooze delete! struct))
 
 ; select -> (U result #f)
 (define (find-one #:snooze [snooze (current-snooze)] select)
@@ -53,9 +53,13 @@
 (define (g:find #:snooze [snooze (current-snooze)] select)
   (send snooze g:find select))
 
-; entity (U integer #f) -> (U guid #f)
+; entity (U integer #f) -> (U snooze-struct #f)
 (define (find-by-id #:snooze [snooze (current-snooze)] entity id)
   (send snooze find-by-id entity id))
+
+; database-guid -> (U snooze-struct #f)
+(define (find-by-guid #:snooze [snooze (current-snooze)] guid)
+  (send snooze find-by-guid guid))
 
 ; (-> ans) any ... -> ans
 (define (call-with-transaction #:snooze [snooze (current-snooze)] #:metadata [metadata null] thunk)
@@ -124,12 +128,13 @@
  [current-connection    (->* () (#:snooze (is-a?/c snooze<%>)) connection?)]
  [create-table          (->* (entity?) (#:snooze (is-a?/c snooze<%>)) void?)]
  [drop-table            (->* ((or/c entity? symbol?)) (#:snooze (is-a?/c snooze<%>)) void?)]
- [save!                 (->* (guid?) (#:snooze (is-a?/c snooze<%>)) guid?)]
- [delete!               (->* (guid?) (#:snooze (is-a?/c snooze<%>)) guid?)]
+ [save!                 (->* (snooze-struct?) (#:snooze (is-a?/c snooze<%>)) snooze-struct?)]
+ [delete!               (->* (snooze-struct?) (#:snooze (is-a?/c snooze<%>)) snooze-struct?)]
  [find-one              (->* (query?) (#:snooze (is-a?/c snooze<%>)) any)]
  [find-all              (->* (query?) (#:snooze (is-a?/c snooze<%>)) (or/c null? pair?))]
  [g:find                (->* (query?) (#:snooze (is-a?/c snooze<%>)) procedure?)]
- [find-by-id            (->* (entity? natural-number/c) (#:snooze (is-a?/c snooze<%>)) (or/c guid? #f))]
+ [find-by-id            (->* (entity? natural-number/c) (#:snooze (is-a?/c snooze<%>)) (or/c snooze-struct? #f))]
+ [find-by-guid          (->* (database-guid?) (#:snooze (is-a?/c snooze<%>)) (or/c snooze-struct? #f))]
  [call-with-transaction (->* (procedure?) (#:snooze (is-a?/c snooze<%>) #:metadata list?) any)]
  [query->string         (->* (query?) (#:snooze (is-a?/c snooze<%>)) string?)]
  [debug-sql             (->* (query?) (#:snooze (is-a?/c snooze<%>) #:output-port output-port? #:format string?) query?)]

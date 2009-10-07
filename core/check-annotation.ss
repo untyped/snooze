@@ -122,5 +122,5 @@
  [check-result-attributes      (-> check-result? (listof attribute?))]
  [check-result-has-attribute?  (-> check-result? attribute? boolean?)]
  [check-result-attributes-add  (-> check-result? (listof attribute?) check-result?)]
- [check-result-struct          (-> check-result? (or/c guid? #f))]
- [check-result-struct-set      (-> check-result? (or/c guid? #f) check-result?)])
+ [check-result-struct          (-> check-result? (or/c snooze-struct? #f))]
+ [check-result-struct-set      (-> check-result? (or/c snooze-struct? #f) check-result?)])

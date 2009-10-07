@@ -45,16 +45,11 @@
   (send (send (current-snooze) get-database) make-multiple-item-extractor entities))
 
 (define-check (check-extracted actual expected)
-  (cond [(pair? actual)
-         (for ([actual   (in-list actual)]
-               [expected (in-list expected)])
-           (if (guid? actual)
-               (check-equal? (guid-ref actual) expected)
-               (check-equal? actual expected)))]
-        [(guid? actual)
-         (check-equal? (guid-ref actual) expected)]
-        [else
-         (check-equal? actual expected)]))
+  (if (pair? actual)
+      (for ([actual   (in-list actual)]
+            [expected (in-list expected)])
+        (check-equal? actual expected))
+      (check-equal? actual expected)))
 
 ; Tests ----------------------------------------
 

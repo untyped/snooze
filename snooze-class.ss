@@ -152,7 +152,7 @@
     (define/public (find-by-id entity id)
       (find-by-guid (entity-make-guid entity id)))
     
-    ; guid -> snooze-struct
+    ; database-guid -> snooze-struct
     (define/public (find-by-guid guid)
       (auto-connect)
       (car (send (get-database) direct-find (current-connection) (list guid))))

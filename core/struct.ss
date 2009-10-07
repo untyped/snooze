@@ -195,21 +195,23 @@
 ;         symbol
 ;         string
 ;         string
-;         (guid any ... -> string)
+;         (snooze-struct any ... -> string)
 ;         struct-type
 ;         (any ... -> snooze-struct)
 ;         ((U snooze-struct any) -> boolean)
 ;         (snooze-struct natural -> any)
 ;         (snooze-struct natural any -> void)
-;         (any ... -> guid)
-;         ((U guid any) -> boolean)
-;         ((U natural #f) -> guid)
+;         (any ... -> snooze-struct)
+;         ((U snooze-struct any) -> boolean)
+;         (#:kw any ... -> snooze-struct)
+;         (snooze-struct #:kw any ... -> snooze-struct)
+;         ((U natural symbol) -> guid)
 ;         ((U guid any) -> boolean)
 ;         (listof attribute)
-;         ((struct -> struct) struct -> struct)
-;         ((struct -> struct) struct -> struct))
-;         (struct -> (listof check-result))
-;         (struct -> (listof check-result))
+;         ((snooze-struct -> snooze-struct) snooze-struct -> snooze-struct)
+;         ((snooze-struct -> snooze-struct) snooze-struct -> snooze-struct))
+;         (snooze-struct -> (listof check-result))
+;         (snooze-struct -> (listof check-result))
 (define-struct entity 
   (name
    plural-name
@@ -246,8 +248,8 @@
 ;  symbol
 ;  string
 ;  string
-;  (guid any ... -> string)
-;  ((U natural #f) -> guid)
+;  (snooze-struct any ... -> string)
+;  ((U natural symbol) -> guid)
 ;  ((U guid any) -> boolean)
 ; ->
 ;  entity
@@ -320,21 +322,21 @@
 (define (entity-data-attributes entity)
   (cddr (entity-attributes entity)))
 
-; entity ((connection guid -> guid) connection guid -> guid) -> void
+; entity ((connection snooze-struct -> snooze-struct) connection snooze-struct -> snooze-struct) -> void
 (define (wrap-entity-on-save! entity hook)
   (let ([default (entity-on-save entity)])
     (set-entity-on-save!
      entity
-     (lambda (continue conn guid)
-       (hook (cut default continue <> <>) conn guid)))))
+     (lambda (continue conn struct)
+       (hook (cut default continue <> <>) conn struct)))))
 
-; entity ((connection guid -> guid) connection guid -> guid) -> void
+; entity ((connection snooze-struct -> snooze-struct) connection snooze-struct -> snooze-struct) -> void
 (define (wrap-entity-on-delete! entity hook)
   (let ([default (entity-on-delete entity)])
     (set-entity-on-delete!
      entity
-     (lambda (continue conn guid)
-       (hook (cut default continue <> <>) conn guid)))))
+     (lambda (continue conn struct)
+       (hook (cut default continue <> <>) conn struct)))))
 
 ; Relationships ----------------------------------
 
@@ -352,8 +354,8 @@
 ;         (snooze<%> -> any)
 ;         (snooze-struct -> any)
 ;         (snooze-struct any -> void)
-;         (guid -> any)
-;         (guid any -> void))
+;         (snooze-struct -> any)
+;         (snooze-struct any -> void))
 (define-struct attribute 
   (name
    column-name
@@ -479,8 +481,14 @@
                                         [guid-predicate       (-> any/c boolean?)]
                                         [attributes           (listof attribute?)]
                                         [default-alias        any/c]
-                                        [on-save              (-> (-> connection? guid? guid?) connection? guid? guid?)]
-                                        [on-delete            (-> (-> connection? guid? guid?) connection? guid? guid?)]
+                                        [on-save              (-> (-> connection? snooze-struct? snooze-struct?)
+                                                                  connection?
+                                                                  snooze-struct?
+                                                                  snooze-struct?)]
+                                        [on-delete            (-> (-> connection? snooze-struct? snooze-struct?)
+                                                                  connection?
+                                                                  snooze-struct?
+                                                                  snooze-struct?)]
                                         [save-check           procedure?]
                                         [delete-check         procedure?])]
  [make-vanilla-entity                  (-> symbol?
@@ -500,16 +508,16 @@
  [entity-attribute                     (-> entity? (or/c symbol? attribute?) attribute?)]
  [entity-data-attributes               (-> entity? (listof attribute?))]
  [wrap-entity-on-save!                 (-> entity?
-                                           (-> (-> connection? guid? guid?)
+                                           (-> (-> connection? snooze-struct? snooze-struct?)
                                                connection?
-                                               guid?
-                                               guid?)
+                                               snooze-struct?
+                                               snooze-struct?)
                                            void?)]
  [wrap-entity-on-delete!               (-> entity?
-                                           (-> (-> connection? guid? guid?)
+                                           (-> (-> connection? snooze-struct? snooze-struct?)
                                                connection?
-                                               guid?
-                                               guid?)
+                                               snooze-struct?
+                                               snooze-struct?)
                                            void?)]
  [struct attribute                     ([name                 symbol?]
                                         [column-name          symbol?]

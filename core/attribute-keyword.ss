@@ -46,12 +46,11 @@
 
 ; entity attribute (listof attribute) (listof any) (attribute -> any) -> any
 (define (attribute-keyword-get entity needle attrs vals default-ref)
-  (let ([guid? (entity-guid-attribute? entity needle)])
-    (let/ec return
-      (for ([attr attrs] [val vals])
-        (when (eq? needle attr)
-          (return val)))
-      (default-ref needle))))
+  (let/ec return
+    (for ([attr attrs] [val vals])
+      (when (eq? needle attr)
+        (return val)))
+    (default-ref needle)))
 
 ; any -> boolean
 (define (attr/value-list? item)
