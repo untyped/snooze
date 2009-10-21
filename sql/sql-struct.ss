@@ -7,6 +7,7 @@
          (planet untyped/unlib:3/time)
          (planet untyped/unlib:3/symbol)
          "../base.ss"
+         "../core/snooze-struct.ss"
          "../core/struct.ss")
 
 ; ***** NOTE *****
@@ -74,16 +75,18 @@
 
 ; literal-value -> literal
 (define (create-literal val)
-  (cond [(boolean? val)  (make-literal type:boolean  val)]
-        [(integer? val)  (make-literal type:integer  val)]
-        [(real? val)     (make-literal type:real     val)]
-        [(string? val)   (make-literal type:string   val)]
-        [(symbol? val)   (make-literal type:symbol   val)]
-        [(time-utc? val) (make-literal type:time-utc val)]
-        [(time-tai? val) (make-literal type:time-tai val)]
-        [(guid? val)     (make-literal (make-guid-type #f (guid-entity val)) val)]
-        [else            (raise-exn exn:fail:contract
-                           (format "expected (U boolean integer real string symbol time-tai time-utc), received ~s" val))]))
+  (cond [(boolean? val)       (make-literal type:boolean  val)]
+        [(integer? val)       (make-literal type:integer  val)]
+        [(real? val)          (make-literal type:real     val)]
+        [(string? val)        (make-literal type:string   val)]
+        [(symbol? val)        (make-literal type:symbol   val)]
+        [(time-utc? val)      (make-literal type:time-utc val)]
+        [(time-tai? val)      (make-literal type:time-tai val)]
+        [(guid? val)          (make-literal (make-guid-type #f (guid-entity val)) val)]
+        [(snooze-struct? val) (create-literal (snooze-struct-guid val))]
+        [else                 (raise-type-error 'create-literal
+                                                "(U boolean integer real string symbol time-tai time-utc)"
+                                                val)]))
 
 ; type -> literal
 (define (create-null type)
@@ -126,15 +129,15 @@
       (symbol? item)
       (time-tai? item)
       (time-utc? item)
-      (guid? item)))
+      (guid? item)
+      (snooze-struct? item)))
 
 ; any -> boolean
 (define (quotable? item)
   (or (expression? item)
       (literal-value? item)
       (query? item)
-      (query-alias? item)
-      (guid? item)))
+      (query-alias? item)))
 
 ; (U expression source query boolean integer real string symbol time-tai time-utc) -> (U expression source)
 (define (quote-argument arg)

@@ -17,27 +17,17 @@
     
     (test-case "save! : affects snooze-struct-saved?, temporary-guid? and database-guid?"
       (recreate-test-tables)
-      (let* ([per1 (make-person "Dave")]
-             [per2 (save! per1)])
-        (collect-garbage)
-        (check-pred  temporary-guid? (snooze-struct-guid per1))
+      (let ([per1 (make-person "Dave")])
         (check-false (snooze-struct-saved? per1))
-        (check-pred  database-guid? (snooze-struct-guid per2))
-        (check-pred  snooze-struct-saved? per2)))
-    
-    (test-case "save!, person-set : remaps guids appropriately"
-      (recreate-test-tables)
-      (let* ([per1a   (make-person "Dave")]
-             [per1b   (person-set per1a #:name "Noel")]
-             [per2a   (save! per1b)]
-             [per2b   (person-set per2a #:name "Matt")])
-        (check-eq? per1a per1b)
-        (check-eq? per1b per2a)
-        (check-eq? per2a per2b)
-        (check-equal? (person-name per1a) "Dave")
-        (check-equal? (person-name per1b) "Noel")
-        (check-equal? (person-name per2a) "Noel")
-        (check-equal? (person-name per2b) "Matt")))
+        (check-pred temporary-guid? (snooze-struct-guid per1))
+        (check-false (database-guid? (snooze-struct-guid per1)))
+        (let ([per2 (save! per1)])
+          (check-pred snooze-struct-saved? per1)
+          (check-pred snooze-struct-saved? per2)
+          (check-false (temporary-guid? (snooze-struct-guid per1)))
+          (check-false (temporary-guid? (snooze-struct-guid per2)))
+          (check-pred database-guid? (snooze-struct-guid per1))
+          (check-pred database-guid? (snooze-struct-guid per2)))))
     
     (test-case "save! : stores information correctly in the database"
       (recreate-test-tables)
@@ -62,9 +52,18 @@
     
     (test-case "save! : bad data types"
       (recreate-test-tables)
-      (check-exn exn:fail:snooze? (cut save! (make-person 'R2D2)))
+      (check-exn exn:fail:snooze?
+        (cut save! ((entity-constructor person)
+                    (entity-make-temporary-guid person)
+                    #f
+                    'R2D2)))
       (let ([pet1 (save! (make-pet #f "Garfield"))])
-        (check-exn exn:fail:snooze? (cut save! (make-person pet1 "Odie")))))
+        (check-exn exn:fail:snooze?
+          (cut save! ((entity-constructor pet)
+                      (entity-make-temporary-guid pet)
+                      #f
+                      pet1
+                      "Odie")))))
     
     (test-case "save! : revision incremented on save"
       (recreate-test-tables)

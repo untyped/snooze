@@ -19,7 +19,7 @@
       (let* ([per (make-person "Per")])
         (check-false (snooze-struct-saved? per))
         (check-pred temporary-guid? (snooze-struct-guid per))
-        (check-false snooze-struct-revision per)))
+        (check-false (snooze-struct-revision per))))
     
     (test-case "make-person twice, same contents: check independence"
       (recreate-test-tables)
@@ -38,11 +38,9 @@
         (check-pred person? per2)
         (check-false (snooze-struct-saved? per2))
         (check-pred temporary-guid? (snooze-struct-guid per2))
-        (check-false snooze-struct-revision per2)
+        (check-false (snooze-struct-revision per2))
         (check-not-eq? per per2)
-        (check-not-equal? per per2)
-        (check-not-equal? (snooze-struct-data-ref* per)
-                          (snooze-struct-data-ref* per2))))))
+        (check-equal? per per2)))))
 
 ; Provide statements -----------------------------
 
