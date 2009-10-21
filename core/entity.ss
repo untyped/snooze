@@ -107,7 +107,7 @@
     (let* ([name             'guid]
            [col              'guid]
            [type             (make-guid-type #f entity)]
-           [default-maker    (lambda () #f)]
+           [default-maker    (cut entity-make-temporary-guid entity)]
            [index            0])
       (create-attribute name col "unique ID" "unique IDs" type entity index default-maker struct-accessor struct-mutator)))
   
@@ -171,7 +171,7 @@
 ;  attribute 
 (define (create-attribute name col pretty pretty-plural type entity index default-maker struct-accessor struct-mutator)
   (let* ([private-accessor (make-struct-field-accessor struct-accessor index name)]
-         [private-mutator  (make-struct-field-mutator  struct-mutator index name)]
+         [private-mutator  (make-struct-field-mutator  struct-mutator  index name)]
          [accessor         (make-accessor private-accessor (and (eq? name 'guid) private-mutator))]
          [mutator          private-mutator])
     (make-attribute name col pretty pretty-plural

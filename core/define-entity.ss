@@ -339,9 +339,7 @@
                                         (syntax->list #'(attr ...))))
                  ((entity-constructor entity-private)
                   (entity-make-temporary-guid entity-private)
-                  #f
-                  attr
-                  ...))
+                  #f attr ...))
                
                (define (copy-constructor
                         original
@@ -352,10 +350,7 @@
                                        (syntax->list #'(attr ...))))
                  (let* ([guid     (snooze-struct-guid original)]
                         [revision (snooze-struct-revision original)])
-                   ((entity-constructor entity-private)
-                    original
-                    revision
-                    attr ...)))
+                   ((entity-constructor entity-private) guid revision attr ...)))
                
                #,(if (eq? (syntax-local-context) 'module)
                      (syntax/loc entity-id-stx

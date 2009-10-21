@@ -25,30 +25,28 @@
     (test-case "constructor and predicate"
       (check-pred procedure? make-person)
       (check-pred procedure? person?)
-      (check-true  (person? (make-person "Dave")))
+      (check-true  (person? (make-person "Jon")))
       (check-false (person? (make-pet #f "Odie")))
       (check-false (person? #f)))
     
     (test-case "struct equality"
       (let ([a1 (make-person "A")]
-            [a2 (make-person "A")]
-            [b  (make-person "B")])
-        (check-equal?     a1 a2)
-        (check-not-eq?    a1 a2)
-        (check-not-equal? a1 b)
-        (check-not-eq?    a1 b)))
+            [a2 (make-person "A")])
+        (check-not-equal? a1 a2)
+        (check-equal? (cddr (snooze-struct-ref* a1))
+                      (cddr (snooze-struct-ref* a2)))
+        (check-not-eq? a1 a2)))
     
-    (test-case "keyword constructor"
-      (check-equal? (make-person/defaults #:name "Dave")
-                    (make-person "Dave"))
-      (check-equal? (make-person/defaults #:name "Dave")
-                    (make-person "Dave"))
-      (check-equal? (make-person/defaults #:name "Dave")
-                    (person-set (make-person "Dave"))))
+    (test-equal? "keyword constructor"
+      (cdr (snooze-struct-ref* (make-person/defaults #:name "Dave")))
+      (cdr (snooze-struct-ref* (make-person "Dave"))))
     
     (test-case "copy constructor"
-      (check-equal? (make-person/defaults #:name "Dave")
-                    (person-set (make-person "Dave"))))
+      (let ([original (make-person "Dave")])
+        (check-equal? (cdr (snooze-struct-ref* (person-set original)))
+                      (cdr (snooze-struct-ref* original)))
+        (check-eq? (snooze-struct-guid (person-set original))
+                   (snooze-struct-guid original))))
     
     (test-case "name->table-name"
       (check-equal? (name->database-name 'person)        'person)
@@ -70,7 +68,7 @@
                             (attr person name)))))
     
     (test-case "contracts"
-      (check-exn exn:fail:contract? (cut make-course/defaults #:code #f))
+      (check-not-exn (cut make-course/defaults #:code #f))
       (check-exn exn:fail:contract? (cut make-course/defaults #:code "not a symbol"))
       ; symbol/string length aren't checked by contracts:
       (check-exn exn:fail:contract? (cut make-course/defaults #:code 'bittoolong))

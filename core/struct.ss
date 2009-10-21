@@ -420,6 +420,7 @@
  [database-guid?                       (-> any/c boolean?)]
  [copy-guid                            (-> guid? guid?)]
  [guid-id                              (-> guid? (or/c natural-number/c symbol?))]
+ [set-guid-id!                         (-> guid? (or/c natural-number/c symbol?) void?)]
  [guid-entity-box                      (-> struct-type? box?)]
  [guid-entity                          (-> guid? entity?)]
  [struct type                          ([allows-null? boolean?])]

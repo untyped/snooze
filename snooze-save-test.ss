@@ -31,12 +31,9 @@
              [per1b   (person-set per1a #:name "Noel")]
              [per2a   (save! per1b)]
              [per2b   (person-set per2a #:name "Matt")])
-        (check-false (eq? per1a per1b))
-        (check-false (eq? per1b per2a))
-        (check-false (eq? per2a per2b))
-        (check-false (snooze-struct-eq? per1a per1b))
-        (check-true  (snooze-struct-eq? per1b per2a))
-        (check-false (snooze-struct-eq? per2a per2b))
+        (check-eq? per1a per1b)
+        (check-eq? per1b per2a)
+        (check-eq? per2a per2b)
         (check-equal? (person-name per1a) "Dave")
         (check-equal? (person-name per1b) "Noel")
         (check-equal? (person-name per2a) "Noel")

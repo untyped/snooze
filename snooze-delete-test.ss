@@ -23,9 +23,7 @@
       (recreate-test-tables)
       (let* ([per1 (save! (make-person "Jon"))]
              [per2 (delete! per1)])
-        (check-equal? per1 per2)
-        (check-true (snooze-struct-eq? per1 per2))
-        (check-false (eq? per1 per2))
+        (check-eq? per1 per2)
         (check-equal? (person-name per2) "Jon")
         (check-false (snooze-struct-saved? per1))
         (check-false (snooze-struct-saved? per2))))

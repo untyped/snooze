@@ -24,7 +24,7 @@
              [per2 (save! (person-set per #:name "Per2"))])       ; saved
         (check-equal? (person-name per)  "Per")
         (check-equal? (person-name per2) "Per2")
-        (check-bit-eq? per per2))) ; different structs in memory
+        (check-not-eq? per per2))) ; different structs in memory
     
     (test-case "snooze-struct-copy : creates a totally independent copy"
       (let* ([test-person (save! (make-person "Per"))]

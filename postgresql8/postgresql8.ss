@@ -2,7 +2,8 @@
 
 (require "../base.ss")
 
-(require (prefix-in postgresql: (spgsql-in spgsql))
+(require (for-syntax scheme/base)
+         (prefix-in postgresql: (spgsql-in spgsql))
          (unlib-in gen symbol)
          "../base.ss"
          "../core/struct.ss"
@@ -10,6 +11,11 @@
          "../common/common.ss"
          "../sql/sql-struct.ss"
          "sql.ss")
+
+(define-syntax-rule (debug-sql* fn arg ...)
+  (let ([sql (fn arg ...)])
+    ;(printf "~a~n" sql)
+    sql))
 
 ;  [#:server      string]
 ;  [#:port        integer]
@@ -102,14 +108,14 @@
       (with-snooze-reraise (exn:fail? (format "could not create table for ~a" entity))
         (for-each (cut send (connection-back-end conn) exec <>)
                   (map (cut string-append <> ";")
-                       (regexp-split #px";" (create-table-sql entity))))))
+                       (regexp-split #px";" (debug-sql* create-table-sql entity))))))
     
     ; connection entity -> void
     (define/public (drop-table conn entity)
       (with-snooze-reraise (exn:fail? (format "could not drop table for ~a" entity))
         (for-each (cut send (connection-back-end conn) exec <>)
                   (map (cut string-append <> ";")
-                       (regexp-split #px";" (drop-table-sql entity))))))
+                       (regexp-split #px";" (debug-sql* drop-table-sql entity))))))
     
     ; connection snooze-struct -> snooze-struct
     ; Inserts a new database record for the supplied struct.
@@ -118,14 +124,16 @@
         (let* ([entity       (snooze-struct-entity old-struct)]
                [seq-name     (symbol-append (entity-table-name entity) '_seq)]
                [guid         (snooze-struct-guid old-struct)]
-               [revision     (snooze-struct-revision old-struct)]
-               [new-struct   (let ([id (send (connection-back-end conn) query-value (format "SELECT currval('~a');" (escape-sql-name seq-name)))])
-                               (apply (entity-private-constructor entity)
-                                      (entity-make-guid entity id)
-                                      (or revision 0)
-                                      (cddr (snooze-struct-ref* old-struct))))])
-          (send (connection-back-end conn) exec (insert-sql new-struct))
-          new-struct)))
+               [revision     (snooze-struct-revision old-struct)])
+          (set-guid-id! guid (send (connection-back-end conn)
+                                   query-value
+                                   (debug-sql* format "SELECT nextval('~a');" (escape-sql-name seq-name))))
+          (let ([new-struct (apply (entity-private-constructor entity)
+                                   guid
+                                   (or revision 0)
+                                   (cddr (snooze-struct-ref* old-struct)))])
+            (send (connection-back-end conn) exec (debug-sql* insert-sql new-struct))
+            new-struct))))
     
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Updates the existing database record for the supplied struct.
@@ -139,7 +147,7 @@
                             guid
                             (add1 revision)
                             (cddr (snooze-struct-ref* old-struct)))])
-            (send (connection-back-end conn) exec (update-sql ans))
+            (send (connection-back-end conn) exec (debug-sql* update-sql ans))
             ans))))
     
     ; connection snooze-struct [boolean] -> snooze-struct
@@ -149,8 +157,10 @@
         (let ([entity   (snooze-struct-entity old-struct)]
               [guid     (snooze-struct-guid old-struct)]
               [revision (snooze-struct-revision old-struct)])
-          (when check-revision? (check-revision conn entity guid revision))
-          (send (connection-back-end conn) exec (delete-sql (snooze-struct-guid old-struct)))
+          (when check-revision?
+            (check-revision conn entity guid revision))
+          (send (connection-back-end conn) exec (debug-sql* delete-sql (snooze-struct-guid old-struct)))
+          (set-guid-id! guid (gensym (entity-name entity)))
           (apply (entity-private-constructor entity)
                  guid
                  #f
@@ -160,15 +170,15 @@
     ; Deletes the database record for the supplied guid.
     (define/public (delete-guid conn guid)
       (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" guid))
-        (send (connection-back-end conn) exec (delete-sql guid))
+        (send (connection-back-end conn) exec (debug-sql* delete-sql guid))
         (void)))
     
     ; connection entity database-guid natural -> void
     (define (check-revision conn entity guid expected)
       (let ([actual (send (connection-back-end conn) query-value
-                          (format "SELECT revision FROM ~a WHERE guid = ~a;"
-                                  (escape-sql-name (entity-table-name entity))
-                                  (guid-id guid)))])
+                          (debug-sql* format "SELECT revision FROM ~a WHERE guid = ~a;"
+                                      (escape-sql-name (entity-table-name entity))
+                                      (guid-id guid)))])
         (unless (equal? actual expected)
           (raise-exn exn:fail:snooze:revision
             (format "revision mismatch: database ~a, struct ~a" actual expected)
@@ -178,7 +188,7 @@
     (define/public (direct-find conn guids)
       (if (null? guids)
           null
-          (let ([sql    (direct-find-sql guids)]
+          (let ([sql    (debug-sql* direct-find-sql guids)]
                 [entity (guid-entity (car guids))])
             (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
               (g:collect
@@ -209,7 +219,7 @@
     ;          ; emit result
     ;          ...))
     (define/public (g:find conn query)
-      (let ([sql (query-sql query)])
+      (let ([sql (debug-sql* query-sql query)])
         (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
           (g:map (make-query-extractor query)
                  (g:map (make-parser (map expression-type (query-what query)))
@@ -240,22 +250,22 @@
              (set! started-once? #t))
          ; If this is the outermost call to call-with-transaction, start a TRANSACTION:
          (when outermost?
-           (send (connection-back-end conn) exec "BEGIN;")
+           (send (connection-back-end conn) exec (debug-sql* string-append "BEGIN;"))
            (set-connection-in-transaction?! conn #t))
          ; The actual COMMIT / ROLLBACK process is governed by SAVEPOINTS:
-         (send (connection-back-end conn) exec (string-append "SAVEPOINT " escaped-savepoint ";")))
+         (send (connection-back-end conn) exec (debug-sql* string-append "SAVEPOINT " escaped-savepoint ";")))
        (lambda ()
          (begin0 (body)
                  (set! complete? #t)))
        (lambda ()
          ; Commit or roll back:
          (if complete?
-             (send (connection-back-end conn) exec (string-append "RELEASE SAVEPOINT " escaped-savepoint ";"))
-             (send (connection-back-end conn) exec (string-append "ROLLBACK TO SAVEPOINT " escaped-savepoint ";")))
+             (send (connection-back-end conn) exec (debug-sql* string-append "RELEASE SAVEPOINT " escaped-savepoint ";"))
+             (send (connection-back-end conn) exec (debug-sql* string-append "ROLLBACK TO SAVEPOINT " escaped-savepoint ";")))
          ; If this is the outermost call to call-with-transaction, exit the TRANSACTION:
          (when outermost?
            (set-connection-in-transaction?! conn #f)
-           (send (connection-back-end conn) exec "COMMIT;")))))
+           (send (connection-back-end conn) exec (debug-sql* string-append "COMMIT;"))))))
     
     ; connection -> (listof symbol)
     (define/public (table-names conn)
@@ -267,11 +277,11 @@
     (define/public (table-exists? conn table)
       ; string
       (define sql
-        (format "SELECT relname FROM pg_class WHERE relname=~a;"
-                (cond [(entity? table) (escape-sql-value type:symbol (entity-table-name table))]
-                      [(symbol? table) (escape-sql-value type:symbol table)]
-                      [else            (raise-exn exn:fail:snooze
-                                         (format "Expected (U entity symbol), recevied ~s" table))])))
+        (debug-sql* format "SELECT relname FROM pg_class WHERE relname=~a;"
+                    (cond [(entity? table) (escape-sql-value type:symbol (entity-table-name table))]
+                          [(symbol? table) (escape-sql-value type:symbol table)]
+                          [else            (raise-exn exn:fail:snooze
+                                             (format "Expected (U entity symbol), recevied ~s" table))])))
       ; connection -> list
       (define result (send (connection-back-end conn) query-list sql))
       ; boolean

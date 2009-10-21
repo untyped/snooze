@@ -60,5 +60,5 @@
                        "sql-query.ss"))
 
 (provide/contract
- [escape-guid (-> type? guid? integer?)])
+ [escape-guid (-> type? guid? string?)])
 

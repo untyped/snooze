@@ -393,18 +393,4 @@
   ; B) Caches must be established outside transactions. Functional treatment of the cache is of little use if
   ;    it doesn't exist in between transactions. Perhaps an argument for "with-cache"? We did have this already, however...
   
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   (test-suite "eq? and equal? behaviour"))
-
-(call-with-connection (cut run-tests snooze-semantics-tests))

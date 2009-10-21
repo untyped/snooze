@@ -21,36 +21,52 @@
 (define/provide-test-suite snooze-struct-tests
   
   (test-case "snooze-struct-entity"
-    (check-eq? (snooze-struct-entity test-person) person)
-    (check-exn exn:fail? (cut snooze-struct-entity test-normal)))
+    (check-eq? (snooze-struct-entity (make-person/defaults)) person)
+    (check-exn exn:fail? 
+      (cut snooze-struct-entity (make-normal 1 2 3))))
   
   (test-case "snooze-struct-guid"
-    (check-pred guid? (snooze-struct-guid test-person))
-    (check-equal? (snooze-struct-guid test-person) test-person-guid))
+    (let ([p (make-person/defaults #:name "P")])
+      (check-pred guid? (snooze-struct-guid p))
+      (let ([p2 (save! p)])
+        (check-eq? (snooze-struct-guid p)
+                   (snooze-struct-guid p2))
+        (let ([p3 (delete! p2)])
+          (check-eq? (snooze-struct-guid p)
+                     (snooze-struct-guid p3))))))
   
   (test-case "snooze-struct-saved?"
     (let ([p (make-person/defaults #:name "P")])
       (check-false (snooze-struct-saved? p))
-      (check-true (snooze-struct-saved? (save! p)))
-      (check-true (snooze-struct-saved? p))
-      (check-false (snooze-struct-saved? (delete! p)))
-      (check-false (snooze-struct-saved? p))))
+      (let ([p2 (save! p)])
+        (check-true (snooze-struct-saved? p))
+        (check-true (snooze-struct-saved? p2))
+        (let ([p3 (delete! p2)])
+          (check-false (snooze-struct-saved? p))
+          (check-false (snooze-struct-saved? p2))
+          (check-false (snooze-struct-saved? p3))))))
   
   (test-case "snooze-struct-id"
     (let ([p (make-person/defaults #:name "P")])
       (check-pred symbol? (snooze-struct-id p))
-      (check-pred number? (snooze-struct-id (save! p)))
-      (check-pred number? (snooze-struct-id p))
-      (check-pred symbol? (snooze-struct-id (delete! p)))
-      (check-pred symbol? (snooze-struct-id p))))
+      (let ([p2 (save! p)])
+        (check-pred number? (snooze-struct-id p2))
+        (check-eq? (snooze-struct-id p) (snooze-struct-id p2))
+        (let ([p3 (delete! p2)])
+          (check-pred symbol? (snooze-struct-id p3))
+          (check-eq? (snooze-struct-id p) (snooze-struct-id p2))
+          (check-eq? (snooze-struct-id p) (snooze-struct-id p3))))))
   
   (test-case "snooze-struct-revision"
     (let ([p (make-person/defaults #:name "P")])
       (check-false (snooze-struct-revision p))
-      (check-pred number? (snooze-struct-revision (save! p)))
-      (check-pred number? (snooze-struct-revision p))
-      (check-false (snooze-struct-revision (delete! p)))
-      (check-false (snooze-struct-revision p))))
+      (let ([p2 (save! p)])
+        (check-false (snooze-struct-revision p))
+        (check-pred integer? (snooze-struct-revision p2))
+        (let ([p3 (delete! p2)])
+          (check-false (snooze-struct-revision p))
+          (check-pred integer? (snooze-struct-revision p2))
+          (check-false (snooze-struct-revision p3))))))
   
   (test-case "snooze-struct-ref"
     (let ([p (make-person/defaults #:name "P")])
@@ -76,7 +92,9 @@
       (check-not-eq? q1 q2)
       (check-equal?  q1 q2)
       (check-equal? (snooze-struct-ref q1 'name) "Q")
-      (check-equal? (snooze-struct-ref q1 (attr person name)) "Q")))
+      (check-equal? (snooze-struct-ref q1 (attr person name)) "Q")
+      (check-eq? (snooze-struct-guid p) (snooze-struct-guid q1))
+      (check-eq? (snooze-struct-guid p) (snooze-struct-guid q2))))
   
   (test-case "make-snooze-struct/defaults"
     (let ([p (make-snooze-struct/defaults person)])
