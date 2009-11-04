@@ -32,7 +32,7 @@
         (after (check-not-equal? copy-person test-person)
                (check-pred integer? (snooze-struct-id       test-person))
                (check-pred integer? (snooze-struct-revision test-person))
-               (check-false         (snooze-struct-id       copy-person))
+               (check-pred symbol?  (snooze-struct-id       copy-person))
                (check-false         (snooze-struct-revision copy-person))
                (delete! test-person))))))
 

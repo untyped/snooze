@@ -155,7 +155,8 @@
     ; database-guid -> snooze-struct
     (define/public (find-by-guid guid)
       (auto-connect)
-      (car (send (get-database) direct-find (current-connection) (list guid))))
+      (let ([ans (send (get-database) direct-find (current-connection) (list guid))])
+        (and (pair? ans) (car ans))))
     
     ; thunk [#:metadata list] -> any
     ;

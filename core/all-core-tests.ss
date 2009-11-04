@@ -22,8 +22,6 @@
     check-annotation-tests
     check-tests))
 
-(run-tests/postgresql8 all-core-tests)
-
 ; Provide statements -----------------------------
 
 (provide all-core-tests)

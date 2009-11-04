@@ -71,11 +71,11 @@
         (check-false (snooze-struct-revision per0))
         (let ([per1 (save! per0)])
           (check-equal? (snooze-struct-revision per1) 0)
-          (check-equal? (snooze-struct-revision per0) 0)
+          (check-equal? (snooze-struct-revision per0) #f)
           (let ([per2 (save! (person-set per1 #:name "Noel"))])
             (check-equal? (snooze-struct-revision per2) 1)
             (check-equal? (snooze-struct-revision per1) 0)
-            (check-equal? (snooze-struct-revision per0) 0))))
+            (check-equal? (snooze-struct-revision per0) #f))))
       (check-equal? (direct-query "select count(guid) from person where revision = 0;") (list (list 0)))
       (check-equal? (direct-query "select count(guid) from person where revision = 1;") (list (list 1))))
     
@@ -87,9 +87,9 @@
     
     (test-case "save! : cannot save a struct with local-only foreign keys"
       (recreate-test-tables)
-      (let* ([per (save! (make-person "Jon"))]
+      (let* ([per (make-person "Jon")]
              [pet (make-pet per "Garfield")])
-        (check-not-exn (cut save! pet)))
+        (check-exn exn:fail:snooze? (cut save! pet)))
       
       (recreate-test-tables)
       (let* ([per (save! (make-person "Jon"))]
@@ -107,7 +107,7 @@
              [per1 (save! per0)]
              [per2 (person-set per1 #:name "Lyman")]
              [pet  (make-pet per2 "Garfield")])
-        (check-exn exn:fail:snooze? (cut save! pet))))
+        (check-exn exn:fail:snooze? (cut save! pet) "failing expectedly")))
     
     (test-case "save! : data serialized/deserialized successfuly"
       (let* ([struct1 (save! (make-course 'COURSE1 "Course 1" 1 0.1 #t (date->time-tai (make-date 0 0 0 12 01 01 2009 3600)) '(a b c)))]

@@ -23,34 +23,30 @@
       (recreate-test-tables)
       (let* ([per1 (save! (make-person "Jon"))]
              [per2 (delete! per1)])
-        (check-eq? per1 per2)
-        (check-equal? (person-name per2) "Jon")
-        (check-false (snooze-struct-saved? per1))
-        (check-false (snooze-struct-saved? per2))))
+        (check-equal? (snooze-struct-data-ref* per1)
+                      (snooze-struct-data-ref* per2))))
     
     (test-case "delete! : changes to id and revision"
       (recreate-test-tables)
       (let* ([per1 (save! (make-person "Jon"))]
              [per2 (delete! per1)])
-        (check-pred snooze-struct-saved? per1)
-        (check-pred database-guid? (snooze-struct-guid per1))
-        (check-equal? (snooze-struct-revision per1) 0)
-        
+        (check-false (snooze-struct-saved? per1))
         (check-false (snooze-struct-saved? per2))
-        (check-false (database-guid? (snooze-struct-guid per1)))
-        (check-false (snooze-struct-revision per2))))
+        (check-equal? (snooze-struct-revision per1) 0)
+        (check-equal? (snooze-struct-revision per2) #f)))
         
     (test-case "delete! : resaving or redeleting causes error"
       (recreate-test-tables)
       (let* ([per1 (save! (make-person "Per1"))]
              [per2 (delete! per1)])
-        (check-exn exn:fail:snooze? (cut (save! per2)))
-        (check-exn exn:fail:snooze? (cut (delete! per2)))))
+        (check-exn exn:fail:snooze? (cut save! per2) "failing expectedly")
+        (check-exn exn:fail:snooze? (cut delete! per2))))
     
     (test-case "delete! has the correct effect on the database"
       (let* ([per1 (save! (make-person "per1"))]
+             [id   (snooze-struct-id per1)]
              [per2 (delete! per1)])
-        (check-false (find-by-guid (snooze-struct-guid per1)))))))
+        (check-false (find-by-id person id))))))
 
 ; Provide statements -----------------------------
 

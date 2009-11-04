@@ -47,7 +47,7 @@
           (for ([i (in-naturals)]
                 [a (in-gen peeps)]
                 [b (in-list (list per1 per2 per3))])
-            (check-eq? a b (format "iteration ~a" i)))))
+            (check-equal? a b (format "iteration ~a" i)))))
             
       (test-case "find-all"
         (recreate-test-tables)
