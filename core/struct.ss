@@ -107,24 +107,29 @@
       #f))
 
 ; type any -> boolean
-(define (type-valid? type val)
+(define (type-valid? type val [check-constraints? #f])
   (if (equal? val (type-null type))
-      (type-allows-null? type)
+      (or (not check-constraints?)
+          (type-allows-null? type))
       (match type
         [(struct guid-type (_ entity))     ((entity-predicate entity) val)]
         [(? boolean-type?)                 (boolean? val)]
         [(struct integer-type (_ min max)) (and (integer? val)
-                                                (or (not min) (>= val min))
-                                                (or (not max) (<= val max)))]
+                                                (or (not check-constraints?)
+                                                    (or (not min) (>= val min))
+                                                    (or (not max) (<= val max))))]
         [(struct real-type (_ min max))    (and (number? val)
-                                                (or (not min) (>= val min))
-                                                (or (not max) (<= val max)))]
+                                                (or (not check-constraints?)
+                                                    (or (not min) (>= val min))
+                                                    (or (not max) (<= val max))))]
         [(struct enum-type (_ _ _ vals))   (and (member val vals) #t)]
         [(struct string-type (_ max))      (and (string? val)
-                                                (or (not max)
+                                                (or (not check-constraints?)
+                                                    (not max)
                                                     (<= (string-length val) max)))]
         [(struct symbol-type (_ max))      (and (symbol? val)
-                                                (or (not max)
+                                                (or (not check-constraints?)
+                                                    (not max)
                                                     (<= (string-length (symbol->string val)) max)))]
         [(? time-tai-type?)                (time-tai? val)]
         [(? time-utc-type?)                (time-utc? val)]

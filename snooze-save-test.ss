@@ -107,7 +107,7 @@
              [per1 (save! per0)]
              [per2 (person-set per1 #:name "Lyman")]
              [pet  (make-pet per2 "Garfield")])
-        (check-exn exn:fail:snooze? (cut save! pet) "failing expectedly")))
+        (check-not-exn (cut save! pet))))
     
     (test-case "save! : data serialized/deserialized successfuly"
       (let* ([struct1 (save! (make-course 'COURSE1 "Course 1" 1 0.1 #t (date->time-tai (make-date 0 0 0 12 01 01 2009 3600)) '(a b c)))]

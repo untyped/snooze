@@ -35,12 +35,22 @@
         (check-equal? (snooze-struct-revision per1) 0)
         (check-equal? (snooze-struct-revision per2) #f)))
         
-    (test-case "delete! : resaving or redeleting causes error"
+    (test-case "delete! : resaving and redeleting is okay"
+      (recreate-test-tables)
+      (check-not-exn
+        (lambda ()
+          (let* ([per1 (save! (make-person "Per1"))]
+                 [per2 (delete! per1)]
+                 [per3 (save! per2)]
+                 [per4 (delete! per3)])
+            (void)))))
+    
+    (test-case "delete! : resaving and redeleting is not okay if revisions don't match up"
       (recreate-test-tables)
       (let* ([per1 (save! (make-person "Per1"))]
-             [per2 (delete! per1)])
-        (check-exn exn:fail:snooze? (cut save! per2) "failing expectedly")
-        (check-exn exn:fail:snooze? (cut delete! per2))))
+             [per2 (delete! per1)]
+             [per3 (save! per2)])
+        (check-exn exn:fail:snooze:revision? (cut delete! per2))))
     
     (test-case "delete! has the correct effect on the database"
       (let* ([per1 (save! (make-person "per1"))]

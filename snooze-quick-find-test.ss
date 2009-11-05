@@ -34,7 +34,7 @@
       (check-equal? (find-count-courses #:active? #f) 3))
     
     (test-case "find-one #:guid"
-      (check-false (find-course #:guid #f))
+      (check-false  (find-course #:guid #f))
       (check-equal? (find-course #:guid c1) c1)
       (check-equal? (find-course #:guid c2) c2))
     

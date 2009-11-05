@@ -68,19 +68,20 @@
                             (attr person name)))))
     
     (test-case "contracts"
+      ; Constracts don't check constraints like NOT NULL and string length.
+      ; They only check that fields are of the right type or null type.
       (check-not-exn (cut make-course/defaults #:code #f))
       (check-exn exn:fail:contract? (cut make-course/defaults #:code "not a symbol"))
-      ; symbol/string length aren't checked by contracts:
-      (check-exn exn:fail:contract? (cut make-course/defaults #:code 'bittoolong))
-      (check-exn exn:fail:contract? (cut make-course/defaults #:name (make-string #\a 129)))
+      (check-not-exn (cut make-course/defaults #:code 'bittoolong))
+      (check-not-exn (cut make-course/defaults #:name (make-string 129 #\a)))
       (check-not-exn (cut make-course/defaults #:value 0))
       (check-not-exn (cut make-course/defaults #:value 5))
-      (check-exn exn:fail:contract? (cut make-course/defaults #:value -1))
-      (check-exn exn:fail:contract? (cut make-course/defaults #:value 6))
+      (check-not-exn (cut make-course/defaults #:value -1))
+      (check-not-exn (cut make-course/defaults #:value 6))
       (check-not-exn (cut make-course/defaults #:rating 0.0))
       (check-not-exn (cut make-course/defaults #:rating 1.0))
-      (check-exn exn:fail:contract? (cut make-course/defaults #:rating -0.001))
-      (check-exn exn:fail:contract? (cut make-course/defaults #:rating 1.001))
+      (check-not-exn (cut make-course/defaults #:rating -0.001))
+      (check-not-exn (cut make-course/defaults #:rating 1.001))
       (check-exn exn:fail:contract? (cut make-course/defaults #:start (current-time time-utc)))
       (check-not-exn (cut make-course/defaults #:notes '(a b c)))
       (check-exn exn:fail:contract? (cut make-course/defaults #:notes (lambda (x) (add1 x))))

@@ -101,7 +101,10 @@
      (void)                     ; values for auto-value fields
      (list* (cons prop:snooze-struct-entity entity)
             properties)         ; properties
-     #f))                       ; inspector-or-#f
+     #f                         ; inspector-or-#f
+     #f                         ; proc-spec
+     null                       ; immutables
+     #f))                       ; guard
   
   (define guid-attribute
     (let* ([name             'guid]
@@ -172,7 +175,9 @@
 (define (create-attribute name col pretty pretty-plural type entity index default-maker struct-accessor struct-mutator)
   (let* ([private-accessor (make-struct-field-accessor struct-accessor index name)]
          [private-mutator  (make-struct-field-mutator  struct-mutator  index name)]
-         [accessor         (make-accessor private-accessor (and (eq? name 'guid) private-mutator))]
+         [accessor         (if (and (guid-type? type) (not (eq? name 'guid)))
+                               (make-foreign-key-accessor name private-accessor private-mutator)
+                               private-accessor)]
          [mutator          private-mutator])
     (make-attribute name col pretty pretty-plural
                     type entity index
@@ -183,15 +188,14 @@
                     mutator)))
 
 ; (struct -> any) (U (struct any -> void) #f) -> (guid -> any)
-(define (make-accessor struct-accessor struct-mutator!)
+(define (make-foreign-key-accessor name struct-accessor struct-mutator!)
   (lambda (struct)
-    (let ([ans (struct-accessor struct)])
-      (if (and (database-guid? ans) struct-mutator!)
-          ; struct-mutator! is #f for primary keys:
-          (let ([ans (send (current-snooze) find-by-guid ans)])
-            (struct-mutator! struct ans)
-            ans)
-          ans))))
+    (let* ([ans1 (struct-accessor struct)])
+      (if (guid? ans1)
+          (let ([ans2 (send (current-snooze) find-by-guid ans1)])
+            (struct-mutator! struct ans2)
+            ans2)
+          ans1))))
 
 ; Provide statements -----------------------------
 
