@@ -1,6 +1,7 @@
 #lang scheme/base
 
-(require "../base.ss")
+(require (for-syntax scheme/base)
+         "../base.ss")
 
 (require "check.ss"
          "check-annotation.ss"
@@ -21,11 +22,29 @@
          "define-entity.ss"
          "provide-entity.ss"
          "snooze-struct.ss"
-         "syntax-info.ss")
+         "syntax-info.ss"
+         "transaction.ss")
+
+; Syntax -----------------------------------------
+
+; snooze-struct snooze-struct -> boolean
+(define-syntax snooze=?
+  (make-rename-transformer #'snooze-struct-equal?))
+
+; snooze-struct snooze-struct -> boolean
+(define-syntax snooze-guid=?
+  (make-rename-transformer #'snooze-struct-guid-equal?))
+
+; snooze-struct snooze-struct -> boolean
+(define-syntax snooze-data=?
+  (make-rename-transformer #'snooze-struct-data-equal?))
 
 ; Provide statements ---------------------------
 
-(provide (all-from-out "check.ss"
+(provide snooze=?
+         snooze-guid=?
+         snooze-data=?
+         (all-from-out "check.ss"
                        "check-annotation.ss"
                        "check-default.ss"
                        "check-result.ss"
@@ -34,5 +53,6 @@
                        "define-entity.ss"
                        "provide-entity.ss"
                        "snooze-struct.ss"
-                       "syntax-info.ss"))
+                       "syntax-info.ss"
+                       "transaction.ss"))
 

@@ -95,6 +95,27 @@
            #f
            (snooze-struct-data-ref* original))))
 
+; (U snooze-struct guid) (U snooze-struct guid) -> boolean
+(define (snooze-struct-guid-equal? struct+guid1 struct+guid2)
+  (equal? (if (snooze-struct? struct+guid1)
+              (snooze-struct-guid struct+guid1)
+              struct+guid1)
+          (if (snooze-struct? struct+guid2)
+              (snooze-struct-guid struct+guid2)
+              struct+guid2)))
+
+; snooze-struct snooze-struct -> boolean
+(define (snooze-struct-data-equal? struct1 struct2)
+  (and (eq? (snooze-struct-entity struct1)
+            (snooze-struct-entity struct2))
+       (for/and ([val1 (in-list (snooze-struct-data-ref* struct1))]
+                 [val2 (in-list (snooze-struct-data-ref* struct2))])
+         (equal? val1 val2))))
+
+; snooze-struct snooze-struct -> boolean
+(define (snooze-struct-equal? struct1 struct2)
+  (and (snooze-struct-guid-equal? struct1 struct2)
+       (snooze-struct-data-equal? struct1 struct2)))
 
 ; guid any ... -> string
 (define (format-snooze-struct struct . rest)
@@ -149,6 +170,9 @@
  [make-snooze-struct          (->* (entity?) () #:rest attr-value-list/c snooze-struct?)]
  [make-snooze-struct/defaults (->* (entity?) () #:rest attr/value-list? snooze-struct?)]
  [snooze-struct-copy          (-> snooze-struct? snooze-struct?)]
+ [snooze-struct-guid-equal?   (-> (or/c snooze-struct? guid?) (or/c snooze-struct? guid?) boolean?)]
+ [snooze-struct-data-equal?   (-> snooze-struct? snooze-struct? boolean?)]
+ [snooze-struct-equal?        (-> snooze-struct? snooze-struct? boolean?)]
  [format-snooze-struct        (->* (snooze-struct?) () #:rest any/c string?)]
  [check-snooze-struct         (->* (snooze-struct?) () #:rest any/c (listof check-result?))]
  [check-old-snooze-struct     (->* (snooze-struct?) () #:rest any/c (listof check-result?))])

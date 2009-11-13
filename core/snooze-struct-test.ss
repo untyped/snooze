@@ -116,7 +116,30 @@
       (check-not-eq? p q)
       (check-not-equal? p q)
       (check-equal? (cdr (snooze-struct-ref* p))
-                    (cdr (snooze-struct-ref* q))))))
+                    (cdr (snooze-struct-ref* q)))))
+  
+  (test-case "snooze-struct-{guid,data,}-equal?"
+    (let ([p  (make-person/defaults #:name "P")])
+      (let ([q (person-set p #:name "P2")])
+        (check-true  (snooze-struct-guid-equal? p q))
+        (check-false (snooze-struct-data-equal? p q))
+        (check-false (snooze-struct-equal?      p q)))
+      (let ([q (make-person/defaults #:name "P")])
+        (check-false (snooze-struct-guid-equal? p q))
+        (check-true  (snooze-struct-data-equal? p q))
+        (check-false (snooze-struct-equal?      p q)))
+      (let ([q (make-person/defaults #:name "Q")])
+        (check-false (snooze-struct-guid-equal? p q))
+        (check-false (snooze-struct-data-equal? p q))
+        (check-false (snooze-struct-equal?      p q)))
+      (let ([q (save! p)])
+        (check-true (snooze-struct-guid-equal? p q))
+        (check-true (snooze-struct-data-equal? p q))
+        (check-true (snooze-struct-equal?      p q)))
+      (let ([q (find-by-guid (snooze-struct-guid p))])
+        (check-true (snooze-struct-guid-equal? p q))
+        (check-true (snooze-struct-data-equal? p q))
+        (check-true (snooze-struct-equal?      p q))))))
 
 ; Provide statements -----------------------------
 

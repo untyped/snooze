@@ -14,7 +14,7 @@
          "snooze-modify-test.ss"
          "snooze-quick-find-test.ss"
          "snooze-save-test.ss"
-         ;"snooze-transaction-test.ss"
+         "snooze-transaction-test.ss"
          "test-base.ss"
          ;"audit/all-audit-tests.ss"
          "core/all-core-tests.ss"
@@ -46,7 +46,7 @@
     snooze-foreign-key-tests
     snooze-check-tests
     ;snooze-hook-tests
-    ;snooze-transaction-tests
+    snooze-transaction-tests
     ;snooze-concurrency-tests
     snooze-find-tests
     snooze-quick-find-tests

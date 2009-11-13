@@ -72,7 +72,8 @@
            [(? character-type?) (if (character-type-max-length type)
                                     (format " CHARACTER VARYING (~a)" (character-type-max-length type))
                                     " TEXT")]
-           [(? temporal-type?)  " INTEGER"])
+           [(? temporal-type?)  " INTEGER"]
+           [(? binary-type?)    " BLOB"])
          (if (type-allows-null? type) "" " NOT NULL")
          " DEFAULT " (escape-sql-value type (attribute-default attr)))))
     
@@ -137,6 +138,7 @@
               [(symbol-type? type)   (string->symbol value)]
               [(time-tai-type? type) (private-parse-time time-tai value)]
               [(time-utc-type? type) (private-parse-time time-utc value)]
+              [(binary-type? type)   ]
               [else                  (raise-type-error 'parse-value "unrecognised type" type)])))
     
     ; srfi19-time-type string -> (U time-tai time-utc)

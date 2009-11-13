@@ -27,6 +27,9 @@
     ; See the current-connection method below for more information.
     (field [current-connection-cell (make-thread-cell #f)])
     
+    ; (parameter (U transaction-frame #f))
+    (field [current-transaction-frame (make-parameter #f)])
+    
     ; (connection snooze-struct -> any) connection snooze-struct -> any
     ;
     ; A transparent procedure that wraps the body of any
@@ -109,9 +112,11 @@
     ; snooze-struct -> snooze-struct
     (define/public (save! struct)
       (auto-connect)
-      (let ([entity (snooze-struct-entity struct)])
+      (let ([guid   (snooze-struct-guid   struct)]
+            [entity (snooze-struct-entity struct)])
         (call-with-transaction
          (lambda ()
+           (transaction-frame-add! (get-current-transaction-frame) guid)
            ((entity-on-save entity)
             (lambda (conn struct)
               (if (snooze-struct-saved? struct)
@@ -125,9 +130,11 @@
       (unless (snooze-struct-saved? struct)
         (raise-exn exn:fail:snooze (format "unsaved structs cannot be deleted ~a" struct)))
       (auto-connect)
-      (let ([entity (snooze-struct-entity struct)])
+      (let ([guid   (snooze-struct-guid   struct)]
+            [entity (snooze-struct-entity struct)])
         (call-with-transaction
          (lambda ()
+           (transaction-frame-add! (get-current-transaction-frame) guid)
            ((entity-on-delete entity)
             (lambda (conn struct)
               (send database delete-struct conn struct))
@@ -180,12 +187,37 @@
       (auto-connect)
       (let ([conn (current-connection)])
         (if (send database transaction-allowed? conn)
-            (let ([hook (get-transaction-hook)])
-              (send database call-with-transaction
-                    conn
-                    (lambda ()
-                      (hook (lambda _ (body)) conn metadata))))
+            (call-with-transaction-frame 
+             (lambda ()
+               (let ([hook (get-transaction-hook)])
+                 (send database call-with-transaction
+                       conn
+                       (lambda ()
+                         (hook (lambda _ (body)) conn metadata))))))
             (body))))
+    
+    ; -> (U transaction-frame #f)
+    (define/public (get-current-transaction-frame)
+      (current-transaction-frame))
+    
+    ; (-> any) -> any
+    (define/private (call-with-transaction-frame thunk)
+      (let ([frame     (transaction-frame-push (get-current-transaction-frame))]
+            [complete? #f])
+        (call-with-continuation-barrier
+         (lambda ()
+           (dynamic-wind 
+            ; Entry
+            void
+            ; Body
+            (lambda ()
+              (parameterize ([current-transaction-frame frame])
+                (begin0 (thunk)
+                        (set! complete? #t))))
+            ; Exit
+            (lambda ()
+              (unless complete?
+                (transaction-frame-rollback! frame))))))))
     
     ; -> (listof symbol)
     (define/public (table-names)
