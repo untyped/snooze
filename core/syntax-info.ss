@@ -24,6 +24,7 @@
    guid-constructor-id
    guid-predicate-id
    default-alias-id
+   default-order-id
    find-one-id
    find-all-id
    find-count-id

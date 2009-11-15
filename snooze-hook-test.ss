@@ -8,108 +8,102 @@
 
 ; Helpers ----------------------------------------
 
-; When a hook stage is run successfully (i.e. without raising an exception),
-; the struct is stored in the relevant box:
-(define saved    (box #f)) ; (box (U hooked #f))
-(define deleted  (box #f)) ; (box (U hooked #f))
+(define saved   (box #f))
+(define deleted (box #f))
 
-; Convenience procedure for clearing boxes:
-(define (clear-boxes)
-  (set-box! saved    #f)
-  (set-box! deleted  #f))
+(define (clear-boxes!)
+  (set-box! saved #f)
+  (set-box! deleted #f))
 
-; Custom exception type (to avoid confusion with anything outside this file):
-(define-struct (exn:unhooked exn) ())
+(define-values (old-save-hook old-delete-hook)
+  (values (entity-on-save   person)
+          (entity-on-delete person)))
 
-; Each stage checks the "value" field of the struct being saved/deleted.
-; If the value matches a "bad value", an exception is thrown. The tests
-; below seed the struct with different values to make different stages fail.
-(define (create-hook name box bad-value)
-  (lambda (continue conn struct)
-    (unless (or (and (eq? name 'save)   (currently-saving))
-                (and (eq? name 'delete) (currently-deleting)))
-      (error "currently-saving/currently-deleting have bad values"
-             (list name (currently-saving) (currently-deleting))))
-    (if (= (hooked-value struct) bad-value)
-        (raise-exn exn:unhooked "Argh!")
-        (begin (set-box! box struct)
-               (continue conn struct)))))
+(define (new-save-hook continue conn per)
+  (if (equal? (person-name per) "Jason")
+      (error "Aieeeeeee!")
+      (let ([per2 (continue conn per)])
+        (set-box! saved per2)
+        per2)))
 
-; Hey! It's a test entity:
-(define-entity hooked
-  ([value integer])
-  #:on-save   (create-hook 'save   saved   1)
-  #:on-delete (create-hook 'delete deleted 4))
-
-; ...and a persistent struct, too:
-(define test-hooked #f)
+(define (new-delete-hook continue conn per)
+  (if (equal? (person-name per) "Freddy")
+      (error "Aieeeeeee!")
+      (begin
+        (set-box! deleted per)
+        (continue conn per))))
 
 ; Tests ------------------------------------------
 
 ; test-suite
-(define snooze-hook-tests
-  (test-suite "snooze-hook-tests"
+(define/provide-test-suite snooze-hook-tests
+  
+  #:before
+  (lambda ()
+    (set-entity-on-save!   person new-save-hook)
+    (set-entity-on-delete! person new-delete-hook))
+  
+  #:after
+  (lambda ()
+    (set-entity-on-save!   person old-save-hook)
+    (set-entity-on-delete! person old-delete-hook))
+  
+  (test-suite "on-save"
     
-    ; ***** NOTE *****
-    ; Each test below depends on the tests before it.
-    ; Add/edit tests at your peril!
-    ; ****************
+    (test-case "normal"
+      (around
+       (recreate-test-tables)
+       (let* ([p1 (make-person "Freddy")]
+              [p2 (save! p1)])
+         (check snooze=? p2 p1)
+         ; Check side effects:
+         (check-equal? (unbox saved) p2)
+         (check-false (unbox deleted))
+         ; Check database:
+         (check-equal? (find-people) (list p2)))
+       (clear-boxes!)))
     
-    ; create table for entity:hooked
-    #:before
-    (lambda ()
-      (drop-all-tables)
-      (unless (table-exists? hooked)
-        (create-table hooked))
-      (set! test-hooked (make-hooked 0)))
+    (test-case "error"
+      (around
+       (recreate-test-tables)
+       (let* ([p1 (make-person "Jason")]
+              [p2 (with-handlers ([exn? (lambda _ #f)])
+                    (save! p1))])
+         (check-false p2)
+         ; Check side effects:
+         (check-false (unbox saved))
+         (check-false (unbox deleted))
+         ; Check database:
+         (check-equal? (find-people) null))
+       (clear-boxes!))))
+  
+  (test-suite "on-delete"
     
-    ; drop table for entity:hooked
-    #:after
-    drop-all-tables
+    (test-case "normal"
+      (around
+       (recreate-test-tables)
+       (let* ([p1 (after (save! (make-person "Joe"))
+                         (clear-boxes!))]
+              [p2 (delete! p1)])
+         (check snooze=? p2 p1)
+         ; Check side effects:
+         (check-false (unbox saved))
+         (check-equal? (unbox deleted) p1)
+         ; Check database:
+         (check-equal? (find-people) null))
+       (clear-boxes!)))
     
-    (test-case "on-save is called when saving a new struct"
-      (set-hooked-value! test-hooked 0)
-      (save! test-hooked)
-      ; Check which hooks were run successfully:
-      (check-eq? (unbox saved)    test-hooked)
-      (check-eq? (unbox deleted)  #f)
-      (clear-boxes))
-    
-    (test-case "on-delete is called on delete"
-      (set-hooked-value! test-hooked 0)
-      (delete! test-hooked)
-      ; Check which hooks were run successfully:
-      (check-eq? (unbox saved)    #f)
-      (check-eq? (unbox deleted)  test-hooked)
-      (clear-boxes))
-    
-    (test-case "saving is aborted when on-save throws an exception"
-      (set-hooked-value! test-hooked 1)
-      (debug "test-hooked" test-hooked)
-      (check-false (snooze-struct-saved? test-hooked))
-      (check-exn exn:unhooked? (lambda () (save! test-hooked)))
-      (check-false (snooze-struct-saved? test-hooked))
-      (check-pred null? (find-all (sql (select #:from hooked))))
-      ; Check which hooks were run successfully:
-      (check-eq? (unbox saved)    #f)
-      (check-eq? (unbox deleted)  #f))
-    
-    (test-case "deleting is aborted when on-delete throws an exception"
-      (set-hooked-value! test-hooked 4)
-      (save! test-hooked)
-      (clear-boxes)
-      (check-exn exn:unhooked? (lambda () (delete! test-hooked)))
-      (check-equal?
-       (hooked-value
-        (find-one
-         (sql (select #:from  hooked
-                      #:where (= hooked.guid ,test-hooked)))))
-       4)
-      ; Check which hooks were run successfully:
-      (check-eq? (unbox saved)    #f)
-      (check-eq? (unbox deleted)  #f)
-      (clear-boxes))))
-
-; Provide statements -----------------------------
-
-(provide snooze-hook-tests)
+    (test-case "error"
+      (around
+       (recreate-test-tables)
+       (let* ([p1 (after (save! (make-person "Freddy"))
+                         (clear-boxes!))]
+              [p2 (with-handlers ([exn? (lambda _ #f)])
+                    (delete! p1))])
+         (check-false p2)
+         ; Check side effects:
+         (check-false (unbox saved))
+         (check-false (unbox deleted))
+         ; Check database:
+         (check-equal? (find-people) (list p1)))
+       (clear-boxes!)))))

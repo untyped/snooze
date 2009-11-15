@@ -114,16 +114,19 @@
       (auto-connect)
       (let ([guid   (snooze-struct-guid   struct)]
             [entity (snooze-struct-entity struct)])
-        (call-with-transaction
-         (lambda ()
-           (transaction-frame-add! (get-current-transaction-frame) guid)
-           ((entity-on-save entity)
-            (lambda (conn struct)
-              (if (snooze-struct-saved? struct)
-                  (send database update-struct conn struct)
-                  (send database insert-struct conn struct)))
-            (current-connection)
-            struct)))))
+         (call-with-transaction
+          (lambda ()
+            (transaction-frame-cache-add! 
+             (get-current-transaction-frame)
+             (begin
+               (transaction-frame-data-add! (get-current-transaction-frame) guid)
+               ((entity-on-save entity)
+                (lambda (conn struct)
+                  (if (snooze-struct-saved? struct)
+                      (send database update-struct conn struct)
+                      (send database insert-struct conn struct)))
+                (current-connection)
+                struct)))))))
     
     ; snooze-struct -> snooze-struct
     (define/public (delete! struct)
@@ -134,12 +137,15 @@
             [entity (snooze-struct-entity struct)])
         (call-with-transaction
          (lambda ()
-           (transaction-frame-add! (get-current-transaction-frame) guid)
-           ((entity-on-delete entity)
-            (lambda (conn struct)
-              (send database delete-struct conn struct))
-            (current-connection)
-            struct)))))
+           (transaction-frame-cache-remove!
+            (get-current-transaction-frame)
+            (begin
+              (transaction-frame-data-add! (get-current-transaction-frame) guid)
+              ((entity-on-delete entity)
+               (lambda (conn struct)
+                 (send database delete-struct conn struct))
+               (current-connection)
+               struct)))))))
     
     ; query -> (list-of result)
     (define/public (find-all query)
@@ -153,7 +159,11 @@
     ; select -> result-generator
     (define/public (g:find select)
       (auto-connect)
-      (send database g:find (current-connection) select))
+      (send database g:find
+            (current-connection)
+            select
+            (or (get-current-transaction-frame)
+                (transaction-frame-push #f))))
     
     ; entity natural -> snooze-struct
     (define/public (find-by-id entity id)
@@ -162,7 +172,10 @@
     ; database-guid -> snooze-struct
     (define/public (find-by-guid guid)
       (auto-connect)
-      (let ([ans (send (get-database) direct-find (current-connection) (list guid))])
+      (let ([ans (send (get-database) direct-find
+                       (current-connection)
+                       (list guid)
+                       (get-current-transaction-frame))])
         (and (pair? ans) (car ans))))
     
     ; thunk [#:metadata list] -> any
@@ -202,7 +215,7 @@
     
     ; (-> any) -> any
     (define/private (call-with-transaction-frame thunk)
-      (let ([frame     (transaction-frame-push (get-current-transaction-frame))]
+      (let ([frame (transaction-frame-push (get-current-transaction-frame))]
             [complete? #f])
         (call-with-continuation-barrier
          (lambda ()
@@ -212,12 +225,14 @@
             ; Body
             (lambda ()
               (parameterize ([current-transaction-frame frame])
-                (begin0 (thunk)
-                        (set! complete? #t))))
+                (begin0
+                  (thunk)
+                  (set! complete? #t))))
             ; Exit
             (lambda ()
-              (unless complete?
-                (transaction-frame-rollback! frame))))))))
+              (if complete?
+                  (transaction-frame-commit! frame)
+                  (transaction-frame-rollback! frame))))))))
     
     ; -> (listof symbol)
     (define/public (table-names)

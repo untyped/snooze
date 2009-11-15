@@ -166,11 +166,19 @@
     make-query-extractor
     
     ; (U entity #f) -> single-item-extractor
-    ; where single-item-extractor : (U (listof scheme-primitive) #f) -> (U snooze-struct scheme-primitive)
+    ; where single-item-extractor
+    ;         : (U (listof scheme-primitive) #f)
+    ;           transaction-frame
+    ;          ->
+    ;           (U snooze-struct scheme-primitive)
     make-single-item-extractor
     
     ; (listof (U entity #f)) -> multiple-item-extractor
-    ; where multiple-item-extractor : (U (listof scheme-primitive) #f) -> (listof (U snooze-struct scheme-primitive))
+    ; where multiple-item-extractor
+    ;         : (U (listof scheme-primitive) #f)
+    ;           transaction-frame
+    ;          ->
+    ;          (listof (U snooze-struct scheme-primitive))
     make-multiple-item-extractor))
 
 ; Provide statements -----------------------------

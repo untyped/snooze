@@ -184,19 +184,20 @@
             (format "revision mismatch: database ~a, struct ~a" actual expected)
             guid))))
     
-    ; (listof database-guid) -> (listof snooze-struct)
-    (define/public (direct-find conn guids)
+    ; connection (listof database-guid) transaction-frame -> (listof snooze-struct)
+    (define/public (direct-find conn guids frame)
       (if (null? guids)
           null
-          (let ([sql    (debug-sql* direct-find-sql guids)]
-                [entity (guid-entity (car guids))])
+          (let* ([sql     (debug-sql* direct-find-sql guids)]
+                 [entity  (guid-entity (car guids))]
+                 [extract (make-single-item-extractor entity)])
             (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
               (g:collect
-               (g:map (make-single-item-extractor entity)
+               (g:map (cut extract <> frame)
                       (g:map (make-parser (map attribute-type (entity-attributes entity)))
                              (g:list (send (connection-back-end conn) map sql list)))))))))
     
-    ; connection query -> result-generator
+    ; connection query transaction-frame -> result-generator
     ;
     ; TODO : This procedure is memory-inefficient, because it retrieves the entire result
     ; set as a list. We really want to fold over the results, sending individual results to
@@ -218,10 +219,11 @@
     ;          ; store next continuation
     ;          ; emit result
     ;          ...))
-    (define/public (g:find conn query)
-      (let ([sql (debug-sql* query-sql query)])
+    (define/public (g:find conn query frame)
+      (let ([sql     (debug-sql* query-sql query)]
+            [extract (make-query-extractor query)])
         (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
-          (g:map (make-query-extractor query)
+          (g:map (cut extract <> frame)
                  (g:map (make-parser (map expression-type (query-what query)))
                         (g:list (send (connection-back-end conn) map sql list)))))))
     

@@ -44,7 +44,7 @@
   (define pretty-formatter-stx #f)        ; format-person
   (define defaults-constructor-stx #f)    ; make-person/defaults
   (define copy-constructor-stx #f)        ; person-set
-  (define natural-order-stx #f)           ; (sql-list (asc person.name) ...)
+  (define default-order-stx #f)           ; (sql-list (asc person.name) ...)
   (define deserialize-info-stx #f)        ; deserialize-info:person
   (define property-stxs null)             ; (... (cons prop:bar bar) (cons prop:foo foo))
   (define entity-kw-stxs null)            ; #:table-name 'Person ...
@@ -82,7 +82,7 @@
               (set! pretty-formatter-stx        (make-id #'name 'format- #'name))
               (set! defaults-constructor-stx    (make-id #'name 'make- #'name '/defaults))
               (set! copy-constructor-stx        (make-id #'name #'name '-set))
-              (set! natural-order-stx           #'null)
+              (set! default-order-stx           #'null)
               (set! deserialize-info-stx        (make-id #'name 'deserialize-info: #'name '-v0))
               (parse-attrs #'(other ...)))]))
   
@@ -154,7 +154,7 @@
         [(#:default val other ...)
          (begin (set! my-default-stx #'(lambda () val))
                 (parse-attr-kws #'(other ...)))]
-        [(#:default-maker val other ...)
+        [(#:default-proc val other ...)
          (begin (set! my-default-stx #'val)
                 (parse-attr-kws #'(other ...)))]
         [(#:column-name val other ...)
@@ -205,7 +205,7 @@
                   (parse-entity-kws #'(other ...)))
            (raise-syntax-error #f "#:plural must be an identifier" complete-stx #'(#:plural val)))]
       [(#:order (expr ...) other ...)
-       (begin (set! natural-order-stx #'(sql-list expr ...))
+       (begin (set! default-order-stx #'(sql-list expr ...))
               (parse-entity-kws #'(other ...)))]
       [(#:order expr other ...)
        (raise-syntax-error #f "#:order must be in the form ((asc foo.bar) ...)"
@@ -253,7 +253,7 @@
                   [pretty-formatter         pretty-formatter-stx]
                   [defaults-constructor     defaults-constructor-stx]
                   [copy-constructor         copy-constructor-stx]
-                  [natural-order            natural-order-stx]
+                  [default-order            default-order-stx]
                   [deserialize-info         deserialize-info-stx]
                   [(property ...)           (reverse property-stxs)]
                   [(entity-kw ...)          (reverse entity-kw-stxs)]
@@ -368,21 +368,22 @@
                (define default-alias
                  (sql:alias 'entity entity-private))
                
+               (define default-order-private
+                 (let-alias ([entity entity-private])
+                   default-order))
+
                (set-entity-defaults-constructor! entity-private defaults-constructor)
                (set-entity-copy-constructor!     entity-private copy-constructor)
                (set-entity-default-alias!        entity-private default-alias)
-               
-               (define natural-order-private
-                 (let-alias ([entity entity-private])
-                   natural-order))
-               
+               (set-entity-default-order!        entity-private default-order-private)
+                              
                (define-values (find-one find-all find-count g:find)
                  #,(make-quick-finds
                     entity-id-stx
                     (list #'find-one #'find-all #'find-count #'g:find)
                     #'default-alias
                     (syntax->list #'(guid-attr revision-attr attr ...))
-                    #'natural-order-private))
+                    #'default-order-private))
                
                ; Transformer binding: makes things like (struct ...) in plt-match work.
                ; Copied by-example from an expanded define-struct.
@@ -412,11 +413,12 @@
                      (certify #'pretty-formatter)
                      (certify #'defaults-constructor)
                      (certify #'copy-constructor)
-                     (certify #'natural-order-private)
+                     (certify #'default-order-private)
                      (certify #'entity-guid)
                      (certify #'entity-guid-constructor)
                      (certify #'entity-guid-predicate)
                      (certify #'default-alias)
+                     (certify #'default-order)
                      (certify #'find-one)
                      (certify #'find-all)
                      (certify #'find-count)

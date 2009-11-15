@@ -59,17 +59,19 @@
     (test-case "make-single-item-struct-extractor : empty generator"
       (recreate-test-tables)
       (let* ([input    (list 1)]
-             [extract  (make-single-item-extractor #f)]
+             [extract* (make-single-item-extractor #f)]
+             [extract  (cut extract* <> (transaction-frame-push #f))]
              [expected 1])
         (check-extracted (extract input) expected)))
     
     (test-case "make-single-item-extractor: one row in generator"
       (recreate-test-tables)
-      (let* ([input   (list (list (make-person-guid 1) 2 "Dave")
-                            (list (make-person-guid 4) 5 "Noel")
-                            (list (make-person-guid 7) 8 "Matt"))]
-             [extract (make-single-item-extractor person)]
-             [do-row  (g:map extract (g:list input))])
+      (let* ([input    (list (list (make-person-guid 1) 2 "Dave")
+                             (list (make-person-guid 4) 5 "Noel")
+                             (list (make-person-guid 7) 8 "Matt"))]
+             [extract* (make-single-item-extractor person)]
+             [extract  (cut extract* <> (transaction-frame-push #f))]
+             [do-row   (g:map extract (g:list input))])
         (check-extracted (do-row) (test-person 1 2 "Dave"))
         (check-extracted (do-row) (test-person 4 5 "Noel"))
         (check-extracted (do-row) (test-person 7 8 "Matt"))
@@ -79,17 +81,19 @@
     (test-case "make-multiple-item-extractor : empty generator"
       (recreate-test-tables)
       (let* ([input    (list 1 (make-person-guid 2) 3 "Dave" 4)]
-             [extract  (make-multiple-item-extractor (list #f person #f))]
+             [extract* (make-multiple-item-extractor (list #f person #f))]
+             [extract  (cut extract* <> (transaction-frame-push #f))]
              [expected (list 1 (test-person 2 3 "Dave") 4)])
         (check-extracted (extract input) expected)))
     
     (test-case "make-multiple-item-extractor : one row in generator"
       (recreate-test-tables)
-      (let* ([input   (list (list (make-person-guid 1) 2 "Dave" 3)
-                            (list (make-person-guid 4) 5 "Noel" 6)
-                            (list (make-person-guid 7) 8 "Matt" 9))]
-             [extract (make-multiple-item-extractor (list person #f))]
-             [do-row  (g:map extract (g:list input))])
+      (let* ([input    (list (list (make-person-guid 1) 2 "Dave" 3)
+                             (list (make-person-guid 4) 5 "Noel" 6)
+                             (list (make-person-guid 7) 8 "Matt" 9))]
+             [extract* (make-multiple-item-extractor (list person #f))]
+             [extract  (cut extract* <> (transaction-frame-push #f))]
+             [do-row   (g:map extract (g:list input))])
         (check-extracted (do-row) (list (test-person 1 2 "Dave") 3))
         (check-extracted (do-row) (list (test-person 4 5 "Noel") 6))
         (check-extracted (do-row) (list (test-person 7 8 "Matt") 9))
@@ -98,13 +102,14 @@
     
     (test-case "make-multiple-item-extractor : null results"
       (recreate-test-tables)
-      (let* ([input   (list (list (make-person-guid 1) 2 "Dave" 3)
-                            (list #f #f #f #f)
-                            (list (make-person-guid 3) 4 "Noel" 5)
-                            (list #f #f #f 6)
-                            (list (make-person-guid 7) 8 "Matt" 9))]
-             [extract (make-multiple-item-extractor (list person #f))]
-             [do-row  (g:map extract (g:list input))])
+      (let* ([input    (list (list (make-person-guid 1) 2 "Dave" 3)
+                             (list #f #f #f #f)
+                             (list (make-person-guid 3) 4 "Noel" 5)
+                             (list #f #f #f 6)
+                             (list (make-person-guid 7) 8 "Matt" 9))]
+             [extract* (make-multiple-item-extractor (list person #f))]
+             [extract  (cut extract* <> (transaction-frame-push #f))]
+             [do-row   (g:map extract (g:list input))])
         (check-extracted (do-row) (list (test-person 1 2 "Dave") 3))
         (check-extracted (do-row) (list #f #f))
         (check-extracted (do-row) (list (test-person 3 4 "Noel") 5))
@@ -115,11 +120,12 @@
     
     (test-case "make-multiple-item-extractor : extracting multiple structs"
       (recreate-test-tables)
-      (let* ([input   (list (list (make-person-guid 1) 2 "Dave" #f #f #f #f)
-                            (list (make-person-guid 3) 4 "Noel" (make-pet-guid 5) 6 (make-person-guid 3) "William")
-                            (list (make-person-guid 3) 4 "Noel" (make-pet-guid 7) 8 (make-person-guid 3) "Henry"))]
-             [extract (make-multiple-item-extractor (list person pet))]
-             [do-row  (g:map extract (g:list input))])
+      (let* ([input    (list (list (make-person-guid 1) 2 "Dave" #f #f #f #f)
+                             (list (make-person-guid 3) 4 "Noel" (make-pet-guid 5) 6 (make-person-guid 3) "William")
+                             (list (make-person-guid 3) 4 "Noel" (make-pet-guid 7) 8 (make-person-guid 3) "Henry"))]
+             [extract* (make-multiple-item-extractor (list person pet))]
+             [extract  (cut extract* <> (transaction-frame-push #f))]
+             [do-row   (g:map extract (g:list input))])
         (check-extracted (do-row) (list (test-person 1 2 "Dave") #f))
         (check-extracted (do-row) (list (test-person 3 4 "Noel") (test-pet 5 6 (make-person-guid 3) "William")))
         (check-extracted (do-row) (list (test-person 3 4 "Noel") (test-pet 7 8 (make-person-guid 3) "Henry")))
@@ -128,22 +134,23 @@
     
     (test-case "make-single-item-extractor : caching"
       (recreate-test-tables)
-      (let* ([input (list (list (make-person-guid 1) 2 "Dave" 28)
-                          (list (make-person-guid 5) 6 "Noel" 29)
-                          (list (make-person-guid 9) 0 "Matt" 30)
-                          (list (make-person-guid 1) 2 "Dave" 28)
-                          (list (make-person-guid 5) 6 "Noel" 29)
-                          (list (make-person-guid 9) 0 "Matt" 30))]
+      (let* ([input    (list (list (make-person-guid 1) 2 "Dave" 28)
+                             (list (make-person-guid 5) 6 "Noel" 29)
+                             (list (make-person-guid 9) 0 "Matt" 30)
+                             (list (make-person-guid 1) 2 "Dave" 28)
+                             (list (make-person-guid 5) 6 "Noel" 29)
+                             (list (make-person-guid 9) 0 "Matt" 30))]
              
-             [extract (make-single-item-extractor person)]
-             [do-row  (g:map extract (g:list input))]
+             [extract* (make-single-item-extractor person)]
+             [extract  (cut extract* <> (transaction-frame-push #f))]
+             [do-row   (g:map extract (g:list input))]
              
-             [dave1 (do-row)]
-             [noel1 (do-row)]
-             [matt1 (do-row)]
-             [dave2 (do-row)]
-             [noel2 (do-row)]
-             [matt2 (do-row)])
+             [dave1    (do-row)]
+             [noel1    (do-row)]
+             [matt1    (do-row)]
+             [dave2    (do-row)]
+             [noel2    (do-row)]
+             [matt2    (do-row)])
         
         (check-equal? dave1 dave2)
         (check-equal? noel1 noel2)
@@ -152,22 +159,23 @@
     
     (test-case "make-multiple-item-extractor : caching"
       (recreate-test-tables)
-      (let* ([input (list (list (make-person-guid 1) 2 "Dave" 28)
-                          (list (make-person-guid 5) 6 "Noel" 29)
-                          (list (make-person-guid 9) 0 "Matt" 30)
-                          (list (make-person-guid 1) 2 "Dave" 28)
-                          (list (make-person-guid 5) 6 "Noel" 29)
-                          (list (make-person-guid 9) 0 "Matt" 30))]
+      (let* ([input    (list (list (make-person-guid 1) 2 "Dave" 28)
+                             (list (make-person-guid 5) 6 "Noel" 29)
+                             (list (make-person-guid 9) 0 "Matt" 30)
+                             (list (make-person-guid 1) 2 "Dave" 28)
+                             (list (make-person-guid 5) 6 "Noel" 29)
+                             (list (make-person-guid 9) 0 "Matt" 30))]
              
-             [extract (make-multiple-item-extractor (list person))]
-             [do-row  (g:map extract (g:list input))]
+             [extract* (make-multiple-item-extractor (list person))]
+             [extract  (cut extract* <> (transaction-frame-push #f))]
+             [do-row   (g:map extract (g:list input))]
              
-             [dave1 (do-row)]
-             [noel1 (do-row)]
-             [matt1 (do-row)]
-             [dave2 (do-row)]
-             [noel2 (do-row)]
-             [matt2 (do-row)])
+             [dave1    (do-row)]
+             [noel1    (do-row)]
+             [matt1    (do-row)]
+             [dave2    (do-row)]
+             [noel2    (do-row)]
+             [matt2    (do-row)])
         
         (check-equal? dave1 dave2)
         (check-equal? noel1 noel2)

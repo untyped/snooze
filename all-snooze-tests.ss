@@ -9,7 +9,7 @@
          "snooze-delete-test.ss"
          "snooze-find-test.ss"
          "snooze-foreign-key-test.ss"
-         ;"snooze-hook-test.ss"
+         "snooze-hook-test.ss"
          "snooze-make-test.ss"
          "snooze-modify-test.ss"
          "snooze-quick-find-test.ss"
@@ -45,7 +45,7 @@
     snooze-modify-tests
     snooze-foreign-key-tests
     snooze-check-tests
-    ;snooze-hook-tests
+    snooze-hook-tests
     snooze-transaction-tests
     ;snooze-concurrency-tests
     snooze-find-tests

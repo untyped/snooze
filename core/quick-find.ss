@@ -50,7 +50,7 @@
                   [(key ...)         key-stxs]
                   [(arg ...)         attr-stxs]
                   [(key+arg ...)     key+arg-stxs]
-                  [natural-order     order-stx])
+                  [default-order     order-stx])
       (quasisyntax/loc stx
         (let-sql ([entity *entity*])
           (letrec ([default-what #,(if count?
@@ -73,7 +73,7 @@
                                                                         (sql entity.attr) 
                                                                         arg))
                                                                    ...)
-                                                #:order  ,(or order natural-order)
+                                                #:order  ,(or order default-order)
                                                 #:limit  ,limit
                                                 #:offset ,offset))))])
             proc))))))

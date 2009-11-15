@@ -141,11 +141,11 @@
                                 (g:map (make-parser (map attribute-type (entity-attributes entity)))
                                        (g:list (send (connection-back-end conn) map sql list)))))))))
     
-    ; snooze<%> connection query -> result-generator
-    (define/public (g:find snooze conn query)
+    ; snooze<%> connection query transaction-frame -> result-generator
+    (define/public (g:find snooze conn query frame)
       (with-snooze-reraise (sqlite:exn:sqlite? (format "could not execute SELECT query: ~a" (query-sql query)))
         (let ([results (sqlite:select (connection-back-end conn) (query-sql query))])
-          (g:map (make-query-extractor query)
+          (g:map (cute (make-query-extractor query) <> frame)
                  (g:map (make-parser (map expression-type (query-what query)))
                         (g:list (remove-column-names results)))))))
     

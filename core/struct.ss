@@ -237,6 +237,7 @@
    guid-predicate
    attributes
    default-alias
+   default-order
    on-save
    on-delete
    save-check
@@ -281,6 +282,7 @@
                  guid-predicate           ; guid predicate
                  null                     ; attributes
                  #f                       ; default-alias
+                 #f                       ; default-order
                  empty-hook               ; hooks
                  empty-hook               ;
                  empty-check              ; validation
@@ -487,6 +489,7 @@
                                         [guid-predicate       (-> any/c boolean?)]
                                         [attributes           (listof attribute?)]
                                         [default-alias        any/c]
+                                        [default-order        list?]
                                         [on-save              (-> (-> connection? snooze-struct? snooze-struct?)
                                                                   connection?
                                                                   snooze-struct?
