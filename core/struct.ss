@@ -61,6 +61,11 @@
 (define (copy-guid guid)
   ((entity-guid-constructor (guid-entity guid)) (guid-id guid)))
 
+; guid -> void
+(define (set-guid-temporary-id! guid)
+  (when (database-guid? guid)
+    (set-guid-id! guid (gensym (entity-name (guid-entity guid))))))
+
 ; Attribute types --------------------------------
 
 ; (struct boolean)
@@ -428,6 +433,7 @@
  [copy-guid                            (-> guid? guid?)]
  [guid-id                              (-> guid? (or/c natural-number/c symbol?))]
  [set-guid-id!                         (-> guid? (or/c natural-number/c symbol?) void?)]
+ [set-guid-temporary-id!               (-> guid? void?)]
  [guid-entity-box                      (-> struct-type? box?)]
  [guid-entity                          (-> guid? entity?)]
  [struct type                          ([allows-null? boolean?])]

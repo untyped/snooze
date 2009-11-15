@@ -29,16 +29,25 @@
     
     ; type any -> string
     (define/public (escape-sql-value type value)
-      (cond [(boolean-type? type)  (guard type value boolean?      "boolean")         (if value "1" "0")]
+      (cond [(boolean-type? type)  (guard type value boolean? "boolean")
+                                   (if value "1" "0")]
             [(not value)           "NULL"]
-            [(guid-type? type)     (guard type value guid?         "(U guid #f)")     (escape-guid type value)]
-            [(integer-type? type)  (guard type value integer?      "(U integer #f)")  (number->string value)]
-            [(real-type? type)     (guard type value real?         "(U real #f)")     (number->string value)]
-            [(string-type? type)   (guard type value string?       "(U string #f)")   (string-append "'" (regexp-replace* #rx"'" value "''") "'")]
-            [(symbol-type? type)   (guard type value symbol?       "(U symbol #f)")   (string-append "'" (regexp-replace* #rx"'" (symbol->string value) "''") "'")]
-            [(time-tai-type? type) (guard type value time-tai?     "(U time-tai #f)") (escape-time time-tai value)]
-            [(time-utc-type? type) (guard type value time-utc?     "(U time-utc #f)") (escape-time time-utc value)]
-            [(binary-type? type)   (guard type value serializable? "serializable")    (string-append "'" (regexp-replace* #rx"'" (serialize/string value) "''") "'")]
+            [(guid-type? type)     (guard type value guid+snooze-struct? "(U guid snooze-struct #f)")
+                                   (escape-guid type value)]
+            [(integer-type? type)  (guard type value integer? "(U integer #f)")
+                                   (number->string value)]
+            [(real-type? type)     (guard type value real? "(U real #f)")
+                                   (number->string value)]
+            [(string-type? type)   (guard type value string? "(U string #f)")
+                                   (string-append "'" (regexp-replace* #rx"'" value "''") "'")]
+            [(symbol-type? type)   (guard type value symbol? "(U symbol #f)")
+                                   (string-append "'" (regexp-replace* #rx"'" (symbol->string value) "''") "'")]
+            [(time-tai-type? type) (guard type value time-tai? "(U time-tai #f)")
+                                   (escape-time time-tai value)]
+            [(time-utc-type? type) (guard type value time-utc? "(U time-utc #f)")
+                                   (escape-time time-utc value)]
+            [(binary-type? type)   (guard type value serializable? "serializable")
+                                   (string-append "'" (regexp-replace* #rx"'" (serialize/string value) "''") "'")]
             [else                  (raise-type-error #f "unrecognised type" type)]))
     
     ; srfi19-time-type (U time-tai time-utc) -> string
@@ -63,9 +72,7 @@
         (string-append
          (escape-sql-name name)
          (match type
-           [(? guid-type?)      (format " INTEGER REFERENCES ~a.~a" 
-                                        (escape-sql-name (entity-name (guid-type-entity type)))
-                                        (escape-sql-name (attribute-column-name (car (entity-attributes (guid-type-entity type))))))]
+           [(? guid-type?)      " INTEGER"] ; no foreign key constraints in SQLite
            [(? boolean-type?)   " INTEGER"]
            [(? integer-type?)   " INTEGER"]
            [(? real-type?)      " REAL"]
@@ -73,7 +80,7 @@
                                     (format " CHARACTER VARYING (~a)" (character-type-max-length type))
                                     " TEXT")]
            [(? temporal-type?)  " INTEGER"]
-           [(? binary-type?)    " BLOB"])
+           [(? binary-type?)    " TEXT"])
          (if (type-allows-null? type) "" " NOT NULL")
          " DEFAULT " (escape-sql-value type (attribute-default attr)))))
     
@@ -86,7 +93,7 @@
     
     ; snooze-struct -> string
     (define/public (insert-sql struct)
-      (let* ([include-id? (and (snooze-struct-guid struct) #t)]
+      (let* ([include-id? (and (database-guid? (snooze-struct-guid struct)) #t)]
              [entity      (snooze-struct-entity struct)]
              [attrs       (entity-attributes entity)]
              [vals        (snooze-struct-ref* struct)]
@@ -129,26 +136,23 @@
     ; type string -> any
     (define (private-parse-value type value)
       (with-handlers ([exn? (lambda (exn) (raise-exn exn:fail:contract (exn-message exn)))])
-        (cond [(guid-type? type)     (entity-make-guid (guid-type-entity type) (inexact->exact value))]
-              [(boolean-type? type)  (equal? value "1")]
+        (cond [(guid-type?     type) (entity-make-guid (guid-type-entity type) (inexact->exact value))]
+              [(boolean-type?  type) (equal? value 1)]
               [(not value)           #f]
-              [(integer-type? type)  (inexact->exact (string->number value))]
-              [(real-type? type)     (string->number value)]
-              [(string-type? type)   value]
-              [(symbol-type? type)   (string->symbol value)]
+              [(integer-type?  type) (inexact->exact value)]
+              [(real-type?     type) value]
+              [(string-type?   type) value]
+              [(symbol-type?   type) (string->symbol value)]
               [(time-tai-type? type) (private-parse-time time-tai value)]
               [(time-utc-type? type) (private-parse-time time-utc value)]
-              [(binary-type? type)   ]
+              [(binary-type?   type) (deserialize/string value)]
               [else                  (raise-type-error 'parse-value "unrecognised type" type)])))
     
     ; srfi19-time-type string -> (U time-tai time-utc)
     (define (private-parse-time time-type value)
-      (if (> (string-length value) 9)
-          (let* ([sec  (string->number (string-drop-right value 9))]
-                 [nano (string->number (string-take-right value 9))])
-            (make-time time-type nano sec))
-          (let* ([nano (string->number value)])
-            (make-time time-type (if nano nano 0) 0))))
+      (and value (let ([sec  (quotient  value 1000000000)]
+                       [nano (remainder value 1000000000)])
+                   (make-time time-type nano sec))))
     
     ; type string -> any
     (define/public (parse-value type value)
@@ -324,6 +328,11 @@
      (unless (predicate value)
        (raise-type-error (type-name type) expected value))]))
 
+; any -> boolean
+(define (guid+snooze-struct? val)
+  (or (guid? val)
+      (snooze-struct? val)))
+
 ; any -> bytes
 (define (serialize/string val)
   (let ([out (open-output-string)])
@@ -331,8 +340,8 @@
     (get-output-string out)))
 
 ; bytes -> any
-(define (deserialize/bytes val)
-  (let ([in (open-input-bytes val)])
+(define (deserialize/string val)
+  (let ([in (open-input-string val)])
     (deserialize (read in))))
 
 ; Provide statements ---------------------------

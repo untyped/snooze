@@ -75,13 +75,13 @@
       "[my-id]")
     
     (test-case "escape-sql-value : guid"
-      (let ([t (make-guid-type #t #f person)])
+      (let ([t (make-guid-type #t person)])
         (check-equal? (escape-sql-value t #f) "NULL")
         (check-equal? (escape-sql-value t (entity-make-guid person 123)) "123")
         (check-exn exn:fail:contract? (cut escape-sql-value t (entity-make-guid course 123)))))
     
     (test-case "escape-sql-value : boolean"
-      (let ([t (make-boolean-type #t #f)])
+      (let ([t (make-boolean-type #t)])
         (check-equal? (escape-sql-value t #f) "0" "check 1")
         (check-equal? (escape-sql-value t #t) "1" "check 2")
         (check-exn exn:fail:contract? (cut escape-sql-value t "123") "check 3")))
@@ -103,7 +103,7 @@
         (check-exn exn:fail:contract? (cut escape-sql-value t "123") "check 5")))
     
     (test-case "escape-sql-value : string"
-      (let ([t (make-string-type #t #f #f)])
+      (let ([t (make-string-type #t #f)])
         (check-equal? (escape-sql-value t #f) "NULL" "check 1")
         (check-equal? (escape-sql-value t "") "''" "check 2")
         (check-equal? (escape-sql-value t "Dave") "'Dave'" "check 3")
@@ -111,7 +111,7 @@
         (check-exn exn:fail:contract? (cut escape-sql-value t 123) "check 5")))
     
     (test-case "escape-sql-value : symbol"
-      (let ([t (make-symbol-type #t #f #f)])
+      (let ([t (make-symbol-type #t #f)])
         (check-equal? (escape-sql-value t #f) "NULL" "check 1")
         (check-equal? (escape-sql-value t '||) "''" "check 2")
         (check-equal? (escape-sql-value t 'Dave) "'Dave'" "check 3")
@@ -119,7 +119,7 @@
         (check-exn exn:fail:contract? (cut escape-sql-value t "123") "check 5")))
     
     (test-case "escape-sql-value : time-tai"
-      (let ([t (make-time-tai-type #t #f)])
+      (let ([t (make-time-tai-type #t)])
         (check-equal? (escape-sql-value t #f) "NULL" "check 1")
         (check-equal? (escape-sql-value t (make-time time-tai 0 0)) "0000000000" "check 2")
         (check-equal? (escape-sql-value t (make-time time-tai 1 0)) "0000000001" "check 3")
@@ -130,7 +130,7 @@
         (check-exn exn:fail:contract? (cut escape-sql-value t "123") "check 8")))
     
     (test-case "escape-sql-value : time-utc"
-      (let ([t (make-time-utc-type #t #f)])
+      (let ([t (make-time-utc-type #t)])
         (check-equal? (escape-sql-value t #f) "NULL" "check 1")
         (check-equal? (escape-sql-value t (make-time time-utc 0 0)) "0000000000" "check 2")
         (check-equal? (escape-sql-value t (make-time time-utc 1 0)) "0000000001" "check 3")
@@ -147,78 +147,78 @@
 (define parse-tests
   (test-suite "parse<%>"
     (test-case "parse-value : boolean"
-      (let ([t (make-boolean-type #t #f)])
-        (check-equal? (parse-value t "0") #f "check 1")
-        (check-equal? (parse-value t "1") #t "check 2")
+      (let ([t (make-boolean-type #t)])
+        (check-equal? (parse-value t 0) #f "check 1")
+        (check-equal? (parse-value t 1) #t "check 2")
         (check-equal? (parse-value t #f) #f "check 3")))
     
     (test-case "parse-value : integer"
       (let ([t (make-integer-type #t #f #f)])
         (check-equal? (parse-value t #f) #f "check 1")
-        (check-equal? (parse-value t "1") 1 "check 2")
-        (check-equal? (parse-value t "0") 0 "check 3")
-        (check-equal? (parse-value t "-1") -1 "check 4")))
+        (check-equal? (parse-value t 1) 1 "check 2")
+        (check-equal? (parse-value t 0) 0 "check 3")
+        (check-equal? (parse-value t -1) -1 "check 4")))
     
     (test-case "parse-value : real"
       (let ([t (make-real-type #t #f #f)])
         (check-equal? (parse-value t #f) #f "check 1")
-        (check-equal? (parse-value t "0.00000000001") 0.00000000001 "check 2")
-        (check-equal? (parse-value t "0.0") 0.0 "check 3")
-        (check-equal? (parse-value t "123456789") 123456789 "check 4")))
+        (check-equal? (parse-value t 0.00000000001) 0.00000000001 "check 2")
+        (check-equal? (parse-value t 0.0) 0.0 "check 3")
+        (check-equal? (parse-value t 123456789) 123456789 "check 4")))
     
     (test-case "parse-value : string"
-      (let ([t (make-string-type #t #f #f)])
+      (let ([t (make-string-type #t #f)])
         (check-equal? (parse-value t #f) #f "check 1")
         (check-equal? (parse-value t "") "" "check 2")
         (check-equal? (parse-value t "Dave") "Dave" "check 3")
         (check-equal? (parse-value t "Dave's stuff") "Dave's stuff" "check 4")))
     
     (test-case "parse-value : symbol"
-      (let ([t (make-symbol-type #t #f #f)])
+      (let ([t (make-symbol-type #t #f)])
         (check-equal? (parse-value t #f) #f "check 1")
         (check-equal? (parse-value t "") '|| "check 2")
         (check-equal? (parse-value t "Dave") 'Dave "check 3")
         (check-equal? (parse-value t "Dave's stuff") '|Dave's stuff| "check 4")))
     
     (test-case "parse-value : time-tai"
-      (let ([t (make-time-tai-type #t #f)])
-        (check-equal? (parse-value t "") (make-time time-tai 0 0) "check 1")
-        (check-equal? (parse-value t "0") (make-time time-tai 0 0) "check 2")
-        (check-equal? (parse-value t "000000000") (make-time time-tai 0 0) "check 3")
-        (check-equal? (parse-value t "0000000000") (make-time time-tai 0 0) "check 4")
-        (check-equal? (parse-value t "1000000000") (make-time time-tai 0 1) "check 5")
-        (check-equal? (parse-value t "123456789") (make-time time-tai 123456789 0) "check 6")
-        (check-equal? (parse-value t "0123456789") (make-time time-tai 123456789 0) "check 7")
-        (check-equal? (parse-value t "1123456789") (make-time time-tai 123456789 1) "check 8")
-        (check-equal? (parse-value t (escape-sql-value t time-tai1)) time-tai1 "check 9")
-        (check-equal? (parse-value t (escape-sql-value t time-tai2)) time-tai2 "check 10")
-        (check-equal? (parse-value t (escape-sql-value t time-tai3)) time-tai3 "check 11")))
+      (let ([t (make-time-tai-type #t)])
+        (check-equal? (parse-value t #f) #f)
+        (check-equal? (parse-value t 0) (make-time time-tai 0 0))
+        (check-equal? (parse-value t 000000000) (make-time time-tai 0 0))
+        (check-equal? (parse-value t 0000000000) (make-time time-tai 0 0))
+        (check-equal? (parse-value t 1000000000) (make-time time-tai 0 1))
+        (check-equal? (parse-value t 123456789) (make-time time-tai 123456789 0))
+        (check-equal? (parse-value t 0123456789) (make-time time-tai 123456789 0))
+        (check-equal? (parse-value t 1123456789) (make-time time-tai 123456789 1))
+        (check-equal? (parse-value t (string->number (escape-sql-value t time-tai1))) time-tai1)
+        (check-equal? (parse-value t (string->number (escape-sql-value t time-tai2))) time-tai2)
+        (check-equal? (parse-value t (string->number (escape-sql-value t time-tai3))) time-tai3)))
     
     (test-case "parse-value : time-utc"
-      (let ([t (make-time-utc-type #t #f)])
-        (check-equal? (parse-value t "") (make-time time-utc 0 0) "check 1")
-        (check-equal? (parse-value t "0") (make-time time-utc 0 0) "check 2")
-        (check-equal? (parse-value t "000000000") (make-time time-utc 0 0) "check 3")
-        (check-equal? (parse-value t "0000000000") (make-time time-utc 0 0) "check 4")
-        (check-equal? (parse-value t "1000000000") (make-time time-utc 0 1) "check 5")
-        (check-equal? (parse-value t "123456789") (make-time time-utc 123456789 0) "check 6")
-        (check-equal? (parse-value t "0123456789") (make-time time-utc 123456789 0) "check 7")
-        (check-equal? (parse-value t "1123456789") (make-time time-utc 123456789 1) "check 8")
-        (check-equal? (parse-value t (escape-sql-value t time-utc1)) time-utc1 "check 9")
-        (check-equal? (parse-value t (escape-sql-value t time-utc2)) time-utc2 "check 10")
-        (check-equal? (parse-value t (escape-sql-value t time-utc3)) time-utc3 "check 11")))
+      (let ([t (make-time-utc-type #t)])
+        (check-equal? (parse-value t #f) #f)
+        (check-equal? (parse-value t 0) (make-time time-utc 0 0))
+        (check-equal? (parse-value t 000000000) (make-time time-utc 0 0))
+        (check-equal? (parse-value t 0000000000) (make-time time-utc 0 0))
+        (check-equal? (parse-value t 1000000000) (make-time time-utc 0 1))
+        (check-equal? (parse-value t 123456789) (make-time time-utc 123456789 0))
+        (check-equal? (parse-value t 0123456789) (make-time time-utc 123456789 0))
+        (check-equal? (parse-value t 1123456789) (make-time time-utc 123456789 1))
+        (check-equal? (parse-value t (string->number (escape-sql-value t time-utc1))) time-utc1)
+        (check-equal? (parse-value t (string->number (escape-sql-value t time-utc2))) time-utc2)
+        (check-equal? (parse-value t (string->number (escape-sql-value t time-utc3))) time-utc3)))
     
     (test-exn "parse-value : unknown type"
       exn:fail:contract?
       (cut parse-value 'foo "hello"))
     
     (test-case "make-parser"
-      (let ([parse (make-parser (list (make-boolean-type #t #f)
+      (let ([parse (make-parser (list (make-boolean-type #t)
                                       (make-integer-type #t #f #f)
-                                      (make-string-type #t #f #f)
-                                      (make-symbol-type #t #f #f)))])
-        (check-equal? (parse (vector "1" "1" "1" "1")) (vector #t 1 "1" '|1|) "check 1")
-        (check-equal? (parse (vector #f #f #f #f)) (vector #f #f #f #f) "check 1")))))
+                                      (make-string-type #t #f)
+                                      (make-symbol-type #t #f)))])
+        (check-equal? (parse (list 1 1 "1" "1")) (list #t 1 "1" '|1|) "check 1")
+        (check-equal? (parse (list #f #f #f #f)) (list #f #f #f #f) "check 1")))))
 
 (define sql-query-tests
   (test-suite "sql-query<%>"
@@ -228,7 +228,7 @@
                     "DISTINCT "
                     "no expressions")
       (check-equal? (distinct-sql (list (sql (= p1.guid 123)))
-                                  (list (sql p1.id)))
+                                  (list (sql p1.guid)))
                     #<<ENDSQL
 DISTINCT ON (([p1-guid] = 123)) 
 ENDSQL
@@ -258,20 +258,20 @@ ENDSQL
                                     sum-revisions)
                               (list count-p2-guid))
                     #<<ENDSQL
-count(*) AS [count-star], count([p1].*) AS [count-p1], count([p1].[guid]) AS [count-p1-guid], [count-p2-guid], ([p1].[guid] + [p2].[guid]) AS [sum-ids]
+count(*) AS [count-star], count([p1].*) AS [count-p1], count([p1].[guid]) AS [count-p1-guid], [count-p2-guid], ([p1].[revision] + [p2].[revision]) AS [sum-revisions]
 ENDSQL
                     "expression aliases"))
     
     (test-case "display-from"
       (check-equal? (from-sql p1 null)
                     #<<ENDSQL
-[Person] AS [p1]
+[person] AS [p1]
 ENDSQL
                     "entity")
       
       (check-equal? (from-sql (sql:alias 'subq (sql:select #:from p1)) null)
                     #<<ENDSQL
-(SELECT [p1].[guid] AS [p1-guid], [p1].[revision] AS [p1-revision], [p1].[name] AS [p1-name] FROM [Person] AS [p1]) AS [subq]
+(SELECT [p1].[guid] AS [p1-guid], [p1].[revision] AS [p1-revision], [p1].[name] AS [p1-name] FROM [person] AS [p1]) AS [subq]
 ENDSQL
                     "subquery")
       
@@ -282,19 +282,19 @@ ENDSQL
                                     (sql p2.revision)
                                     (sql p2.name)))
                     #<<ENDSQL
-[Person] AS [p1] INNER JOIN (SELECT [p2].[guid] AS [p2-guid], [p2].[revision] AS [p2-revision], [p2].[name] AS [p2-name] FROM [Person] AS [p2]) AS [subq] ON ([p1].[guid] = [p2-guid])
+[person] AS [p1] INNER JOIN (SELECT [p2].[guid] AS [p2-guid], [p2].[revision] AS [p2-revision], [p2].[name] AS [p2-name] FROM [person] AS [p2]) AS [subq] ON ([p1].[guid] = [p2-guid])
 ENDSQL
                     "inner join")
       
       (check-equal? (from-sql (sql (outer (outer p1 p2) p3)) null)
                     #<<ENDSQL
-[Person] AS [p1] CROSS JOIN [Person] AS [p2] CROSS JOIN [Person] AS [p3]
+[person] AS [p1] CROSS JOIN [person] AS [p2] CROSS JOIN [person] AS [p3]
 ENDSQL
                     "unparenthesised nested join")
       
       (check-equal? (from-sql (sql (outer p1 (outer p2 p3))) null)
                     #<<ENDSQL
-((SELECT [p1].[guid] AS [p1-guid], [p1].[revision] AS [p1-revision], [p1].[name] AS [p1-name] FROM [Person] AS [p1]) CROSS JOIN ((SELECT [p2].[guid] AS [p2-guid], [p2].[revision] AS [p2-revision], [p2].[name] AS [p2-name] FROM [Person] AS [p2]) CROSS JOIN (SELECT [p3].[guid] AS [p3-id], [p3].[revision] AS [p3-revision], [p3].[name] AS [p3-name] FROM [Person] AS [p3])))
+((SELECT [p1].[guid] AS [p1-guid], [p1].[revision] AS [p1-revision], [p1].[name] AS [p1-name] FROM [person] AS [p1]) CROSS JOIN ((SELECT [p2].[guid] AS [p2-guid], [p2].[revision] AS [p2-revision], [p2].[name] AS [p2-name] FROM [person] AS [p2]) CROSS JOIN (SELECT [p3].[guid] AS [p3-guid], [p3].[revision] AS [p3-revision], [p3].[name] AS [p3-name] FROM [person] AS [p3])))
 ENDSQL
                     "parenthesised nested join"))
     
@@ -317,7 +317,7 @@ ENDSQL
                                      sum-revisions
                                      count-p2-guid))
                     #<<ENDSQL
-[count-p1-guid], [count-p2-guid], [sum-ids]
+[count-p1-guid], [count-p2-guid], [sum-revisions]
 ENDSQL
                     "expression aliases"))
     
@@ -338,14 +338,14 @@ ENDSQL
                                      count-p2-guid
                                      sum-revisions))
                     #<<ENDSQL
-[count-p1-guid] ASC, [count-p2-guid] DESC, [sum-ids] ASC
+[count-p1-guid] ASC, [count-p2-guid] DESC, [sum-revisions] ASC
 ENDSQL
                     "expression aliases")
       
-      (check-equal? (order-sql (list (sql (asc (+ p1.guid p2.guid))))
+      (check-equal? (order-sql (list (sql (asc (+ p1.revision p2.revision))))
                                null)
                     #<<ENDSQL
-([p1].[guid] + [p2].[guid]) ASC
+([p1].[revision] + [p2].[revision]) ASC
 ENDSQL
                     "expressions"))
     
@@ -359,10 +359,10 @@ ENDSQL
       (check-equal? (expression-sql (sql (regexp-replace-ci  "a" "b" "c")) null)    "(regexp_replace('a', 'b', 'c', 'i'))")
       (check-equal? (expression-sql (sql (regexp-replace*    "a" "b" "c")) null)    "(regexp_replace('a', 'b', 'c', 'g'))")
       (check-equal? (expression-sql (sql (regexp-replace*-ci "a" "b" "c")) null)    "(regexp_replace('a', 'b', 'c', 'gi'))")
-      (check-equal? (expression-sql (cond [#t "a"] [#f "b"]) null)            "(CASE WHEN 1 THEN 'a' WHEN 0 THEN 'b' ELSE NULL END)")
-      (check-equal? (expression-sql (cond [#t "a"] [#f "b"] [else "c"]) null) "(CASE WHEN 1 THEN 'a' WHEN 0 THEN 'b' ELSE 'c' END)")
+      (check-equal? (expression-sql (sql (cond [#t "a"] [#f "b"])) null)            "(CASE WHEN 1 THEN 'a' WHEN 0 THEN 'b' ELSE NULL END)")
+      (check-equal? (expression-sql (sql (cond [#t "a"] [#f "b"] [else "c"])) null) "(CASE WHEN 1 THEN 'a' WHEN 0 THEN 'b' ELSE 'c' END)")
       (check-equal? (expression-sql (sql (in p1.guid (select #:what p1.guid #:from p1))) null)
-                    "([p1].[guid] IN (SELECT [p1].[guid] AS [p1-guid] FROM [Person] AS [p1]))")
+                    "([p1].[guid] IN (SELECT [p1].[guid] AS [p1-guid] FROM [person] AS [p1]))")
       (check-equal? (expression-sql (sql (and (= p1.guid 123)
                                               (= (string-append p1.name " of Loxley")
                                                  "Robin of Loxley")))
@@ -375,7 +375,7 @@ ENDSQL
       (define-alias expr (sql (count* b)))
       
       (define-alias expr2 
-        (sql (+ p1.guid p2.guid p3.guid)))
+        (sql (+ p1.revision p2.revision p3.revision)))
       
       (define query1
         (sql (select #:what   (a b)
@@ -405,26 +405,26 @@ ENDSQL
       
       (define sql1
         #<<ENDSQL
-SELECT [a].[guid] AS [a-guid], [a].[revision] AS [a-revision], [a].[name] AS [a-name], [b].[guid] AS [b-guid], [b].[revision] AS [b-revision], [b].[owner] AS [b-owner], [b].[name] AS [b-name] FROM [Person] AS [a] INNER JOIN [Pet] AS [b] ON ([a].[guid] = [b].[owner]) WHERE ([a].[name] = 'Jon Arbuckle') ORDER BY [a-name] ASC, [b-name] ASC LIMIT 10 OFFSET 20
+SELECT [a].[guid] AS [a-guid], [a].[revision] AS [a-revision], [a].[name] AS [a-name], [b].[guid] AS [b-guid], [b].[revision] AS [b-revision], [b].[owner] AS [b-owner], [b].[name] AS [b-name] FROM [person] AS [a] INNER JOIN [pet] AS [b] ON ([a].[guid] = [b].[owner]) WHERE ([a].[name] = 'Jon Arbuckle') ORDER BY [a-name] ASC, [b-name] ASC LIMIT 10 OFFSET 20
 ENDSQL
         )
       
       (define sql2
         #<<ENDSQL
-SELECT [a-guid], [a-revision], [a-name], [b].[guid] AS [b-guid], [b].[revision] AS [b-revision], [b].[owner] AS [b-owner], [b].[name] AS [b-name] FROM (SELECT [a].[guid] AS [a-guid], [a].[revision] AS [a-revision], [a].[name] AS [a-name] FROM [Person] AS [a]) AS [subq] INNER JOIN [Pet] AS [b] ON ([a-guid] = [b].[owner]) WHERE ([a-name] = [b].[name]) ORDER BY [a-name] ASC, [b-name] ASC
+SELECT [a-guid], [a-revision], [a-name], [b].[guid] AS [b-guid], [b].[revision] AS [b-revision], [b].[owner] AS [b-owner], [b].[name] AS [b-name] FROM (SELECT [a].[guid] AS [a-guid], [a].[revision] AS [a-revision], [a].[name] AS [a-name] FROM [person] AS [a]) AS [subq] INNER JOIN [pet] AS [b] ON ([a-guid] = [b].[owner]) WHERE ([a-name] = [b].[name]) ORDER BY [a-name] ASC, [b-name] ASC
 ENDSQL
         )
       
       (define sql3
         #<<ENDSQL
-SELECT [a].[guid] AS [a-guid], [a].[revision] AS [a-revision], [a].[name] AS [a-name], count([b].*) AS [expr] FROM [Person] AS [a] INNER JOIN [Pet] AS [b] ON ([a].[guid] = [b].[owner]) GROUP BY [a-guid], [a-revision], [a-name]
+SELECT [a].[guid] AS [a-guid], [a].[revision] AS [a-revision], [a].[name] AS [a-name], count([b].*) AS [expr] FROM [person] AS [a] INNER JOIN [pet] AS [b] ON ([a].[guid] = [b].[owner]) GROUP BY [a-guid], [a-revision], [a-name]
 ENDSQL
         )
       
       ; Test the special aliasing behaviour with right-nested joins:
       (define sql4
         #<<ENDSQL
-SELECT [p1-guid], [p2-guid], [p3-id], ([p1-guid] + [p2-guid] + [p3-id]) AS [expr2] FROM ((SELECT [p1].[guid] AS [p1-guid], [p1].[revision] AS [p1-revision], [p1].[name] AS [p1-name] FROM [Person] AS [p1]) CROSS JOIN ((SELECT [p2].[guid] AS [p2-guid], [p2].[revision] AS [p2-revision], [p2].[name] AS [p2-name] FROM [Person] AS [p2]) CROSS JOIN (SELECT [p3].[guid] AS [p3-id], [p3].[revision] AS [p3-revision], [p3].[name] AS [p3-name] FROM [Person] AS [p3])))
+SELECT [p1-guid], [p2-guid], [p3-guid], ([p1-revision] + [p2-revision] + [p3-revision]) AS [expr2] FROM ((SELECT [p1].[guid] AS [p1-guid], [p1].[revision] AS [p1-revision], [p1].[name] AS [p1-name] FROM [person] AS [p1]) CROSS JOIN ((SELECT [p2].[guid] AS [p2-guid], [p2].[revision] AS [p2-revision], [p2].[name] AS [p2-name] FROM [person] AS [p2]) CROSS JOIN (SELECT [p3].[guid] AS [p3-guid], [p3].[revision] AS [p3-revision], [p3].[name] AS [p3-name] FROM [person] AS [p3])))
 ENDSQL
         )
       

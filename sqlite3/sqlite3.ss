@@ -15,6 +15,11 @@
   (new sqlite3-database%
        [path   path]))
 
+(define-syntax-rule (debug-sql* fn arg ...)
+  (let ([sql (fn arg ...)])
+    ;(printf "~a~n" sql)
+    sql))
+
 ; Database class ---------------------------------
 
 (define sqlite3-database%
@@ -62,12 +67,12 @@
     ; connection entity -> void
     (define/public (create-table conn entity)
       (with-snooze-reraise (sqlite:exn:sqlite? (format "could not create table for ~a" entity))
-        (sqlite:exec/ignore (connection-back-end conn) (create-table-sql entity))))
+        (sqlite:exec/ignore (connection-back-end conn) (debug-sql* create-table-sql entity))))
     
     ; connection entity -> void
     (define/public (drop-table conn entity)
       (with-snooze-reraise (sqlite:exn:sqlite? (format "could not drop table for ~a" entity))
-        (sqlite:exec/ignore (connection-back-end conn) (drop-table-sql entity))))
+        (sqlite:exec/ignore (connection-back-end conn) (debug-sql* drop-table-sql entity))))
     
     ; connection snooze-struct -> snooze-struct
     ; Inserts a new database record for the supplied struct.
@@ -75,13 +80,12 @@
       (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
         (let* ([entity       (snooze-struct-entity   old-struct)]
                [guid         (snooze-struct-guid     old-struct)]
-               [revision     (snooze-struct-revision old-struct)]
-               [new-struct   (let ([id (sqlite:insert (connection-back-end conn) (insert-sql old-struct))])
-                               (apply (entity-private-constructor entity)
-                                      (entity-make-guid entity id)
-                                      (or revision 0)
-                                      (cddr (snooze-struct-ref* old-struct))))])
-          (send (connection-back-end conn) exec (insert-sql new-struct)))))
+               [revision     (snooze-struct-revision old-struct)])
+          (set-guid-id! guid (sqlite:insert (connection-back-end conn) (debug-sql* insert-sql old-struct)))
+          (apply (entity-private-constructor entity)
+                 guid
+                 (or revision 0)
+                 (cddr (snooze-struct-ref* old-struct))))))
     
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Updates the existing database record for the supplied struct.
@@ -95,7 +99,7 @@
                                   (add1 revision)
                                   (cddr (snooze-struct-ref* old-struct)))])
           (when check-revision? (check-revision conn entity guid revision))
-          (sqlite:exec/ignore (connection-back-end conn) (update-sql new-struct))
+          (sqlite:exec/ignore (connection-back-end conn) (debug-sql* update-sql new-struct))
           new-struct)))
     
     ; connection snooze-struct [boolean] -> snooze-struct
@@ -106,7 +110,8 @@
               [guid     (snooze-struct-guid old-struct)]
               [revision (snooze-struct-revision old-struct)])
           (when check-revision? (check-revision conn entity guid revision))
-          (send (connection-back-end conn) exec (delete-sql (snooze-struct-guid old-struct)))
+          (sqlite:exec/ignore (connection-back-end conn) (debug-sql* delete-sql (snooze-struct-guid old-struct)))
+          (set-guid-temporary-id! guid)
           (apply (entity-private-constructor entity)
                  guid
                  #f
@@ -116,38 +121,49 @@
     ; Deletes the database record for the supplied guid.
     (define/public (delete-guid conn guid)
       (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" guid))
-        (sqlite:exec/ignore (connection-back-end conn) (delete-sql guid))
+        (sqlite:exec/ignore (connection-back-end conn) (debug-sql* delete-sql guid))
         (void)))
     
     ; connection entity database-guid natural -> void
     (define (check-revision conn entity guid expected)
-      (let ([actual (send (connection-back-end conn) query-value
-                          (format "SELECT revision FROM ~a WHERE guid = ~a;"
-                                  (escape-sql-name (entity-table-name entity))
-                                  (guid-id guid)))])
+      (let* ([result (sqlite:select (connection-back-end conn)
+                                    (format "SELECT revision FROM ~a WHERE guid = ~a;"
+                                            (escape-sql-name (entity-table-name entity))
+                                            (guid-id guid)))]
+             [actual (and (pair? result)
+                          (vector-ref (cadr result) 0))])
         (unless (equal? actual expected)
-          (raise-exn exn:fail:snooze
+          (raise-exn exn:fail:snooze:revision
             (format "revision mismatch: database ~a, struct ~a" actual expected)
             guid))))
     
-    ; (listof database-guid) -> (listof snooze-struct)
-    (define/public (direct-find conn guids)
+    ; connection (listof database-guid) frame -> (listof snooze-struct)
+    (define/public (direct-find conn guids frame)
       (if (null? guids)
           null
-          (let ([sql    (direct-find-sql guids)]
-                [entity (guid-entity (car guids))])
-            (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
-              (g:collect (g:map (make-single-item-extractor entity)
-                                (g:map (make-parser (map attribute-type (entity-attributes entity)))
-                                       (g:list (send (connection-back-end conn) map sql list)))))))))
+          (let* ([sql     (debug-sql* direct-find-sql guids)]
+                 [entity  (guid-entity (car guids))]
+                 [results (sqlite:select (connection-back-end conn) sql)])
+            (if (null? results)
+                null
+                (let ([extract (make-single-item-extractor entity)])
+                  (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
+                    (g:collect (g:map (cut extract <> frame)
+                                      (g:map (make-parser (map attribute-type (entity-attributes entity)))
+                                             (g:map vector->list (g:list (remove-column-names results))))))))))))
     
-    ; snooze<%> connection query transaction-frame -> result-generator
-    (define/public (g:find snooze conn query frame)
+    ; connection query transaction-frame -> result-generator
+    (define/public (g:find conn query frame)
       (with-snooze-reraise (sqlite:exn:sqlite? (format "could not execute SELECT query: ~a" (query-sql query)))
-        (let ([results (sqlite:select (connection-back-end conn) (query-sql query))])
-          (g:map (cute (make-query-extractor query) <> frame)
+        (let ([results (sqlite:select (connection-back-end conn) (debug-sql* query-sql query))]
+              [extract (make-query-extractor query)])
+          (g:map (cut extract <> frame)
                  (g:map (make-parser (map expression-type (query-what query)))
-                        (g:list (remove-column-names results)))))))
+                        (g:map vector->list (g:list (remove-column-names results))))))))
+    
+    ; -> boolean
+    (define/public (supports-nested-transactions?)
+      #f)
     
     ; connection -> boolean
     (define/public (transaction-allowed? conn)

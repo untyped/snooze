@@ -160,7 +160,7 @@
           (when check-revision?
             (check-revision conn entity guid revision))
           (send (connection-back-end conn) exec (debug-sql* delete-sql (snooze-struct-guid old-struct)))
-          (set-guid-id! guid (gensym (entity-name entity)))
+          (set-guid-temporary-id! guid)
           (apply (entity-private-constructor entity)
                  guid
                  #f
@@ -226,6 +226,10 @@
           (g:map (cut extract <> frame)
                  (g:map (make-parser (map expression-type (query-what query)))
                         (g:list (send (connection-back-end conn) map sql list)))))))
+    
+    ; -> boolean
+    (define/public (supports-nested-transactions?)
+      #t)
     
     ; connection -> boolean
     (define/public (transaction-allowed? conn)

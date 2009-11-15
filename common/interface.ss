@@ -58,6 +58,10 @@
     ; and extracts data as necessary before returning results.
     g:find
     
+    ; -> boolean
+    ; Can this DBMS perform and rollback nested transactions?
+    supports-nested-transactions?
+    
     ; connection -> boolean
     ; Determines a transaction can be started. Some databases do not allow
     ; nested transactions, so the return value may be context dependent.

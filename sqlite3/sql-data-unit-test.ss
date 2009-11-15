@@ -25,13 +25,13 @@
   (test-suite "sql-data-unit.ss"
     
     (test-case "escape-value : guid"
-      (let ([t (make-guid-type #t #f person)])
+      (let ([t (make-guid-type #t person)])
         (check-equal? (escape-value t #f) "NULL")
         (check-equal? (escape-value t (make-guid person 123)) "123")
         (check-exn exn:fail:contract? (cut escape-value t (make-guid course 123)))))
     
     (test-case "escape-value : boolean"
-      (let ([t (make-boolean-type #t #f)])
+      (let ([t (make-boolean-type #t)])
         (check-equal? (escape-value t #f) "0" "check 1")
         (check-equal? (escape-value t #t) "1" "check 2")
         (check-exn exn:fail:contract? (cut escape-value t "123") "check 3")))
@@ -53,7 +53,7 @@
         (check-exn exn:fail:contract? (cut escape-value t "123") "check 5")))
     
     (test-case "escape-value : string"
-      (let ([t (make-string-type #t #f #f)])
+      (let ([t (make-string-type #t #f)])
         (check-equal? (escape-value t #f) "NULL" "check 1")
         (check-equal? (escape-value t "") "''" "check 2")
         (check-equal? (escape-value t "Dave") "'Dave'" "check 3")
@@ -61,7 +61,7 @@
         (check-exn exn:fail:contract? (cut escape-value t 123) "check 5")))
     
     (test-case "escape-value : symbol"
-      (let ([t (make-symbol-type #t #f #f)])
+      (let ([t (make-symbol-type #t #f)])
         (check-equal? (escape-value t #f) "NULL" "check 1")
         (check-equal? (escape-value t '||) "''" "check 2")
         (check-equal? (escape-value t 'Dave) "'Dave'" "check 3")
@@ -69,7 +69,7 @@
         (check-exn exn:fail:contract? (cut escape-value t "123") "check 5")))
     
     (test-case "escape-value : time-tai"
-      (let ([t (make-time-tai-type #t #f)])
+      (let ([t (make-time-tai-type #t)])
         (check-equal? (escape-value t #f) "NULL" "check 1")
         (check-equal? (escape-value t (make-time time-tai 0 0)) "0000000000" "check 2")
         (check-equal? (escape-value t (make-time time-tai 1 0)) "0000000001" "check 3")
@@ -80,7 +80,7 @@
         (check-exn exn:fail:contract? (cut escape-value t "123") "check 8")))
     
     (test-case "escape-value : time-utc"
-      (let ([t (make-time-utc-type #t #f)])
+      (let ([t (make-time-utc-type #t)])
         (check-equal? (escape-value t #f) "NULL" "check 1")
         (check-equal? (escape-value t (make-time time-utc 0 0)) "0000000000" "check 2")
         (check-equal? (escape-value t (make-time time-utc 1 0)) "0000000001" "check 3")
@@ -95,7 +95,7 @@
       (cut escape-value 'foo "hello"))
     
     (test-case "parse-value : boolean"
-      (let ([t (make-boolean-type #t #f)])
+      (let ([t (make-boolean-type #t)])
         (check-equal? (parse-value t "0") #f "check 1")
         (check-equal? (parse-value t "1") #t "check 2")
         (check-equal? (parse-value t #f) #f "check 3")))
@@ -115,21 +115,21 @@
         (check-equal? (parse-value t "123456789") 123456789 "check 4")))
     
     (test-case "parse-value : string"
-      (let ([t (make-string-type #t #f #f)])
+      (let ([t (make-string-type #t #f)])
         (check-equal? (parse-value t #f) #f "check 1")
         (check-equal? (parse-value t "") "" "check 2")
         (check-equal? (parse-value t "Dave") "Dave" "check 3")
         (check-equal? (parse-value t "Dave's stuff") "Dave's stuff" "check 4")))
     
     (test-case "parse-value : symbol"
-      (let ([t (make-symbol-type #t #f #f)])
+      (let ([t (make-symbol-type #t #f)])
         (check-equal? (parse-value t #f) #f "check 1")
         (check-equal? (parse-value t "") '|| "check 2")
         (check-equal? (parse-value t "Dave") 'Dave "check 3")
         (check-equal? (parse-value t "Dave's stuff") '|Dave's stuff| "check 4")))
     
     (test-case "parse-value : time-tai"
-      (let ([t (make-time-tai-type #t #f)])
+      (let ([t (make-time-tai-type #t)])
         (check-equal? (parse-value t "") (make-time time-tai 0 0) "check 1")
         (check-equal? (parse-value t "0") (make-time time-tai 0 0) "check 2")
         (check-equal? (parse-value t "000000000") (make-time time-tai 0 0) "check 3")
@@ -143,7 +143,7 @@
         (check-equal? (parse-value t (escape-value t time-tai3)) time-tai3 "check 11")))
     
     (test-case "parse-value : time-utc"
-      (let ([t (make-time-utc-type #t #f)])
+      (let ([t (make-time-utc-type #t)])
         (check-equal? (parse-value t "") (make-time time-utc 0 0) "check 1")
         (check-equal? (parse-value t "0") (make-time time-utc 0 0) "check 2")
         (check-equal? (parse-value t "000000000") (make-time time-utc 0 0) "check 3")
@@ -161,10 +161,10 @@
       (cut parse-value 'foo "hello"))
     
     (test-case "make-parser"
-      (let ([parse (make-parser (list (make-boolean-type #t #f)
+      (let ([parse (make-parser (list (make-boolean-type #t)
                                       (make-integer-type #t #f #f)
-                                      (make-string-type #t #f #f)
-                                      (make-symbol-type #t #f #f)))])
+                                      (make-string-type #t #f)
+                                      (make-symbol-type #t #f)))])
         (check-equal? (parse (vector "1" "1" "1" "1")) (vector #t 1 "1" '|1|) "check 1")
         (check-equal? (parse (vector #f #f #f #f)) (vector #f #f #f #f) "check 1")))))
 

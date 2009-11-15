@@ -43,7 +43,7 @@ ENDOUTPUT
          [(list)
           (run-tests/sqlite3 ':memory: tests)]
          [(list location)
-          (run-tests/sqlite3 location tests)]
+          (run-tests/sqlite3 (string->path location) tests)]
          [_ (error "bad sqlite3 options")]))]
     [(list-rest "postgresql8" rest)
      (let ([tests (make-snooze-tests all-postgresql8-tests)])

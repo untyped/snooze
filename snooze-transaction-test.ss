@@ -158,7 +158,7 @@
          (check-exn exn:fail:snooze:revision? (cut save! p2))
          (check-not-exn (cut save! p1)))))
     
-    (test-case "inner nested transaction (SQLite will fail this)"
+    (test-case "inner nested transaction"
       (before
        (recreate-test-tables)
        (let ([p1 (save! (make-person/defaults #:name "A"))]
@@ -179,72 +179,81 @@
          (check-equal? (person-name p2) "B")
          (check-equal? (person-name p3) "C")
          ; Check against DB:
-         (check-false (find-person #:name "A"))
-         (check-equal? (find-person #:name "B") p2)
-         (check-false (find-person #:name "C"))
+         (if (send (send (current-snooze) get-database) supports-nested-transactions?)
+             (begin (check-false (find-person #:name "A"))
+                    (check-equal? (find-person #:name "B") p2)
+                    (check-false (find-person #:name "C")))
+             (begin (check-false (find-person #:name "A"))
+                    (check-false (find-person #:name "B"))
+                    (check-equal? (find-person #:name "C") p3)))
          ; Check repeat transaction:
-         (check-exn exn:fail:snooze:revision? (cut save! p1))
-         (check-exn exn:fail:snooze:revision? (cut save! p3))
-         (check-not-exn (cut save! p2))))))
-  
-  
-  (test-case "continuation jumps"
-    ; General continuation jump out:
-    (define _
-      (let/cc escape
-        (call-with-transaction
-         (lambda ()
-           (check-exn exn:fail:contract:continuation?
-             (lambda ()
-               (escape #f)))))))
-    ; Escape continuation jump out:
-    (define resume
-      (check-not-exn
+         (if (send (send (current-snooze) get-database) supports-nested-transactions?)
+             (begin (check-exn exn:fail:snooze:revision? (cut save! p1))
+                    (check-exn exn:fail:snooze:revision? (cut save! p3))
+                    (check-not-exn (cut save! p2)))
+             (begin (check-exn exn:fail:snooze:revision? (cut save! p1))
+                    (check-exn exn:fail:snooze:revision? (cut save! p2))
+                    (check-not-exn (cut save! p3))))))))
+    
+    
+    (test-case "continuation jumps"
+      ; General continuation jump out:
+      (define _
+        (let/cc escape
+          (call-with-transaction
+           (lambda ()
+             (check-exn exn:fail:contract:continuation?
+               (lambda ()
+                 (escape #f)))))))
+      ; Escape continuation jump out:
+      (define resume
+        (check-not-exn
+          (lambda ()
+            (let/ec escape
+              (call-with-transaction
+               (lambda ()
+                 (let/cc resume
+                   (escape resume))))))))
+      ; General continuation jump in:
+      (check-exn exn:fail:contract:continuation?
         (lambda ()
-          (let/ec escape
-            (call-with-transaction
-             (lambda ()
-               (let/cc resume
-                 (escape resume))))))))
-    ; General continuation jump in:
-    (check-exn exn:fail:contract:continuation?
-      (lambda ()
-        (resume #f))))
-  
-  (test-suite "hooks"
-        
-    (test-case "called"
-      (before
-       (recreate-test-tables)
-       (let ([num-transactions 0])
+          (resume #f))))
+    
+    (test-suite "hooks"
+      
+      (test-case "called"
+        (before
+         (recreate-test-tables)
+         (let ([num-transactions 0])
+           (call-with-transaction-hook
+            (lambda (continue conn . args)
+              (set! num-transactions (add1 num-transactions))
+              (apply continue conn args))
+            (lambda ()
+              (delete! (save! (make-person/defaults #:name "Dave")))))
+           (check-equal? num-transactions 2))))
+      
+      (test-case "abort before body"
+        (before
+         (recreate-test-tables)
          (call-with-transaction-hook
           (lambda (continue conn . args)
-            (set! num-transactions (add1 num-transactions))
+            (error "escaping")
             (apply continue conn args))
           (lambda ()
-            (delete! (save! (make-person/defaults #:name "Dave")))))
-         (check-equal? num-transactions 2))))
-    
-    (test-case "abort before body"
-      (before
-       (recreate-test-tables)
-       (call-with-transaction-hook
-        (lambda (continue conn . args)
-          (error "escaping")
-          (apply continue conn args))
-        (lambda ()
-          (with-handlers ([exn? void])
-            (save! (make-person/defaults #:name "Dave")))))
-       (check-pred null? (find-people))))
-    
-    (test-case "abort after body"
-      (before
-       (recreate-test-tables)
-       (call-with-transaction-hook
-        (lambda (continue conn . args)
-          (begin0 (apply continue conn args)
-                  (error "escaping")))
-        (lambda ()
-          (with-handlers ([exn? void])
-            (save! (make-person/defaults #:name "Dave")))))
-       (check-pred null? (find-people))))))
+            (with-handlers ([exn? void])
+              (save! (make-person/defaults #:name "Dave")))))
+         (check-pred null? (find-people))))
+      
+      (test-case "abort after body"
+        (before
+         (recreate-test-tables)
+         (call-with-transaction-hook
+          (lambda (continue conn . args)
+            (begin0 (apply continue conn args)
+                    (error "escaping")))
+          (lambda ()
+            (with-handlers ([exn? void])
+              (save! (make-person/defaults #:name "Dave")))))
+         (check-pred null? (find-people))))))
+  

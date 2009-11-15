@@ -30,16 +30,25 @@
     
     ; type any -> string
     (define/public (escape-sql-value type value)
-      (cond [(boolean-type? type)  (guard type value boolean?            "boolean")                   (if value "true" "false")]
+      (cond [(boolean-type? type)  (guard type value boolean? "boolean")
+                                   (if value "true" "false")]
             [(not value)           "NULL"]
-            [(guid-type? type)     (guard type value guid+snooze-struct? "(U guid snooze-struct #f)") (escape-guid type value)]
-            [(integer-type? type)  (guard type value integer?            "(U integer #f)")            (number->string value)]
-            [(real-type? type)     (guard type value real?               "(U real #f)")               (number->string value)]
-            [(string-type? type)   (guard type value string?             "(U string #f)")             (string-append "'" (regexp-replace* #rx"'" value "''") "'")]
-            [(symbol-type? type)   (guard type value symbol?             "(U symbol #f)")             (string-append "'" (regexp-replace* #rx"'" (symbol->string value) "''") "'")]
-            [(time-tai-type? type) (guard type value time-tai?           "(U time-tai #f)")           (date->string (time-tai->date value 0) "'~Y-~m-~d ~H:~M:~S.~N'")]
-            [(time-utc-type? type) (guard type value time-utc?           "(U time-utc #f)")           (date->string (time-utc->date value 0) "'~Y-~m-~d ~H:~M:~S.~N'")]
-            [(binary-type? type)   (guard type value serializable?       "serializable")              (format-sql "~a" [bytea (serialize/bytes value)])]
+            [(guid-type? type)     (guard type value guid+snooze-struct? "(U guid snooze-struct #f)")
+                                   (escape-guid type value)]
+            [(integer-type? type)  (guard type value integer? "(U integer #f)")
+                                   (number->string value)]
+            [(real-type? type)     (guard type value real? "(U real #f)")
+                                   (number->string value)]
+            [(string-type? type)   (guard type value string? "(U string #f)")
+                                   (string-append "'" (regexp-replace* #rx"'" value "''") "'")]
+            [(symbol-type? type)   (guard type value symbol? "(U symbol #f)")
+                                   (string-append "'" (regexp-replace* #rx"'" (symbol->string value) "''") "'")]
+            [(time-tai-type? type) (guard type value time-tai? "(U time-tai #f)")
+                                   (date->string (time-tai->date value 0) "'~Y-~m-~d ~H:~M:~S.~N'")]
+            [(time-utc-type? type) (guard type value time-utc? "(U time-utc #f)")
+                                   (date->string (time-utc->date value 0) "'~Y-~m-~d ~H:~M:~S.~N'")]
+            [(binary-type? type)   (guard type value serializable? "serializable")
+                                   (format-sql "~a" [bytea (serialize/bytes value)])]
             [else                  (raise-type-error #f "unrecognised type" type)]))
     
     ; entity -> string
@@ -87,7 +96,7 @@
     
     ; snooze-struct -> string
     (define/public (insert-sql struct)
-      (let* ([include-id? (and (snooze-struct-guid struct) #t)]
+      (let* ([include-id? (and (database-guid? (snooze-struct-guid struct)) #t)]
              [entity      (snooze-struct-entity struct)]
              [attrs       (entity-attributes entity)]
              [vals        (snooze-struct-ref* struct)]

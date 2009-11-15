@@ -43,7 +43,7 @@
                  [direct-query-proc (lambda (sql)
                                       (let* ([conn (send (current-snooze) current-connection)]
                                              [ans  (sqlite:select (connection-back-end conn) sql)])
-                                        (if (null? ans) null (cdr ans))))])
+                                        (if (null? ans) null (map vector->list (cdr ans)))))])
     (send (current-snooze) call-with-connection (cut run-tests tests))))
 
 ; string -> time-tai
