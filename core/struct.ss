@@ -218,6 +218,7 @@
 ;         ((U natural symbol) -> guid)
 ;         ((U guid any) -> boolean)
 ;         (listof attribute)
+;         (listof (cons attribute (listof attribute)))
 ;         ((snooze-struct -> snooze-struct) snooze-struct -> snooze-struct)
 ;         ((snooze-struct -> snooze-struct) snooze-struct -> snooze-struct))
 ;         (snooze-struct -> (listof check-result))
@@ -243,6 +244,7 @@
    attributes
    default-alias
    default-order
+   uniqueness-constraints
    on-save
    on-delete
    save-check
@@ -288,6 +290,7 @@
                  null                     ; attributes
                  #f                       ; default-alias
                  #f                       ; default-order
+                 null                     ; uniqueness-constraints
                  empty-hook               ; hooks
                  empty-hook               ;
                  empty-check              ; validation
@@ -476,36 +479,37 @@
  [type:time-tai                        time-tai-type?]
  [type:time-utc                        time-utc-type?]
  [type:binary                          binary-type?]
- [struct entity                        ([name                 symbol?]
-                                        [plural-name          symbol?]
-                                        [table-name           symbol?]
-                                        [pretty-name          string?]
-                                        [pretty-name-plural   string?]
-                                        [pretty-formatter     procedure?]
-                                        [struct-type          struct-type?]
-                                        [private-constructor  procedure?]
-                                        [private-predicate    procedure?]
-                                        [private-accessor     procedure?]
-                                        [private-mutator      procedure?]
-                                        [constructor          procedure?]
-                                        [predicate            procedure?]
-                                        [defaults-constructor procedure?]
-                                        [copy-constructor     procedure?]
-                                        [guid-constructor     (-> (or/c natural-number/c symbol?) guid?)]
-                                        [guid-predicate       (-> any/c boolean?)]
-                                        [attributes           (listof attribute?)]
-                                        [default-alias        any/c]
-                                        [default-order        list?]
-                                        [on-save              (-> (-> connection? snooze-struct? snooze-struct?)
-                                                                  connection?
-                                                                  snooze-struct?
-                                                                  snooze-struct?)]
-                                        [on-delete            (-> (-> connection? snooze-struct? snooze-struct?)
-                                                                  connection?
-                                                                  snooze-struct?
-                                                                  snooze-struct?)]
-                                        [save-check           procedure?]
-                                        [delete-check         procedure?])]
+ [struct entity                        ([name                   symbol?]
+                                        [plural-name            symbol?]
+                                        [table-name             symbol?]
+                                        [pretty-name            string?]
+                                        [pretty-name-plural     string?]
+                                        [pretty-formatter       procedure?]
+                                        [struct-type            struct-type?]
+                                        [private-constructor    procedure?]
+                                        [private-predicate      procedure?]
+                                        [private-accessor       procedure?]
+                                        [private-mutator        procedure?]
+                                        [constructor            procedure?]
+                                        [predicate              procedure?]
+                                        [defaults-constructor   procedure?]
+                                        [copy-constructor       procedure?]
+                                        [guid-constructor       (-> (or/c natural-number/c symbol?) guid?)]
+                                        [guid-predicate         (-> any/c boolean?)]
+                                        [attributes             (listof attribute?)]
+                                        [default-alias          any/c]
+                                        [default-order          list?]
+                                        [uniqueness-constraints (listof (cons/c attribute? (listof attribute?)))]
+                                        [on-save                (-> (-> connection? snooze-struct? snooze-struct?)
+                                                                    connection?
+                                                                    snooze-struct?
+                                                                    snooze-struct?)]
+                                        [on-delete              (-> (-> connection? snooze-struct? snooze-struct?)
+                                                                    connection?
+                                                                    snooze-struct?
+                                                                    snooze-struct?)]
+                                        [save-check             procedure?]
+                                        [delete-check           procedure?])]
  [make-vanilla-entity                  (-> symbol?
                                            symbol?
                                            symbol?

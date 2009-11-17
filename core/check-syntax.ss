@@ -16,7 +16,7 @@
       (lambda ()
         (check-with-handlers
          (lambda ()
-           expr ...))))]))
+           (check-all expr ...)))))]))
 
 ; Provide statements -----------------------------
 

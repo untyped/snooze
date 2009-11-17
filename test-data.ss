@@ -50,6 +50,8 @@
              #:default (srfi:current-time srfi:time-tai)]
    [notes    binary]))
 
+(set-entity-uniqueness-constraints! course (list (attr-list course code)))
+
 (define-enum color (red black))
 
 (define-entity tree-node

@@ -2,9 +2,12 @@
 
 (require "../base.ss")
 
-(require scheme/string
-         (unlib-in enumeration)
+(require (only-in scheme/list last)
+         scheme/string
+         (only-in srfi/1 drop-right)
+         (unlib-in enumeration list)
          "../common/connection.ss"
+         "../sql/sql.ss"
          "check.ss"
          "check-annotation.ss"
          "check-result.ss"
@@ -20,14 +23,19 @@
 
 ; Checks -----------------------------------------
 
-; guid -> (listof check-result)
+; snooze-struct -> (listof check-result)
 (define (default-check-snooze-struct struct)
   (let ([entity (snooze-struct-entity struct)])
     (check/annotate ([ann:struct struct])
+      ; attribute constraints
       (apply check-problems
              (for/list ([attr (in-list (cddr (entity-attributes entity)))]
                         [val  (in-list (cddr (snooze-struct-ref* struct)))])
-               (check-attribute-value attr val))))))
+               (check-attribute-value attr val)))
+      ; uniqueness constraints
+      (apply check-problems
+             (for/list ([unique (in-list (entity-uniqueness-constraints entity))])
+               (check-uniqueness-constraint struct unique))))))
 
 ; guid -> (listof check-result)
 (define (default-check-old-snooze-struct struct)
@@ -110,6 +118,25 @@
                  (check-fail (format "~a: must be serializable."
                                      (string-titlecase (attribute-pretty-name attr)))))]))))
 
+; snooze-struct (cons attribute (listof attribute)) -> (listof check-result)
+(define (check-uniqueness-constraint struct unique)
+  (check/annotate ([ann:attrs unique])
+    (check-problems
+     (if (zero? (find-count-duplicates struct unique))
+         (check-pass)
+         (check-fail (format "Another ~a exists with the same ~a."
+                             (entity-pretty-name (snooze-struct-entity struct))
+                             (let ([names (map attribute-pretty-name unique)])
+                               (cond [(list-ref? names 2)
+                                      (format "~a, and ~a"
+                                              (string-join (drop-right names 1) ", ")
+                                              (last names))]
+                                     [(list-ref? names 1)
+                                      (format "~a and ~a"
+                                              (car names)
+                                              (cadr names))]
+                                     [else (car names)]))))))))
+
 ; Hooks ------------------------------------------
 
 ; entity -> (guid -> (listof check-result))
@@ -126,10 +153,10 @@
     (let ([results (check-snooze-struct guid)])
       (if (check-errors? results)
           (raise-exn exn:fail:snooze:check
-                     (format "failed validation: could not save ~s:~n~a"
-                             guid
-                             (pretty-format results))
-                     results)
+            (format "failed validation: could not save ~s:~n~a"
+                    guid
+                    (pretty-format results))
+            results)
           (continue conn guid)))))
 
 ; entity -> ((connection guid -> guid) connection guid -> guid)
@@ -138,10 +165,10 @@
     (let ([results (check-old-snooze-struct guid)])
       (if (check-errors? results)
           (raise-exn exn:fail:snooze:check
-                     (format "failed validation: could not delete ~s:~n~a"
-                             guid
-                             (pretty-format results))
-                     results)
+            (format "failed validation: could not delete ~s:~n~a"
+                    guid
+                    (pretty-format results))
+            results)
           (continue conn guid)))))
 
 ; Helpers ----------------------------------------
@@ -182,8 +209,30 @@
                                       (if max-value (format " <= ~a" max-value) ""))
                               "")))))
 
+; snooze-struct (cons attribute (listof attribute)) -> natural
+(define (find-count-duplicates struct attrs)
+  (let-alias ([entity (snooze-struct-entity struct)])
+    (let ([vals (map (cut snooze-struct-ref struct <>) attrs)])
+      (if (ormap (lambda (attr val)
+                   (equal? val (type-null (attribute-type attr))))
+                 attrs
+                 vals)
+          ; The SQL spec states that NULL <> NULL - if any attributes are NULL
+          ; the uniqueness constraint will never be violated:
+          0
+          (send (current-snooze) find-one
+                (sql (select #:what  (count entity.guid)
+                             #:from  entity
+                             #:where ,(apply sql:and
+                                             (if (snooze-struct-saved? struct)
+                                                 (sql (<> entity.guid ,struct))
+                                                 (sql #t))
+                                             (map (lambda (attr val)
+                                                    (sql:= (sql:alias entity attr) val))
+                                                  attrs
+                                                  vals)))))))))
 
-; Provide statements -----------------------------
+; Provides ---------------------------------------
 
 (provide/contract
  [default-check-snooze-struct     (-> snooze-struct? (listof check-result?))]
