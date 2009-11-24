@@ -112,40 +112,41 @@
     ; snooze-struct -> snooze-struct
     (define/public (save! struct)
       (auto-connect)
-      (let ([guid   (snooze-struct-guid   struct)]
-            [entity (snooze-struct-entity struct)])
-         (call-with-transaction
-          (lambda ()
-            (transaction-frame-cache-add! 
-             (get-current-transaction-frame)
-             (begin
-               (transaction-frame-data-add! (get-current-transaction-frame) guid)
-               ((entity-on-save entity)
-                (lambda (conn struct)
-                  (if (snooze-struct-saved? struct)
-                      (send database update-struct conn struct)
-                      (send database insert-struct conn struct)))
-                (current-connection)
-                struct)))))))
+      (parameterize ([currently-saving struct])
+        (let ([guid   (snooze-struct-guid   struct)]
+              [entity (snooze-struct-entity struct)])
+          (call-with-transaction
+           (lambda ()
+             (transaction-frame-data-add! (get-current-transaction-frame) guid)
+             ((entity-on-save entity)
+              (lambda (conn struct)
+                (transaction-frame-cache-add! 
+                 (get-current-transaction-frame)
+                 (begin
+                   (if (snooze-struct-saved? struct)
+                       (send database update-struct conn struct)
+                       (send database insert-struct conn struct)))))
+              (current-connection)
+              struct))))))
     
     ; snooze-struct -> snooze-struct
     (define/public (delete! struct)
       (unless (snooze-struct-saved? struct)
         (raise-exn exn:fail:snooze (format "unsaved structs cannot be deleted ~a" struct)))
       (auto-connect)
-      (let ([guid   (snooze-struct-guid   struct)]
-            [entity (snooze-struct-entity struct)])
-        (call-with-transaction
-         (lambda ()
-           (transaction-frame-cache-remove!
-            (get-current-transaction-frame)
-            (begin
-              (transaction-frame-data-add! (get-current-transaction-frame) guid)
-              ((entity-on-delete entity)
-               (lambda (conn struct)
-                 (send database delete-struct conn struct))
-               (current-connection)
-               struct)))))))
+      (parameterize ([currently-deleting struct])
+        (let ([guid   (snooze-struct-guid   struct)]
+              [entity (snooze-struct-entity struct)])
+          (call-with-transaction
+           (lambda ()
+             (transaction-frame-data-add! (get-current-transaction-frame) guid)
+             ((entity-on-delete entity)
+              (lambda (conn struct)
+                (transaction-frame-cache-remove!
+                 (get-current-transaction-frame)
+                 (send database delete-struct conn struct)))
+              (current-connection)
+              struct))))))
     
     ; query -> (list-of result)
     (define/public (find-all query)

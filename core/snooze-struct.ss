@@ -23,6 +23,10 @@
 (define (snooze-struct-revision struct)
   ((entity-private-accessor (snooze-struct-entity struct)) struct 1))
 
+; snooze-struct -> boolean
+(define (snooze-struct-has-revision? struct)
+  (and (snooze-struct-revision struct) #t))
+
 ; snooze-struct (U symbol attribute) -> any
 (define (snooze-struct-ref struct name+attr)
   (if (or (eq? name+attr 'guid)
@@ -110,7 +114,12 @@
             (snooze-struct-entity struct2))
        (for/and ([val1 (in-list (snooze-struct-data-ref* struct1))]
                  [val2 (in-list (snooze-struct-data-ref* struct2))])
-         (equal? val1 val2))))
+         (equal? (if (snooze-struct? val1)
+                     (snooze-struct-guid val1)
+                     val1)
+                 (if (snooze-struct? val2)
+                     (snooze-struct-guid val2)
+                     val2)))))
 
 ; snooze-struct snooze-struct -> boolean
 (define (snooze-struct-equal? struct1 struct2)
@@ -150,6 +159,24 @@
                   (entity-name struct)
                   ans)))))
 
+(define snooze-struct-equal+hash
+  (list (lambda (a b equal?)
+          (and (equal? (snooze-struct-revision a)
+                       (snooze-struct-revision b))
+               (snooze-struct-equal? a b)))
+        (lambda (a hash-code)
+          (let ([vec (struct->vector a)])
+            (for ([i (in-range 3 (vector-length vec))])
+              (when (snooze-struct? (vector-ref vec i))
+                (vector-set! vec i (snooze-struct-guid (vector-ref vec i)))))
+            (hash-code vec)))
+        (lambda (a hash-code)
+          (let ([vec (struct->vector a)])
+            (for ([i (in-range 3 (vector-length vec))])
+              (when (snooze-struct? (vector-ref vec i))
+                (vector-set! vec i (snooze-struct-guid (vector-ref vec i)))))
+            (hash-code vec)))))
+
 ; Provide statements -----------------------------
 
 (define revision/c
@@ -159,20 +186,22 @@
   (cons/c guid? (cons/c revision/c any/c)))
 
 (provide/contract
- [snooze-struct-guid          (-> snooze-struct? guid?)]
- [snooze-struct-id            (-> snooze-struct? (or/c natural-number/c symbol?))]
- [snooze-struct-saved?        (-> snooze-struct? boolean?)]
- [snooze-struct-revision      (-> snooze-struct? revision/c)]
- [snooze-struct-ref           (-> snooze-struct? (or/c attribute? symbol?) any)]
- [snooze-struct-ref*          (-> snooze-struct? list?)]
- [snooze-struct-data-ref*     (-> snooze-struct? list?)]
- [snooze-struct-set           (->* (snooze-struct?) () #:rest attr/value-list? snooze-struct?)]
- [make-snooze-struct          (->* (entity?) () #:rest attr-value-list/c snooze-struct?)]
- [make-snooze-struct/defaults (->* (entity?) () #:rest attr/value-list? snooze-struct?)]
- [snooze-struct-copy          (-> snooze-struct? snooze-struct?)]
- [snooze-struct-guid-equal?   (-> (or/c snooze-struct? guid?) (or/c snooze-struct? guid?) boolean?)]
- [snooze-struct-data-equal?   (-> snooze-struct? snooze-struct? boolean?)]
- [snooze-struct-equal?        (-> snooze-struct? snooze-struct? boolean?)]
- [format-snooze-struct        (->* (snooze-struct?) () #:rest any/c string?)]
- [check-snooze-struct         (->* (snooze-struct?) () #:rest any/c (listof check-result?))]
- [check-old-snooze-struct     (->* (snooze-struct?) () #:rest any/c (listof check-result?))])
+ [snooze-struct-guid            (-> snooze-struct? guid?)]
+ [snooze-struct-id              (-> snooze-struct? (or/c natural-number/c symbol?))]
+ [snooze-struct-saved?          (-> snooze-struct? boolean?)]
+ [snooze-struct-has-revision?   (-> snooze-struct? boolean?)]
+ [snooze-struct-revision        (-> snooze-struct? revision/c)]
+ [snooze-struct-ref             (-> snooze-struct? (or/c attribute? symbol?) any)]
+ [snooze-struct-ref*            (-> snooze-struct? list?)]
+ [snooze-struct-data-ref*       (-> snooze-struct? list?)]
+ [snooze-struct-set             (->* (snooze-struct?) () #:rest attr/value-list? snooze-struct?)]
+ [make-snooze-struct            (->* (entity?) () #:rest attr-value-list/c snooze-struct?)]
+ [make-snooze-struct/defaults   (->* (entity?) () #:rest attr/value-list? snooze-struct?)]
+ [snooze-struct-copy            (-> snooze-struct? snooze-struct?)]
+ [snooze-struct-guid-equal?     (-> (or/c snooze-struct? guid?) (or/c snooze-struct? guid?) boolean?)]
+ [snooze-struct-data-equal?     (-> snooze-struct? snooze-struct? boolean?)]
+ [snooze-struct-equal?          (-> snooze-struct? snooze-struct? boolean?)]
+ [format-snooze-struct          (->* (snooze-struct?) () #:rest any/c string?)]
+ [check-snooze-struct           (->* (snooze-struct?) () #:rest any/c (listof check-result?))]
+ [check-old-snooze-struct       (->* (snooze-struct?) () #:rest any/c (listof check-result?))]
+ [snooze-struct-equal+hash      (list/c procedure? procedure? procedure?)])

@@ -59,9 +59,9 @@
                                (check-pass))]
                          [(snooze-struct? val)
                           (and (eq? (snooze-struct-entity val) entity)
-                               (if (snooze-struct-saved? val)
-                                   (check-pass)
-                                   (check-fail (format "~a: related record unsaved." (string-titlecase (attribute-pretty-name attr))))))]
+                               (cond [(not (currently-saving))   (check-pass)]
+                                     [(snooze-struct-saved? val) (check-pass)]
+                                     [else (check-fail (format "~a: related record unsaved." (string-titlecase (attribute-pretty-name attr))))]))]
                          [else (raise-type-error 'check-attribute-value "(U database-guid snooze-struct #f)" val)])
                    (check-fail (format "~a: must be~a~a."
                                        (string-titlecase (attribute-pretty-name attr))

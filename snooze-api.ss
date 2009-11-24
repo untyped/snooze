@@ -128,8 +128,12 @@
  [current-connection    (->* () (#:snooze (is-a?/c snooze<%>)) connection?)]
  [create-table          (->* (entity?) (#:snooze (is-a?/c snooze<%>)) void?)]
  [drop-table            (->* ((or/c entity? symbol?)) (#:snooze (is-a?/c snooze<%>)) void?)]
- [save!                 (->* (snooze-struct?) (#:snooze (is-a?/c snooze<%>)) snooze-struct?)]
- [delete!               (->* (snooze-struct?) (#:snooze (is-a?/c snooze<%>)) snooze-struct?)]
+ [save!                 (->* (snooze-struct?)
+                             (#:snooze (is-a?/c snooze<%>))
+                             (and/c snooze-struct? snooze-struct-has-revision?))]
+ [delete!               (->* (snooze-struct?)
+                             (#:snooze (is-a?/c snooze<%>))
+                             (and/c snooze-struct? (not/c snooze-struct-has-revision?)))]
  [find-one              (->* (query?) (#:snooze (is-a?/c snooze<%>)) any)]
  [find-all              (->* (query?) (#:snooze (is-a?/c snooze<%>)) (or/c null? pair?))]
  [g:find                (->* (query?) (#:snooze (is-a?/c snooze<%>)) procedure?)]

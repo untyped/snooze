@@ -404,6 +404,10 @@
 (define-values (prop:snooze-struct-entity snooze-struct? snooze-struct-entity)
   (make-struct-type-property 'snooze-struct-entity))
 
+; (parameter (U snooze-struct #f))
+(define currently-saving   (make-parameter #f))
+(define currently-deleting (make-parameter #f))
+
 ; Check results ----------------------------------
 
 ; (struct string (hasheqof symbol any))
@@ -554,6 +558,8 @@
  [prop:snooze-struct-entity            struct-type-property?]
  [snooze-struct?                       (-> any/c boolean?)]
  [snooze-struct-entity                 (-> snooze-struct? entity?)]
+ [currently-saving                     (parameter/c (or/c snooze-struct? #f))]
+ [currently-deleting                   (parameter/c (or/c snooze-struct? #f))]
  [struct check-result                  ([message string?] [annotations annotations/c])]
  [struct (check-success check-result)  ([message string?] [annotations annotations/c])]
  [struct (check-problem check-result)  ([message string?] [annotations annotations/c])]

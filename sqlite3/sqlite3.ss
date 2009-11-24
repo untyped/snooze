@@ -105,7 +105,7 @@
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Deletes the database record for the supplied struct.
     (define/public (delete-struct conn old-struct [check-revision? #t])
-      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
+      (with-snooze-reraise (exn:fail? (format "could not update database record for ~a" old-struct))
         (let ([entity   (snooze-struct-entity old-struct)]
               [guid     (snooze-struct-guid old-struct)]
               [revision (snooze-struct-revision old-struct)])
@@ -120,7 +120,7 @@
     ; connection database-guid -> void
     ; Deletes the database record for the supplied guid.
     (define/public (delete-guid conn guid)
-      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" guid))
+      (with-snooze-reraise (exn:fail? (format "could not delete database record for ~a" guid))
         (sqlite:exec/ignore (connection-back-end conn) (debug-sql* delete-sql guid))
         (void)))
     

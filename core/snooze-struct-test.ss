@@ -35,16 +35,22 @@
           (check-eq? (snooze-struct-guid p)
                      (snooze-struct-guid p3))))))
   
-  (test-case "snooze-struct-saved?"
+  (test-case "snooze-struct-saved?, snooze-struct-has-revision?"
     (let ([p (make-person/defaults #:name "P")])
       (check-false (snooze-struct-saved? p))
+      (check-false (snooze-struct-has-revision? p))
       (let ([p2 (save! p)])
         (check-true (snooze-struct-saved? p))
         (check-true (snooze-struct-saved? p2))
+        (check-false (snooze-struct-has-revision? p))
+        (check-true  (snooze-struct-has-revision? p2))
         (let ([p3 (delete! p2)])
           (check-false (snooze-struct-saved? p))
           (check-false (snooze-struct-saved? p2))
-          (check-false (snooze-struct-saved? p3))))))
+          (check-false (snooze-struct-saved? p3))
+          (check-false (snooze-struct-has-revision? p))
+          (check-true  (snooze-struct-has-revision? p2))
+          (check-false (snooze-struct-has-revision? p3))))))
   
   (test-case "snooze-struct-id"
     (let ([p (make-person/defaults #:name "P")])

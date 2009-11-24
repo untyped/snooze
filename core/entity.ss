@@ -100,6 +100,7 @@
      0                          ; number of auto-value fields
      (void)                     ; values for auto-value fields
      (list* (cons prop:snooze-struct-entity entity)
+            (cons prop:equal+hash snooze-struct-equal+hash)
             properties)         ; properties
      #f                         ; inspector-or-#f
      #f                         ; proc-spec
