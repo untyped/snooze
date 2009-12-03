@@ -160,11 +160,17 @@
     ; select -> result-generator
     (define/public (g:find select)
       (auto-connect)
-      (send database g:find
-            (current-connection)
-            select
-            (or (get-current-transaction-frame)
-                (transaction-frame-push #f))))
+      (with-query-profiling
+       (lambda ()
+         (send database g:find
+               (current-connection)
+               select
+               (or (get-current-transaction-frame)
+                   (transaction-frame-push #f))))
+       (let ([str (query->string select)])
+         (if (> (string-length str) 72)
+             (substring str 0 72)
+             str))))
     
     ; entity natural -> snooze-struct
     (define/public (find-by-id entity id)
@@ -173,11 +179,14 @@
     ; database-guid -> snooze-struct
     (define/public (find-by-guid guid)
       (auto-connect)
-      (let ([ans (send (get-database) direct-find
-                       (current-connection)
-                       (list guid)
-                       (get-current-transaction-frame))])
-        (and (pair? ans) (car ans))))
+      (with-query-profiling
+       (lambda ()
+         (let ([ans (send (get-database) direct-find
+                          (current-connection)
+                          (list guid)
+                          (get-current-transaction-frame))])
+           (and (pair? ans) (car ans))))
+       (format "direct-find ~a" guid)))
     
     ; thunk [#:metadata list] -> any
     ;
@@ -260,6 +269,19 @@
     ; Prints an SQL string to stdout as a side effect.
     (define/public (debug-sql query #:format [format "~a~n"] #:output-port [output-port (current-output-port)])
       (send database debug-sql query output-port format))))
+
+; Helpers ----------------------------------------
+
+(define (with-query-profiling thunk msg)
+  (let ([start #f])
+    (dynamic-wind
+     (lambda ()
+       (set! start (current-inexact-milliseconds)))
+     thunk
+     (lambda ()
+       (printf "Profile ~a\t~a\n"
+               (- (current-inexact-milliseconds) start)
+               msg)))))
 
 ; Provide statements -----------------------------
 
