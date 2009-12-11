@@ -1,12 +1,9 @@
 #lang scheme/base
 
-(require scheme/contract
-         scheme/match
-         srfi/19/time
-         srfi/26/cut
-         (planet untyped/unlib:3/time)
-         (planet untyped/unlib:3/symbol)
-         "../base.ss"
+(require "../base.ss")
+
+(require srfi/19
+         (unlib-in time symbol)
          "../core/snooze-struct.ss"
          "../core/struct.ss")
 
@@ -111,7 +108,20 @@
 ;         (listof column)
 ;         (listof column)
 ;         (U entity type (listof (U entity type))))
-(define-struct query (what distinct from where group order having limit offset local-columns imported-columns extract-info) #:transparent)
+(define-struct query
+  (what
+   distinct
+   from
+   where
+   group
+   order
+   having
+   limit
+   offset
+   local-columns
+   imported-columns
+   extract-info)
+  #:transparent)
 
 ; Predicates -----------------------------------
 

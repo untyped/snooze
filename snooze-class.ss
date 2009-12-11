@@ -279,7 +279,7 @@
        (set! start (current-inexact-milliseconds)))
      thunk
      (lambda ()
-       (printf "Profile ~a\t~a\n"
+       (printf "DB\t~a\t~a\n"
                (- (current-inexact-milliseconds) start)
                msg)))))
 

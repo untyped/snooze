@@ -6,7 +6,7 @@
 (define-library-aliases schemeunit (planet schematics/schemeunit:3) #:provide)
 (define-library-aliases spgsql     (planet schematics/spgsql:2)     #:provide)
 (define-library-aliases sqlite     (planet jaymccarthy/sqlite:4:1)  #:provide)
-(define-library-aliases unlib      (planet untyped/unlib:3:16)      #:provide)
+(define-library-aliases unlib      (planet untyped/unlib:3:20)      #:provide)
 
 (require scheme/class
          scheme/contract 

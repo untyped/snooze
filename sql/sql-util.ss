@@ -2,12 +2,10 @@
 
 (require (for-syntax scheme/base
                      "../base.ss")
-         scheme/contract
-         scheme/match
-         (only-in srfi/1/list append-map)
-         srfi/26/cut
-         (planet untyped/unlib:3/symbol)
-         "../base.ss"
+         "../base.ss")
+
+(require (only-in srfi/1 append-map)
+         (unlib-in match symbol)
          "../core/struct.ss"
          "sql-struct.ss")
 
@@ -29,16 +27,47 @@
 (define source->columns
   (match-lambda
     [(? join? join)          
-     (define-values (left-local left-imported)
-       (source->columns (join-left join)))
-     (define-values (right-local right-imported)
-       (source->columns (join-right join)))
-     (values (append left-local right-local)
-             (append left-imported right-imported))]
+     (let*-values ([(left-local  left-imported)  (source->columns (join-left  join))]
+                   [(right-local right-imported) (source->columns (join-right join))])
+       (values (append left-local right-local)
+               (append left-imported right-imported)))]
     [(? query-alias? alias)  
      (values null (source-alias-columns alias))]
     [(? entity-alias? alias)
      (values (source-alias-columns alias) null)]))
+
+; join -> (hasheqof attribute-alias (U attribute-alias literal))
+(define (source->foreign-keys source)
+  (let* (; Collect the criteria from all joins in the select:
+         [exprs (let loop ([source source])
+                  (match source
+                    [(? join? join)
+                     (cons (join-on join)
+                           (append (loop (join-left join))
+                                   (loop (join-right join))))]
+                    [(? query-alias? alias)  null]
+                    [(? entity-alias? alias) null]))]
+         ; Empty hash table in which to store the results:
+         [hash  (make-hasheq)])
+    ; Iterate through the expressions collected above, extracting and caching any fk=pk constraints:
+    (for ([expr (in-list exprs)])
+      (let loop ([expr expr])
+        (match expr
+          [(struct function (_ (eq? '=) (list (? attribute-alias? col1) (? attribute-alias? col2))))
+           (let ([fk    (or (and (attribute-foreign-key? (attribute-alias-attribute col1)) col1)
+                            (and (attribute-foreign-key? (attribute-alias-attribute col2)) col2))]
+                 [pk    (or (and (attribute-primary-key? (attribute-alias-attribute col1)) col1)
+                            (and (attribute-primary-key? (attribute-alias-attribute col2)) col2)
+                            (and (literal? col1) col1)
+                            (and (literal? col2) col2))])
+             (when (and fk pk)
+               (hash-set! hash fk pk)))]
+          [(? function?)
+           (for-each loop (function-args expr))]
+          [(? expression-alias?)
+           (loop (expression-alias-value expr))]
+          [_ (void)])))
+    hash))
 
 ; source -> (opt-listof (U expression entity-alias query-alias))
 (define (make-default-what-argument from)
@@ -373,6 +402,7 @@
 (provide/contract
  [source->sources            (-> source? (listof source/c))]
  [source->columns            (-> source? (values (listof column?) (listof column?)))]
+ [source->foreign-keys       (-> source? (and/c hash? hash-eq?))]
  [make-default-what-argument (-> source? (opt-listof source/c))]
  [expand-distinct-argument   (-> (or/c boolean? (opt-listof (or/c expression? source/c)))
                                  (or/c (listof expression?) #f))]

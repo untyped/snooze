@@ -37,9 +37,9 @@
                          name+attr
                          (entity-attribute entity name+attr))]
              [val    ((attribute-private-accessor attr) struct)])
-        (if (database-guid? val)
-            (send (current-snooze) find-by-guid val)
-            val))))
+        (cond [(database-guid?  val) (send (current-snooze) find-by-guid val)]
+              [(temporary-guid? val) (error "temporary guid found in foreign key" val)]
+              [else                  val]))))
 
 ; snooze-struct boolean -> any
 (define (snooze-struct-ref* struct)
@@ -47,16 +47,16 @@
     (list* (vector-ref data 1)
            (vector-ref data 2)
            (for/list ([val (in-vector data 3)])
-             (if (database-guid? val)
-                 (send (current-snooze) find-by-guid val)
-                 val)))))
+             (cond [(database-guid?  val) (send (current-snooze) find-by-guid val)]
+                   [(temporary-guid? val) (error "temporary guid found in foreign key" val)]
+                   [else                  val])))))
 
 ; guid -> list
 (define (snooze-struct-data-ref* struct)
   (for/list ([val (in-vector (struct->vector struct) 3)])
-    (if (database-guid? val)
-        (send (current-snooze) find-by-guid val)
-        val)))
+    (cond [(database-guid?  val) (send (current-snooze) find-by-guid val)]
+          [(temporary-guid? val) (error "temporary guid found in foreign key" val)]
+          [else                  val])))
 
 ; snooze-struct <attr any> ... -> snooze-struct
 (define (snooze-struct-set original . args)

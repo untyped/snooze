@@ -392,6 +392,15 @@
              (entity-name (attribute-entity attribute))
              (attribute-name attribute))))
 
+; attribute -> boolean
+(define (attribute-primary-key? attr)
+  (zero? (attribute-index attr)))
+
+; attribute -> boolean
+(define (attribute-foreign-key? attr)
+  (and (guid-type? (attribute-type attr))
+       (not (zero? (attribute-index attr)))))
+
 ; type -> any
 (define (attribute-default attr)
   ((attribute-default-maker attr)))
@@ -554,6 +563,8 @@
                                         [private-mutator      procedure?]
                                         [accessor             procedure?]
                                         [mutator              procedure?])]
+ [attribute-primary-key?               (-> attribute? boolean?)]
+ [attribute-foreign-key?               (-> attribute? boolean?)]
  [attribute-default                    (-> attribute? any/c)]
  [prop:snooze-struct-entity            struct-type-property?]
  [snooze-struct?                       (-> any/c boolean?)]
