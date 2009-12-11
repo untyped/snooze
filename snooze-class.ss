@@ -280,7 +280,7 @@
      thunk
      (lambda ()
        (printf "DB\t~a\t~a\n"
-               (- (current-inexact-milliseconds) start)
+               (real->decimal-string (- (current-inexact-milliseconds) start) 2)
                msg)))))
 
 ; Provide statements -----------------------------
