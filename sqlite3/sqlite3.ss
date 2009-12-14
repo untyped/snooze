@@ -41,7 +41,8 @@
              make-parser
              make-query-extractor
              make-single-item-extractor
-             make-multiple-item-extractor)
+             make-multiple-item-extractor
+             make-query-cross-referencer)
     
     ; Fields -------------------------------------
     
@@ -156,8 +157,10 @@
     (define/public (g:find conn query frame)
       (with-snooze-reraise (sqlite:exn:sqlite? (format "could not execute SELECT query: ~a" (query-sql query)))
         (let ([results (sqlite:select (connection-back-end conn) (debug-sql* query-sql query))]
-              [extract (make-query-extractor query)])
-          (g:map (cut extract <> frame)
+              [extract (make-query-extractor query)]
+              [xref    (make-query-cross-referencer query)])
+          (g:map (lambda (item)
+                   (xref (extract item frame) frame))
                  (g:map (make-parser (map expression-type (query-what query)))
                         (g:map vector->list (g:list (remove-column-names results))))))))
     
@@ -186,7 +189,7 @@
          (set-connection-in-transaction?! conn #t))
        (lambda ()
          (sqlite:with-transaction ((connection-back-end conn) sqlite-escape)
-           (body)))
+                                  (body)))
        (lambda ()
          (set-connection-in-transaction?! conn #f))))
     

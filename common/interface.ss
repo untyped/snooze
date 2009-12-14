@@ -175,6 +175,7 @@
     ;           transaction-frame
     ;          ->
     ;           (U snooze-struct scheme-primitive)
+    ; Exposed for direct-find and for debugging.
     make-single-item-extractor
     
     ; (listof (U entity #f)) -> multiple-item-extractor
@@ -183,7 +184,13 @@
     ;           transaction-frame
     ;          ->
     ;          (listof (U snooze-struct scheme-primitive))
+    ; Exposed for debugging.
     make-multiple-item-extractor))
+
+(define cross-reference<%>
+  (interface ()
+    ; query -> cross-referencer
+    make-query-cross-referencer))
 
 ; Provide statements -----------------------------
 
@@ -197,4 +204,5 @@
          sql-delete<%>
          sql-query<%>
          parse<%>
-         extract<%>)
+         extract<%>
+         cross-reference<%>)

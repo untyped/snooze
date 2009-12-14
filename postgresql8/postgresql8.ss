@@ -64,7 +64,8 @@
              make-parser
              make-query-extractor
              make-single-item-extractor
-             make-multiple-item-extractor)
+             make-multiple-item-extractor
+             make-query-cross-referencer)
     
     ; Fields -------------------------------------
     
@@ -221,9 +222,11 @@
     ;          ...))
     (define/public (g:find conn query frame)
       (let ([sql     (debug-sql* query-sql query)]
-            [extract (make-query-extractor query)])
+            [extract (make-query-extractor query)]
+            [xref    (make-query-cross-referencer query)])
         (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
-          (g:map (cut extract <> frame)
+          (g:map (lambda (item)
+                   (xref (extract item frame) frame))
                  (g:map (make-parser (map expression-type (query-what query)))
                         (g:list (send (connection-back-end conn) map sql list)))))))
     

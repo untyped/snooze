@@ -5,33 +5,35 @@
 (require scheme/class
          "../core/core.ss"
          "connection.ss"
+         "cross-reference.ss"
          "extract.ss"
          "interface.ss"
          "snooze-reraise.ss"
          "sql-query.ss")
 
 (define generic-database%
-  (generic-extract-mixin
-   (class* object% (generic-database<%>)
-     
-     ; Fields -------------------------------------
-     
-     ; (U snooze<%> #f)
-     (field [snooze #f])
-     
-     ; Constructor --------------------------------
-     
-     (super-new)
-     
-     ; Methods ------------------------------------
-     
-     ; -> snooze<%>
-     (define/public (get-snooze)
-       snooze)
-     
-     ; snooze<%> -> void
-     (define/public (set-snooze! the-snooze)
-       (set! snooze the-snooze)))))
+  (generic-cross-reference-mixin
+   (generic-extract-mixin
+    (class* object% (generic-database<%>)
+      
+      ; Fields -------------------------------------
+      
+      ; (U snooze<%> #f)
+      (field [snooze #f])
+      
+      ; Constructor --------------------------------
+      
+      (super-new)
+      
+      ; Methods ------------------------------------
+      
+      ; -> snooze<%>
+      (define/public (get-snooze)
+        snooze)
+      
+      ; snooze<%> -> void
+      (define/public (set-snooze! the-snooze)
+        (set! snooze the-snooze))))))
 
 ; Guid escaping / parsing ------------------------
 
