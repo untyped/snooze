@@ -28,7 +28,7 @@
 
 (define/provide-test-suite snooze-find-tests
   
-  (test-suite "basic behaviour with no cache"
+  (test-suite "basic behaviour with no transaction cache"
     
     (test-case "find-one"
       (recreate-test-tables)
@@ -61,9 +61,22 @@
               [b (in-list (list per1 per2 per3))])
           (with-check-info (['i i])
             (check-not-eq? a b)
-            (check-equal? a b))))))
+            (check-equal? a b)))))
+    
+    (test-case "cross-referencing"
+      (recreate-test-tables)
+      (let* ([per1  (save! (make-person "Jon"))]
+             [per2  (save! (make-person "Lyman"))]
+             [pet1  (save! (make-pet per1 "Garfield"))]
+             [pet2  (save! (make-pet per2 "Odie"))]
+             [peeps (find-all (sql (select #:from (inner person pet (= person.guid pet.owner)) #:order ((asc person.name)))))])
+        (match peeps
+          [(list (list per1a pet1a)
+                 (list per2a pet2a))
+           (check-eq? (vector-ref (struct->vector pet1a) 3) per1a)
+           (check-eq? (vector-ref (struct->vector pet2a) 3) per2a)]))))
   
-  (test-suite "basic behaviour with cache"
+  (test-suite "basic behaviour with transaction cache"
     
     (test-case "find-one"
       (recreate-test-tables)
@@ -96,7 +109,21 @@
                 [a (in-list peeps)]
                 [b (in-list (list per1 per2 per3))])
             (with-check-info (['i i])
-              (check-eq? a b)))))))
+              (check-eq? a b))))))
+    
+    (test-case "cross-referencing"
+      (recreate-test-tables)
+      (with-transaction #:metadata null
+        (let* ([per1  (save! (make-person "Jon"))]
+               [per2  (save! (make-person "Lyman"))]
+               [pet1  (save! (make-pet per1 "Garfield"))]
+               [pet2  (save! (make-pet per2 "Odie"))]
+               [peeps (find-all (sql (select #:from (inner person pet (= person.guid pet.owner)) #:order ((asc person.name)))))])
+          (match peeps
+            [(list (list per1a pet1a)
+                   (list per2a pet2a))
+             (check-eq? (vector-ref (struct->vector pet1a) 3) per1a)
+             (check-eq? (vector-ref (struct->vector pet2a) 3) per2a)])))))
   
   ; test-suite
   (test-suite "reflection of database"
@@ -208,8 +235,8 @@
                                             (save! (make-order-test1 3 "z"))))))
                 ; If the columns come out in the wrong order, we'll get a parse exn:
                 (begin (check-not-exn
-                         (lambda ()
-                           (map (cut find-by-id order-test2 <>) ids))))
+                        (lambda ()
+                          (map (cut find-by-id order-test2 <>) ids))))
                 (begin (drop-table order-test1)))))
     
     (test-case "expressions in #:what clause"
@@ -238,14 +265,14 @@
       (let-alias ([expr1 (sql (max (+ course.value course.rating)))]
                   [expr2 (sql (string-append course.code " " course.name))])
         (check-not-exn
-          (cut find-all (sql (select #:what  (course.guid expr1 expr2)
-                                     #:from  (outer course course2)
-                                     #:order ((desc expr1) (asc course.guid) (asc course2.guid))
-                                     #:group (course.guid course.revision course.code course.name course2)))))
+         (cut find-all (sql (select #:what  (course.guid expr1 expr2)
+                                    #:from  (outer course course2)
+                                    #:order ((desc expr1) (asc course.guid) (asc course2.guid))
+                                    #:group (course.guid course.revision course.code course.name course2)))))
         (check-not-exn
-          (cut find-all (sql (select #:what  expr1
-                                     #:from  (select #:what (course.value course.rating) #:from course)
-                                     #:order ((desc expr1))))))))
+         (cut find-all (sql (select #:what  expr1
+                                    #:from  (select #:what (course.value course.rating) #:from course)
+                                    #:order ((desc expr1))))))))
     
     (test-case "order of joins (this will test the special aliasing behaviour of the SQLite back-end)"
       (check-equal? (find-all (sql (select #:from (outer course (outer course2 course3)))))
