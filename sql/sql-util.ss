@@ -41,14 +41,13 @@
   (let* (; Collect the criteria from all joins in the select:
          [exprs (let loop ([source source])
                   (match source
-                    [(? join? join)
-                     (cons (join-on join)
-                           (append (loop (join-left join))
-                                   (loop (join-right join))))]
-                    [(? query-alias? alias)  null]
+                    [(? join? join)          (cons (join-on join)
+                                                   (append (loop (join-left join))
+                                                           (loop (join-right join))))]
+                    [(? query-alias? alias)  (loop (query-from (source-alias-value alias)))]
                     [(? entity-alias? alias) null]))]
          ; Empty hash table in which to store the results:
-         [hash  (make-hasheq)])
+         [hash  (make-hash)])
     ; Iterate through the expressions collected above, extracting and caching any fk=pk constraints:
     (for ([expr (in-list exprs)])
       (let loop ([expr expr])
@@ -402,7 +401,7 @@
 (provide/contract
  [source->sources            (-> source? (listof source/c))]
  [source->columns            (-> source? (values (listof column?) (listof column?)))]
- [source->foreign-keys       (-> source? (and/c hash? hash-eq?))]
+ [source->foreign-keys       (-> source? (and/c hash? #;hash-eq?))]
  [make-default-what-argument (-> source? (opt-listof source/c))]
  [expand-distinct-argument   (-> (or/c boolean? (opt-listof (or/c expression? source/c)))
                                  (or/c (listof expression?) #f))]
