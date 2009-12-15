@@ -9,7 +9,8 @@
          "cross-reference.ss")
 
 (require/expose "cross-reference.ss"
-  (column->struct-index))
+  (count-entities
+   column->struct-index))
 
 ; Helpers and test data --------------------------
 
@@ -66,24 +67,37 @@
 (define cross-reference-tests
   (test-suite "cross-reference.ss"
     
+    (test-case "count-entities"
+      (check-equal? (count-entities person) 1)
+      (check-equal? (count-entities type:integer) 0)
+      (check-equal? (count-entities (list person person)) 2)
+      (check-equal? (count-entities (list (attribute-type (attr person guid))
+                                          person
+                                          (attribute-type (attr pet owner))
+                                          pet
+                                          course))
+                    3))
+    
     (test-equal? "column->struct-index"
       (for/list ([i (in-range 0 10)])
         (column->struct-index i (list 0 1 2 3 4 5 6 7 8 9) (list 1 4 1 4)))
       (list 0 1 1 1 1 2 3 3 3 3))
     
-    (test-case "make-cross-referencer: single entity pass-through"
+    (test-case "make-cross-referencer: pass-through for a single selected entity"
       (recreate-test-tables)
       (let* ([per1   (test-person 1 2 "Dave")]
              [per2   (test-person 2 3 "David")]
              [input  (list per1 per2)]
-             [xref*  (make-cross-referencer (entity-columns person) person #hash())]
+             [xref*  (make-cross-referencer (entity-columns person)
+                                            person
+                                            (build-hash (sql-list pet.owner person.guid)))]
              [xref   (cut xref* <> (transaction-frame-push #f))]
              [do-row (g:map xref (g:list input))])
         (check-cross-referenced (do-row) per1)
         (check-cross-referenced (do-row) per2)
         (check-pred g:end? (do-row))))
     
-    (test-case "make-cross-referencer: twin entity pass-through"
+    (test-case "make-cross-referencer: pass-through for no cross references"
       (recreate-test-tables)
       (let* ([per1   (test-person 1 2 "Dave")]
              [per2   (test-person 2 3 "David")]
@@ -93,7 +107,7 @@
                            (list per3 per4))]
              [xref*  (make-cross-referencer (entity-columns person)
                                             (list person person)
-                                            #hash())]
+                                            (build-hash null))]
              [xref   (cut xref* <> (transaction-frame-push #f))]
              [do-row (g:map xref (g:list input))])
         (check-cross-referenced (do-row) (list per1 per2))
@@ -161,6 +175,26 @@
         (check-equal? (vector-ref (struct->vector pet2) 3) per2)
         (check-equal? (vector-ref (struct->vector veh2) 3) per2)
         (check-equal? (vector-ref (struct->vector veh2) 4) pet2)
+        (check-pred g:end? (do-row))))
+    
+    (test-case "make-cross-referencer: cross references that aren't in the WHAT clause"
+      (recreate-test-tables)
+      (let* ([per1   (test-person 1 2 "Jon")]
+             [per2   (test-person 2 3 "Lyman")]
+             [pet1   (test-pet 1 2 (person-guid 1) "Garfield")]
+             [pet2   (test-pet 2 3 (person-guid 2) "Odie")]
+             [veh1   (test-vehicle 1 2 (person-guid 1) (pet-guid 1) "Red car")]
+             [veh2   (test-vehicle 2 3 (person-guid 2) (pet-guid 2) "Red car")]
+             [input  (list (list pet1 per1 veh1)
+                           (list pet2 per2 veh2))]
+             [xref*  (make-cross-referencer (append (entity-columns pet)
+                                                    (entity-columns vehicle))
+                                            (list pet vehicle)
+                                            (build-hash (sql-list pet.owner person.guid)))]
+             [xref   (cut xref* <> (transaction-frame-push #f))]
+             [do-row (g:map xref (g:list input))])
+        (check-not-exn (lambda () (check-cross-referenced (do-row) (list pet1 per1 veh1))))
+        (check-not-exn (lambda () (check-cross-referenced (do-row) (list pet2 per2 veh2))))
         (check-pred g:end? (do-row))))
     
     (test-case "make-cross-referencer: mixture of entities and single columns"

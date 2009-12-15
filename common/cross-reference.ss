@@ -46,32 +46,37 @@
     ; query -> (query-result -> query-result)
     (define/public (make-query-cross-referencer query)
       (let ([cols     (query-what query)]
-            [entities (query-extract-info query)]
+            [entities+types (query-extract-info query)]
             [xrefs    (source->foreign-keys (query-from query))])
-        (make-cross-referencer cols entities xrefs)))
+        (make-cross-referencer cols entities+types xrefs)))
     
     ;  (listof column)
     ;  (U entity type (listof (U entity type)))
     ;  (hashof column column)
     ; -> 
     ;  (query-result -> query-result)
-    (define/public (make-cross-referencer cols entities xrefs)
-      (if (or (not (pair? entities))
+    (define/public (make-cross-referencer cols entities+types xrefs)
+      ; Pass throughs: there's NEVER any cross-referencing to do if:
+      ;   - we're not selecting more than one entity;
+      ;   - there are no cross references in the FROM clause.
+      (if (or (<= (count-entities entities+types) 1)
               (zero? (dict-count xrefs)))
           ; Create a dummy cross-referencer that does nothing:
           (lambda (item frame) item)
           ; Create a real cross-referencer:
-          (let*-values ([(sizes) (entities->sizes entities)]
+          (let*-values ([(sizes) (entities->sizes entities+types)]
                         ; Mask out any primary and foreign keys that aren't part of an extracted snooze-struct:
-                        [(cols)  (entities->mask entities cols)]
+                        [(cols)  (entities->mask entities+types cols)]
                         [(mutators local-indices remote-indices)
                          (for/fold ([mutators null] [local-indices null] [remote-indices null])
                                    ([fk (in-list cols)])
-                                   (let ([pk (and fk (hash-ref xrefs fk #f))])
-                                     (if pk
+                                   (let* ([pk       (and fk (hash-ref xrefs fk #f))]
+                                          [fk-index (and pk (column->struct-index fk cols sizes))]
+                                          [pk-index (and pk (column->struct-index pk cols sizes))])
+                                     (if (and fk-index pk-index)
                                          (values (cons (attribute-mutator (attribute-alias-attribute fk)) mutators)
-                                                 (cons (column->struct-index fk cols sizes) local-indices)
-                                                 (cons (column->struct-index pk cols sizes) remote-indices))
+                                                 (cons fk-index local-indices)
+                                                 (cons pk-index remote-indices))
                                          (values mutators local-indices remote-indices))))])
             (lambda (item frame)
               (for ([mutator (in-list mutators)]
@@ -81,6 +86,16 @@
               item))))))
 
 ; Helpers ----------------------------------------
+
+; (listof (U entity type)) [natural] -> natural
+(define (count-entities entities+types [accum 0])
+  (cond [(pair?   entities+types)
+         (if (entity? (car entities+types))
+             (count-entities (cdr entities+types) (add1 accum))
+             (count-entities (cdr entities+types) accum))]
+        [(null?   entities+types) accum]
+        [(entity? entities+types) 1]
+        [else 0]))
 
 ; (listof (U entity type)) -> (listof (U column #f))
 ;
@@ -107,12 +122,12 @@
              1))
        entities+types))
 
-; column (listof column) (listof integer)
+; column (listof column) (listof integer) -> (U natural #f)
 ; Works out which struct any given column is inside.
 (define (column->struct-index col cols sizes)
   (let loop ([index 0] [cols cols] [sizes sizes])
-    (cond [(null? cols)            (error "not enough columns")]
-          [(null? sizes)           (error "not enough sizes")]
+    (cond [(null? cols)            #f] ; not found in the WHAT clause
+          [(null? sizes)           #f] ; not found in the WHAT clause
           [(zero? (car sizes))     (loop (add1 index) cols (cdr sizes))]
           [(equal? col (car cols)) index]
           [else                    (loop index (cdr cols) (cons (sub1 (car sizes))
