@@ -114,14 +114,20 @@
         (check-cross-referenced (do-row) (list per3 per4))
         (check-pred g:end? (do-row))))
     
-    (test-case "make-cross-referencer: one cross reference"
+    (test-case "make-cross-referencer: one cross reference, null values in data"
       (recreate-test-tables)
       (let* ([per1   (test-person 1 2 "Jon")]
              [per2   (test-person 2 3 "Lyman")]
+             [per3   (test-person 3 4 "Officer Dibble")]
+             [per4   #f]
              [pet1   (test-pet 1 2 (person-guid 1) "Garfield")]
              [pet2   (test-pet 2 3 (person-guid 2) "Odie")]
+             [pet3   #f]
+             [pet4   (test-pet 4 5 #f "Top Cat")]
              [input  (list (list pet1 per1)
-                           (list pet2 per2))]
+                           (list pet2 per2)
+                           (list pet3 per3)
+                           (list pet4 per4))]
              [xref*  (make-cross-referencer (append (entity-columns pet) (entity-columns person))
                                             (list pet person)
                                             (build-hash (sql-list pet.owner person.guid)))]
@@ -133,10 +139,22 @@
         (check-cross-referenced (do-row) (list pet1 per1))
         (check-equal? (vector-ref (struct->vector pet1) 3) per1)
         (check-equal? (vector-ref (struct->vector pet2) 3) (person-guid 2))
+        (check-equal? (vector-ref (struct->vector pet4) 3) #f)
         ; Cross-reference the second row:
         (check-cross-referenced (do-row) (list pet2 per2))
         (check-equal? (vector-ref (struct->vector pet1) 3) per1)
         (check-equal? (vector-ref (struct->vector pet2) 3) per2)
+        (check-equal? (vector-ref (struct->vector pet4) 3) #f)
+        ; Cross-reference the third row:
+        (check-cross-referenced (do-row) (list pet3 per3))
+        (check-equal? (vector-ref (struct->vector pet1) 3) per1)
+        (check-equal? (vector-ref (struct->vector pet2) 3) per2)
+        (check-equal? (vector-ref (struct->vector pet4) 3) #f)
+        ; Cross-reference the third row:
+        (check-cross-referenced (do-row) (list pet4 per4))
+        (check-equal? (vector-ref (struct->vector pet1) 3) per1)
+        (check-equal? (vector-ref (struct->vector pet2) 3) per2)
+        (check-equal? (vector-ref (struct->vector pet4) 3) #f)
         (check-pred g:end? (do-row))))
     
     (test-case "make-cross-referencer: multiple cross references"

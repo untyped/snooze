@@ -82,7 +82,10 @@
               (for ([mutator (in-list mutators)]
                     [local   (in-list local-indices)]
                     [remote  (in-list remote-indices)])
-                (mutator (list-ref item local) (list-ref item remote)))
+                (let ([local  (list-ref item local)]
+                      [remote (list-ref item remote)])
+                  (when (and local remote)
+                    (mutator local remote))))
               item))))))
 
 ; Helpers ----------------------------------------
