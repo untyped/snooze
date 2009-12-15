@@ -56,7 +56,8 @@
     ; -> 
     ;  (query-result -> query-result)
     (define/public (make-cross-referencer cols entities xrefs)
-      (if (zero? (dict-count xrefs))
+      (if (or (not (pair? entities))
+              (zero? (dict-count xrefs)))
           ; Create a dummy cross-referencer that does nothing:
           (lambda (item frame) item)
           ; Create a real cross-referencer:
