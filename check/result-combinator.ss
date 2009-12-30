@@ -10,6 +10,10 @@
   (ormap check-success? (apply check-all results)))
 
 ; (listof check-result) ... -> boolean
+(define (check-no-problems? . results)
+  (not (apply check-problems? results)))
+
+; (listof check-result) ... -> boolean
 (define (check-problems? . results)
   (ormap check-problem? (apply check-all results)))
 
@@ -32,9 +36,10 @@
 ; Provide statements ---------------------------
 
 (provide/contract
- [check-successes? (->* () () #:rest (listof (listof check-result?)) boolean?)]
- [check-problems?  (->* () () #:rest (listof (listof check-result?)) boolean?)]
- [check-warnings?  (->* () () #:rest (listof (listof check-result?)) boolean?)]
- [check-errors?    (->* () () #:rest (listof (listof check-result?)) boolean?)]
- [check-failures?  (->* () () #:rest (listof (listof check-result?)) boolean?)]
- [check-fatals?    (->* () () #:rest (listof (listof check-result?)) boolean?)])
+ [check-successes?   (->* () () #:rest (listof (listof check-result?)) boolean?)]
+ [check-no-problems? (->* () () #:rest (listof (listof check-result?)) boolean?)]
+ [check-problems?    (->* () () #:rest (listof (listof check-result?)) boolean?)]
+ [check-warnings?    (->* () () #:rest (listof (listof check-result?)) boolean?)]
+ [check-errors?      (->* () () #:rest (listof (listof check-result?)) boolean?)]
+ [check-failures?    (->* () () #:rest (listof (listof check-result?)) boolean?)]
+ [check-fatals?      (->* () () #:rest (listof (listof check-result?)) boolean?)])
