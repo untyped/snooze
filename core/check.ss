@@ -33,6 +33,10 @@
   (ormap check-success? (apply check-all results)))
 
 ; (listof check-result) ... -> boolean
+(define (check-no-problems? . results)
+  (not (apply check-problems? results)))
+
+; (listof check-result) ... -> boolean
 (define (check-problems? . results)
   (ormap check-problem? (apply check-all results)))
 
@@ -153,6 +157,7 @@
  [check-with-annotations         (-> (listof (cons/c annotation? any/c)) (-> (listof check-result?)) (listof check-result?))]
  [check-until-problems           (->* () () #:rest (listof procedure?) (listof check-problem?))]
  [check-successes?               (->* () () #:rest (listof (listof check-result?)) boolean?)]
+ [check-no-problems?             (->* () () #:rest (listof (listof check-result?)) boolean?)]
  [check-problems?                (->* () () #:rest (listof (listof check-result?)) boolean?)]
  [check-warnings?                (->* () () #:rest (listof (listof check-result?)) boolean?)]
  [check-errors?                  (->* () () #:rest (listof (listof check-result?)) boolean?)]

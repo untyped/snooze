@@ -10,8 +10,8 @@
 ; Tests ----------------------------------------
 
 ; course
-(define-values (c1 c2 c3 c4 c5)
-  (values #f #f #f #f #f))
+(define-values (jon garfield odie c1 c2 c3 c4 c5)
+  (values #f #f #f #f #f #f #f #f))
 
 ; test-suite
 (define snooze-quick-find-tests
@@ -20,6 +20,10 @@
     #:before
     (lambda ()
       (recreate-test-tables)
+      (set! jon      (save! (make-person "Jone")))
+      (set! garfield (save! (make-pet jon "Garfield")))
+      (set! odie     (save! (make-pet jon "Odie")))
+      (save! (make-pet #f "TC"))
       (set! c1 (save! (make-course 'course1 "Course 1" 1 0.1 #f (string->time-tai "2001-01-01 01:01:01") #f)))
       (set! c2 (save! (make-course 'course2 "Course 2" 2 0.2 #t (string->time-tai "2002-02-02 02:02:02") #f)))
       (set! c3 (save! (make-course 'course3 "Course 3" 3 0.3 #f (string->time-tai "2003-03-03 03:03:03") #f)))
@@ -32,6 +36,13 @@
     (test-case "find-count #:active?"
       (check-equal? (find-count-courses #:active? #t) 2)
       (check-equal? (find-count-courses #:active? #f) 3))
+    
+    (test-case "find-count #:owner"
+      (check-equal? (find-count-pets #:owner jon) 2)
+      (check-equal? (find-count-pets #:owner jon
+                                     #:order (sql-list (asc pet.name))
+                                     #:group (sql-list pet.name))
+                    1))
     
     (test-case "find-one #:guid"
       (check-false  (find-course #:guid #f))

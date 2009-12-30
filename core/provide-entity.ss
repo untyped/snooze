@@ -95,6 +95,7 @@
                                                    #:what   sql:select-what/c
                                                    #:where  sql:select-where/c
                                                    #:order  sql:select-order/c
+                                                   #:group  sql:select-group/c
                                                    #:limit  sql:select-limit/c
                                                    #:offset sql:select-offset/c)
                                       (or/c predicate #f))]
@@ -103,6 +104,7 @@
                                                    #:what   sql:select-what/c
                                                    #:where  sql:select-where/c
                                                    #:order  sql:select-order/c
+                                                   #:group  sql:select-group/c
                                                    #:limit  sql:select-limit/c
                                                    #:offset sql:select-offset/c)
                                       (listof predicate))]
@@ -111,6 +113,7 @@
                                                    #:what   sql:select-what/c
                                                    #:where  sql:select-where/c
                                                    #:order  sql:select-order/c
+                                                   #:group  sql:select-group/c
                                                    #:limit  sql:select-limit/c
                                                    #:offset sql:select-offset/c)
                                       natural-number/c)]
@@ -119,6 +122,7 @@
                                                    #:what   sql:select-what/c
                                                    #:where  sql:select-where/c
                                                    #:order  sql:select-order/c
+                                                   #:group  sql:select-group/c
                                                    #:limit  sql:select-limit/c
                                                    #:offset sql:select-offset/c)
                                       procedure?)]

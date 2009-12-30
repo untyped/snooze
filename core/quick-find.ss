@@ -6,6 +6,7 @@
          (for-template scheme/base
                        scheme/class
                        "../sql/sql.ss"
+                       (only-in "../sql/sql-struct.ss" order-expression)
                        "quick-find-internal.ss"
                        "struct.ss"))
 
@@ -50,7 +51,7 @@
                   [(key ...)         key-stxs]
                   [(arg ...)         attr-stxs]
                   [(key+arg ...)     key+arg-stxs]
-                  [default-order     order-stx])
+                  [default-order     (if count? #'null order-stx)])
       (quasisyntax/loc stx
         (let-sql ([entity *entity*])
           (letrec ([default-what #,(if count?
@@ -61,6 +62,7 @@
                                            #:what   [what   #f]
                                            #:where  [where  #f]
                                            #:order  [order  #f]
+                                           #:group  [group  #f]
                                            #:limit  [limit  #f]
                                            #:offset [offset #f])
                                     (send snooze find-whatever
@@ -74,6 +76,7 @@
                                                                         arg))
                                                                    ...)
                                                 #:order  ,(or order default-order)
+                                                #:group  ,(or group null)
                                                 #:limit  ,limit
                                                 #:offset ,offset))))])
             proc))))))
