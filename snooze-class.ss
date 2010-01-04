@@ -273,15 +273,16 @@
 ; Helpers ----------------------------------------
 
 (define (with-query-profiling thunk msg)
-  (let ([start #f])
-    (dynamic-wind
-     (lambda ()
-       (set! start (current-inexact-milliseconds)))
-     thunk
-     (lambda ()
-       (printf "DB\t~a\t~a\n"
-               (real->decimal-string (- (current-inexact-milliseconds) start) 2)
-               msg)))))
+  (thunk)
+  #;(let ([start #f])
+      (dynamic-wind
+       (lambda ()
+         (set! start (current-inexact-milliseconds)))
+       thunk
+       (lambda ()
+         (printf "DB\t~a\t~a\n"
+                 (real->decimal-string (- (current-inexact-milliseconds) start) 2)
+                 msg)))))
 
 ; Provide statements -----------------------------
 

@@ -100,16 +100,16 @@
            (snooze-struct-data-ref* original))))
 
 ; (U snooze-struct guid) (U snooze-struct guid) -> boolean
-(define (snooze-struct-guid-equal? struct+guid1 struct+guid2)
-  (equal? (if (snooze-struct? struct+guid1)
-              (snooze-struct-guid struct+guid1)
-              struct+guid1)
-          (if (snooze-struct? struct+guid2)
-              (snooze-struct-guid struct+guid2)
-              struct+guid2)))
+(define (snooze-struct-guid-equal? val1 val2 [equal? equal?])
+  (equal? (if (snooze-struct? val1)
+              (snooze-struct-guid val1)
+              val1)
+          (if (snooze-struct? val2)
+              (snooze-struct-guid val2)
+              val2)))
 
 ; snooze-struct snooze-struct -> boolean
-(define (snooze-struct-data-equal? struct1 struct2)
+(define (snooze-struct-data-equal? struct1 struct2 [equal? equal?])
   (and (eq? (snooze-struct-entity struct1)
             (snooze-struct-entity struct2))
        (for/and ([val1 (in-list (snooze-struct-data-ref* struct1))]
@@ -122,9 +122,9 @@
                      val2)))))
 
 ; snooze-struct snooze-struct -> boolean
-(define (snooze-struct-equal? struct1 struct2)
-  (and (snooze-struct-guid-equal? struct1 struct2)
-       (snooze-struct-data-equal? struct1 struct2)))
+(define (snooze-struct-equal? struct1 struct2 [equal? equal?])
+  (and (snooze-struct-guid-equal? struct1 struct2 equal?)
+       (snooze-struct-data-equal? struct1 struct2 equal?)))
 
 ; guid any ... -> string
 (define (format-snooze-struct struct . rest)
@@ -163,7 +163,7 @@
   (list (lambda (a b equal?)
           (and (equal? (snooze-struct-revision a)
                        (snooze-struct-revision b))
-               (snooze-struct-equal? a b)))
+               (snooze-struct-equal? a b equal?)))
         (lambda (a hash-code)
           (let ([vec (struct->vector a)])
             (for ([i (in-range 3 (vector-length vec))])

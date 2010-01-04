@@ -191,11 +191,13 @@
       (check-fail (format "~a: must be~a a whole number~a."
                           (attribute-pretty-name attr)
                           (if allow-null? " blank or" "")
-                          (if (or min-value max-value) 
-                              (format " n, where ~an~a"
-                                      (if min-value (format "~a <= " min-value) "")
-                                      (if max-value (format " <= ~a" max-value) ""))
-                              "")))))
+                          (if min-value
+                              (if max-value
+                                  (format " from ~a to ~a inclusive" min-value max-value)
+                                  (format " greater than or equal to ~a" min-value))
+                              (if max-value
+                                  (format " less than or equal to ~a" max-value)
+                                  ""))))))
 
 (define (check-real attr allow-null? min-value max-value val)
   (if (and (real? val) (or (not max-value) (not (> val max-value))) (or (not min-value) (not (< val min-value))))
@@ -203,11 +205,13 @@
       (check-fail (format "~a: must be~a a number~a."
                           (attribute-pretty-name attr)
                           (if allow-null? " blank or" "")
-                          (if (or min-value max-value) 
-                              (format " n, where ~an~a"
-                                      (if min-value (format "~a <= " min-value) "")
-                                      (if max-value (format " <= ~a" max-value) ""))
-                              "")))))
+                          (if min-value
+                              (if max-value
+                                  (format " from ~a to ~a inclusive" min-value max-value)
+                                  (format " greater than or equal to ~a" min-value))
+                              (if max-value
+                                  (format " less than or equal to ~a" max-value)
+                                  ""))))))
 
 ; snooze-struct (cons attribute (listof attribute)) -> natural
 (define (find-count-duplicates struct attrs)
