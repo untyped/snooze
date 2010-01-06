@@ -10,9 +10,32 @@
          "common/common.ss"
          "sql/sql.ss")
 
+; Logging ----------------------------------------
+
+; (parameter (U (query natural -> void) #f))
+(define query-logger (make-parameter #f))
+
+; (parameter (U (guid natural -> void) #f))
+(define direct-find-logger (make-parameter #f))
+
+(define (call-with-log logger msg thunk)
+  (if logger
+      (let ([start #f])
+        (dynamic-wind
+         (lambda ()
+           (set! start (current-inexact-milliseconds)))
+         thunk
+         (lambda ()
+           (logger msg (- (current-inexact-milliseconds) start)))))
+      (thunk)))
+
+; Constructor ------------------------------------
+
 ; database<%> [#:auto-connect? boolean] -> snooze<%>
 (define (make-snooze database #:auto-connect? [auto-connect? #f])
   (new snooze% [database database] [auto-connect? auto-connect?]))
+
+; Classes ----------------------------------------
 
 (define snooze%
   (class* object% (snooze<%>)
@@ -160,17 +183,15 @@
     ; select -> result-generator
     (define/public (g:find select)
       (auto-connect)
-      (with-query-profiling
+      (call-with-log
+       (query-logger)
+       select
        (lambda ()
          (send database g:find
                (current-connection)
                select
                (or (get-current-transaction-frame)
-                   (transaction-frame-push #f))))
-       (let ([str (query->string select)])
-         (if (> (string-length str) 72)
-             (substring str 0 72)
-             str))))
+                   (transaction-frame-push #f))))))
     
     ; entity natural -> snooze-struct
     (define/public (find-by-id entity id)
@@ -179,14 +200,15 @@
     ; database-guid -> snooze-struct
     (define/public (find-by-guid guid)
       (auto-connect)
-      (with-query-profiling
+      (call-with-log
+       (direct-find-logger)
+       guid
        (lambda ()
          (let ([ans (send (get-database) direct-find
                           (current-connection)
                           (list guid)
                           (get-current-transaction-frame))])
-           (and (pair? ans) (car ans))))
-       (format "direct-find ~a" guid)))
+           (and (pair? ans) (car ans))))))
     
     ; thunk [#:metadata list] -> any
     ;
@@ -270,22 +292,10 @@
     (define/public (debug-sql query #:format [format "~a~n"] #:output-port [output-port (current-output-port)])
       (send database debug-sql query output-port format))))
 
-; Helpers ----------------------------------------
-
-(define (with-query-profiling thunk msg)
-  (thunk)
-  #;(let ([start #f])
-      (dynamic-wind
-       (lambda ()
-         (set! start (current-inexact-milliseconds)))
-       thunk
-       (lambda ()
-         (printf "DB\t~a\t~a\n"
-                 (real->decimal-string (- (current-inexact-milliseconds) start) 2)
-                 msg)))))
-
 ; Provide statements -----------------------------
 
 (provide/contract
- [snooze%     class?]
- [make-snooze (->* ((is-a?/c database<%>)) (#:auto-connect? boolean?) any)])
+ [query-logger       (parameter/c (-> query? number? any))]
+ [direct-find-logger (parameter/c (-> guid?  number? any))]
+ [snooze%            class?]
+ [make-snooze        (->* ((is-a?/c database<%>)) (#:auto-connect? boolean?) any)])
