@@ -3,7 +3,7 @@
 (require "../base.ss")
 
 (require (for-syntax scheme/base)
-         (prefix-in postgresql: (spgsql-in spgsql))
+         (prefix-in postgresql: "../spgsql-hacked/spgsql.ss")
          (unlib-in gen symbol)
          "../base.ss"
          "../core/struct.ss"
@@ -93,10 +93,11 @@
                                          '#:password    password
                                          '#:ssl         ssl
                                          '#:ssl-encrypt ssl-encrypt))
-        (send conn exec "SET client_min_messages = 'ERROR';")
-        (send conn exec "SET datestyle = iso;")
-        (send conn exec "SET regex_flavor = extended;")
-        ;(send conn exec "SET standard_conforming_strings = on;")
+        (send conn exec
+              "SET client_min_messages = 'ERROR';"
+              "SET datestyle = iso;"
+              "SET regex_flavor = extended;"
+              "SET standard_conforming_strings = on;")
         (make-connection conn #f)))
     
     ; connection -> void

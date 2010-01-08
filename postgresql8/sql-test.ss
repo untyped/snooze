@@ -4,7 +4,7 @@
 
 (require scheme/serialize
          srfi/19
-         (spgsql-in spgsql)
+         "../spgsql-hacked/spgsql.ss"
          "../core/core.ss"
          "../sql/sql.ss"
          "sql.ss")

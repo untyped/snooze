@@ -1,6 +1,7 @@
 #lang scheme/base
 
 (require scheme/match
+         (only-in srfi/1 make-list)
          srfi/26
          (planet untyped/unlib:3/gen)
          "snooze-api.ss"
@@ -282,4 +283,35 @@
                                            #:from (outer course (outer course2 course3)))))
                     (find-all (sql (select #:what (+ course.revision course2.revision course3.revision)
                                            #:from (outer (outer course course2) course3))))
-                    "expressions"))))
+                    "expressions")))
+  
+  (test-suite "serializing / deserializing data"
+    
+    (test-case "backslashes and quotes in strings"
+      (recreate-test-tables)
+      (for ([num (in-range 0 25)])
+        (let ([slashes (apply string (make-list num #\\))]
+              [quotes  (apply string (make-list num #\'))])
+          (for ([str (in-list (list slashes
+                                    quotes
+                                    (format "~aa"    slashes)
+                                    (format "a~aa"   slashes)
+                                    (format "a~a"    slashes)
+                                    (format "~aa"    quotes)
+                                    (format "a~aa"   quotes)
+                                    (format "a\\~a"  quotes)
+                                    (format "\\~aa"  quotes)
+                                    (format "a\\~aa" quotes)
+                                    (format "a\\~a"  quotes)))])
+            (with-check-info (['string-data str])
+              (check-not-exn
+               (lambda ()
+                 (with-handlers ([exn? (lambda (exn)
+                                         ((error-display-handler) (exn-message exn) exn)
+                                         (raise exn))])
+                   (let* ([per0 (make-person str)]
+                          [per1 (save! per0)]
+                          [per2 (find-by-guid (snooze-struct-guid per1))])
+                     (check-equal? (person-name per0) str)
+                     (check-equal? (person-name per1) str)
+                     (check-equal? (person-name per2) str))))))))))))

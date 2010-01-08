@@ -5,7 +5,7 @@
 (require scheme/serialize
          scheme/string
          srfi/19
-         (spgsql-in spgsql)
+         "../spgsql-hacked/spgsql.ss"
          (unlib-in symbol)
          "../core/struct.ss"
          "../core/snooze-struct.ss"
