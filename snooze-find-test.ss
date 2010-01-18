@@ -139,12 +139,7 @@
     
     #:after
     drop-all-tables
-    
-    ;(test-case "find-by-id works as expected"
-    ;  (check-equal? (find-by-id course 1000) #f)
-    ;  (check-equal? (find-by-id course (snooze-struct-id c1)) c1)
-    ;  (check-equal? (find-by-id course (snooze-struct-id c2)) c2))
-    
+        
     (test-case "g:find in multi-item mode"
       (check-equal? (g:collect (g:find (sql (select #:what  (course)
                                                     #:from  course
@@ -285,6 +280,64 @@
                                            #:from (outer (outer course course2) course3))))
                     "expressions")))
   
+  (test-suite "find-by-{id,guid,guids} and so on"
+    
+    (test-case "find-by-id"
+      (recreate-test-tables)
+      (let ([struct (save! (make-person/defaults #:name "Dave"))])
+        (check-pred integer? (snooze-struct-id struct))
+        (check-equal? (find-by-id person (snooze-struct-id struct)) struct)
+        (check-false  (find-by-id person (add1 (snooze-struct-id struct))))
+        (check-false  (find-by-id pet (snooze-struct-id struct)))))
+    
+    (test-case "find-by-guid"
+      (recreate-test-tables)
+      (let ([struct (save! (make-person/defaults #:name "Dave"))])
+        (check-pred database-guid? (snooze-struct-guid struct))
+        (check-equal? (find-by-guid (snooze-struct-guid struct)) struct)
+        (check-exn exn:fail:contract?
+          (lambda ()
+            (find-by-guid (entity-make-temporary-guid person))))))
+    
+    (test-case "find-by-guids"
+      (recreate-test-tables)
+      (let ([per1 (save! (make-person/defaults #:name "Christian"))]
+            [per2 (save! (make-person/defaults #:name "Dave"))]
+            [per3 (save! (make-person/defaults #:name "David"))]
+            [per4 (save! (make-person/defaults #:name "Matt"))]
+            [per5 (save! (make-person/defaults #:name "Noel"))])
+        (check-equal? (find-by-guids (map snooze-struct-guid (list per1 per2 per3 per4 per5))) (list per1 per2 per3 per4 per5))
+        (check-equal? (find-by-guids (map snooze-struct-guid (list per2 per4 per1 per3 per5))) (list per2 per4 per1 per3 per5))
+        (check-equal? (find-by-guids (map snooze-struct-guid (list per1 per1 per1 per2 per2))) (list per1 per1 per1 per2 per2))))
+    
+    (test-case "load-related!"
+      (recreate-test-tables)
+      (match-let* ([per1 (save! (make-person/defaults #:name "Christian"))]
+                   [per2 (save! (make-person/defaults #:name "Dave"))]
+                   [per3 (save! (make-person/defaults #:name "David"))]
+                   [per4 (save! (make-person/defaults #:name "Matt"))]
+                   [per5 (make-person/defaults #:name "Noel")]
+                   [pet1 ((entity-private-constructor pet)
+                          (entity-make-temporary-guid pet)
+                          #f
+                          (snooze-struct-guid per1)
+                          "Christian's budgie")]
+                   [pet2 ((entity-private-constructor pet)
+                          (entity-make-temporary-guid pet)
+                          #f
+                          (snooze-struct-guid per2)
+                          "Dave's dog")]
+                   [pet3 (make-pet/defaults #:owner per3                      #:name "David's kitten")]
+                   [pet4 (make-pet/defaults #:owner #f                        #:name "Stray goat")]
+                   [pet5 (make-pet/defaults #:owner per5                      #:name "Noel's cat")]
+                   [pets (list pet1 pet1 pet2 pet3 pet3 pet4 pet5 pet5 pet1)])
+        (check-eq? (load-related! pets (attr pet owner)) pets)
+        (check-equal? (pet-owner pet1) per1)
+        (check-equal? (pet-owner pet2) per2)
+        (check-equal? (pet-owner pet3) per3)
+        (check-equal? (pet-owner pet4) #f)
+        (check-equal? (pet-owner pet5) per5))))
+
   (test-suite "serializing / deserializing data"
     
     (test-case "backslashes and quotes in strings"

@@ -60,6 +60,14 @@
                       (list (string->keyword (symbol->string (syntax->datum (attribute-info-id info))))
                             (attribute-info-accessor-id info)
                             #`(type-contract (attribute-type #,(attribute-info-private-id info)))))]
+                   [([attr-guid-accessor attr-guid-contract] ...)
+                    (for/fold ([accum null])
+                              ([info (in-list attr-info)])
+                              (if (attribute-info-guid-accessor-id info)
+                                  (with-syntax ([id       (attribute-info-guid-accessor-id info)]
+                                                [contract #`(or/c (entity-guid-predicate (guid-type-entity (attribute-type #,(attribute-info-private-id info)))) #f)])
+                                    (cons (list #'id #'contract) accum))
+                                  accum))]
                    [(make-kw-arg ...)    (interleave (syntax->list #'(attr-kw ...))
                                                      (syntax->list #'(attr-contract ...)))]
                    [(find-kw-arg ...)    (interleave (syntax->list #'(guid-kw revision-kw attr-kw ...))
@@ -127,6 +135,8 @@
                                                    #:offset sql:select-offset/c)
                                       procedure?)]
            [attr-accessor        (-> predicate attr-contract)]
+           ...
+           [attr-guid-accessor   (-> predicate attr-guid-contract)]
            ...)))))))
 
 ; (_ struct-id)

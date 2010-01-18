@@ -149,9 +149,9 @@
                 null
                 (let ([extract (make-single-item-extractor entity)])
                   (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
-                    (g:collect (g:map (cut extract <> frame)
-                                      (g:map (make-parser (map attribute-type (entity-attributes entity)))
-                                             (g:map vector->list (g:list (remove-column-names results))))))))))))
+                    (g:map (cut extract <> frame)
+                           (g:map (make-parser (map attribute-type (entity-attributes entity)))
+                                  (g:map vector->list (g:list (remove-column-names results)))))))))))
     
     ; connection query transaction-frame -> result-generator
     (define/public (g:find conn query frame)
@@ -189,7 +189,7 @@
          (set-connection-in-transaction?! conn #t))
        (lambda ()
          (sqlite:with-transaction ((connection-back-end conn) sqlite-escape)
-                                  (body)))
+           (body)))
        (lambda ()
          (set-connection-in-transaction?! conn #f))))
     

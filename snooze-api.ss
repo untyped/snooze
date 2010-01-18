@@ -61,6 +61,14 @@
 (define (find-by-guid #:snooze [snooze (current-snooze)] guid)
   (send snooze find-by-guid guid))
 
+; (listof database-guid) -> (listof snooze-struct)
+(define (find-by-guids #:snooze [snooze (current-snooze)] guids)
+  (send snooze find-by-guids guids))
+
+; (listof snooze-struct) attribute -> (listof snooze-struct)
+(define (load-related! #:snooze [snooze (current-snooze)] structs attr)
+  (send snooze load-related! structs attr))
+
 ; (-> ans) any ... -> ans
 (define (call-with-transaction #:snooze [snooze (current-snooze)] #:metadata [metadata null] thunk)
   (send snooze call-with-transaction #:metadata metadata thunk))
@@ -139,6 +147,8 @@
  [g:find                (->* (query?) (#:snooze (is-a?/c snooze<%>)) procedure?)]
  [find-by-id            (->* (entity? natural-number/c) (#:snooze (is-a?/c snooze<%>)) (or/c snooze-struct? #f))]
  [find-by-guid          (->* (database-guid?) (#:snooze (is-a?/c snooze<%>)) (or/c snooze-struct? #f))]
+ [find-by-guids         (->* ((listof database-guid?)) (#:snooze (is-a?/c snooze<%>)) (listof snooze-struct?))]
+ [load-related!         (->* ((listof snooze-struct?) attribute?) (#:snooze (is-a?/c snooze<%>)) (listof snooze-struct?))]
  [call-with-transaction (->* (procedure?) (#:snooze (is-a?/c snooze<%>) #:metadata list?) any)]
  [query->string         (->* (query?) (#:snooze (is-a?/c snooze<%>)) string?)]
  [debug-sql             (->* (query?) (#:snooze (is-a?/c snooze<%>) #:output-port output-port? #:format string?) query?)]

@@ -3,6 +3,7 @@
 (require "base.ss")
 
 (require scheme/class
+         scheme/list
          srfi/26
          (planet untyped/unlib:3/gen)
          (planet untyped/unlib:3/parameter)
@@ -195,20 +196,72 @@
     
     ; entity natural -> snooze-struct
     (define/public (find-by-id entity id)
-      (find-by-guid (entity-make-guid entity id)))
+      (let ([ans (find-by-guids (list (entity-make-guid entity id)))])
+        (and (pair? ans) (car ans))))
     
     ; database-guid -> snooze-struct
     (define/public (find-by-guid guid)
+      (let ([ans (find-by-guids (list guid))])
+        (and (pair? ans) (car ans))))
+    
+    ; (listof database-guid) -> (listof snooze-struct)
+    (define/public (find-by-guids guids)
       (auto-connect)
       (call-with-log
        (direct-find-logger)
-       guid
+       guids
        (lambda ()
-         (let ([ans (send (get-database) direct-find
-                          (current-connection)
-                          (list guid)
-                          (get-current-transaction-frame))])
-           (and (pair? ans) (car ans))))))
+         (cond [(null? guids) null]
+               [(null? (cdr guids))
+                (g:collect (send (get-database) direct-find
+                                 (current-connection)
+                                 guids
+                                 (get-current-transaction-frame)))]
+               [else (let ([lookup (g:collect/hash
+                                    (send (get-database) direct-find
+                                          (current-connection)
+                                          (remove-duplicates guids)
+                                          (get-current-transaction-frame))
+                                    snooze-struct-guid)])
+                       (map (cut hash-ref lookup <>) guids))]))))
+    
+    ; Takes:
+    ;   - a list of structs of the same entity;
+    ;   - a foreign key attribute from that entity.
+    ;
+    ; Iterates through the structs finding any unloaded database-guids in the foreign key attribute.
+    ; Loads the related structs and cross references the foreign keys.
+    ; Returns the original (listof struct) argument, mutated with the cross references in place.
+    ;
+    ; (listof snooze-struct) attribute -> (listof snooze-struct)
+    (define/public (load-related! structs attr)
+      (let ([entity   (attribute-entity attr)]
+            [accessor (attribute-private-accessor attr)]
+            [mutator  (attribute-private-mutator  attr)])
+        
+        ; Quick type check:
+        (unless (and (guid-type? (attribute-type attr))
+                     (memq attr (entity-data-attributes entity)))
+          (raise-type-error 'find-related! "foreign-key-attribute" attr))
+        
+        (let*-values ([(to-mutate to-find)
+                       ; Work out which foreign keys need loading, and which structs need mutating:
+                       (for/fold ([to-mutate null]
+                                  [to-find   null])
+                                 ([struct (in-list structs)])
+                                 (let ([val (accessor struct)])
+                                   (if (database-guid? val)
+                                       (values (cons struct to-mutate)
+                                               (cons val    to-find))
+                                       (values to-mutate to-find))))]
+                      ; Look up the related structs:
+                      [(found) (find-by-guids to-find)])
+          ; Mutate the original structs:
+          (for ([struct (in-list to-mutate)]
+                [found  (in-list found)])
+            (mutator struct found))
+          ; Return the original argument:
+          structs)))
     
     ; thunk [#:metadata list] -> any
     ;
@@ -296,6 +349,6 @@
 
 (provide/contract
  [query-logger       (parameter/c (-> query? number? any))]
- [direct-find-logger (parameter/c (-> guid?  number? any))]
+ [direct-find-logger (parameter/c (-> (listof database-guid?) number? any))]
  [snooze%            class?]
  [make-snooze        (->* ((is-a?/c database<%>)) (#:auto-connect? boolean?) any)])

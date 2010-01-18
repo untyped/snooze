@@ -186,7 +186,7 @@
             (format "revision mismatch: database ~a, struct ~a" actual expected)
             guid))))
     
-    ; connection (listof database-guid) transaction-frame -> (listof snooze-struct)
+    ; connection (listof database-guid) transaction-frame -> (gen-> snooze-struct)
     (define/public (direct-find conn guids frame)
       (if (null? guids)
           null
@@ -194,10 +194,9 @@
                  [entity  (guid-entity (car guids))]
                  [extract (make-single-item-extractor entity)])
             (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
-              (g:collect
-               (g:map (cut extract <> frame)
-                      (g:map (make-parser (map attribute-type (entity-attributes entity)))
-                             (g:list (send (connection-back-end conn) map sql list)))))))))
+              (g:map (cut extract <> frame)
+                     (g:map (make-parser (map attribute-type (entity-attributes entity)))
+                            (g:list (send (connection-back-end conn) map sql list))))))))
     
     ; connection query transaction-frame -> result-generator
     ;

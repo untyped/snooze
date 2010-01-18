@@ -53,7 +53,23 @@
              [pet1 (make-pet per1 "Pet1")]
              [pet2 (pet-set pet1 #:owner per2)])
         (check-eq? per1 (pet-owner pet1))
-        (check-eq? per2 (pet-owner pet2))))))
+        (check-eq? per2 (pet-owner pet2))))
+    
+    (test-case "pet-owner and pet-owner-guid"
+      (recreate-test-tables)
+      (let ([pet1 (make-pet/defaults #:name "Garfield" #:owner (make-person/defaults #:name "Jon"))]
+            [pet2 ((entity-private-constructor pet)
+                   (entity-make-temporary-guid pet)
+                   #f
+                   (snooze-struct-guid (save! (make-person/defaults #:name "Lyman")))
+                   "Odie")]
+            [pet3 (make-pet/defaults #:name "Top Cat"  #:owner #f)])
+        (check-pred person? (pet-owner pet1))
+        (check-pred person? (pet-owner pet2))
+        (check-false (pet-owner pet3))
+        (check-pred (entity-guid-predicate person) (pet-owner-guid pet1))
+        (check-pred (entity-guid-predicate person) (pet-owner-guid pet2))
+        (check-false (pet-owner pet3))))))
 
 ; Provide statements -----------------------------
 

@@ -162,6 +162,17 @@
   
   (values entity struct-type public-constructor predicate))
 
+; attribute -> (snooze-struct -> guid)
+(define (attribute-guid-accessor attr)
+  (if (guid-type? (attribute-type attr))
+      (let ([access (attribute-private-accessor attr)])
+        (lambda (struct)
+          (let ([other (access struct)])
+            (if (snooze-struct? other)
+                (snooze-struct-guid other)
+                other))))
+      (error "not a guid attribute" attr)))
+
 ; Helpers ----------------------------------------
 
 ; symbol -> symbol
@@ -228,4 +239,5 @@
                       struct-type?
                       procedure?
                       procedure?))]
- [name->database-name (-> symbol? symbol?)])
+ [name->database-name     (-> symbol? symbol?)]
+ [attribute-guid-accessor (-> attribute? procedure?)])

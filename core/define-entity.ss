@@ -58,6 +58,7 @@
   (define attr-kw-stxs null)              ; (#:person-gender #:person-age #:person-name #:person-revision #:person-guid)
   (define attr-column-stxs null)          ; ('gender 'age 'name)
   (define attr-accessor-stxs null)        ; (person-gender person-age person-name person-revision person-guid)
+  (define attr-guid-accessor-stxs null)   ; (#f #f pet-owner-guid #f) <= people don't have foreign-keys so had to use pet for this example
   (define attr-mutator-stxs null)         ; (set-person-gender! set-person-age! set-person-name! set-person-revision! set-person-guid!)
   (define attr-pretty-stxs null)
   (define attr-pretty-plural-stxs null)
@@ -105,6 +106,7 @@
     (define my-type-expr-stx     #f)
     (define my-kw-stx            #f)
     (define my-accessor-stx      #f)
+    (define my-guid-accessor-stx #f)
     (define my-mutator-stx       #f)
     (define my-column-stx        #f)
     (define my-pretty-stx        #'name->pretty-name)
@@ -131,7 +133,8 @@
           [binary   (set! my-type-expr-stx #'(make-binary-type allows-null?))]
           [entity   (if (or (bound-identifier=? #'entity entity-id-stx)
                             (with-handlers ([exn? (lambda _ #f)]) (entity-info-ref #'entity)))
-                        (set! my-type-expr-stx #'(make-guid-type allows-null? entity))
+                        (begin (set! my-type-expr-stx #'(make-guid-type allows-null? entity))
+                               (set! my-guid-accessor-stx (make-id entity-id-stx entity-id-stx '- my-name-stx '-guid)))
                         (raise-syntax-error #f "not a valid attribute type" complete-stx stx))])))
     
     (define (parse-attr-kws stx)
@@ -178,6 +181,7 @@
       (set! attr-default-stxs       (cons my-default-stx       attr-default-stxs))
       (set! attr-kw-stxs            (cons my-kw-stx            attr-kw-stxs))
       (set! attr-accessor-stxs      (cons my-accessor-stx      attr-accessor-stxs))
+      (set! attr-guid-accessor-stxs (cons my-guid-accessor-stx attr-guid-accessor-stxs))
       (set! attr-mutator-stxs       (cons my-mutator-stx       attr-mutator-stxs))
       (set! attr-column-stxs        (cons my-column-stx        attr-column-stxs))
       (set! attr-pretty-stxs        (cons my-pretty-stx        attr-pretty-stxs))
@@ -258,28 +262,31 @@
                   [(property ...)           (reverse property-stxs)]
                   [(entity-kw ...)          (reverse entity-kw-stxs)]
                   ; Attributes:
-                  [(guid-attr revision-attr attr ...)               (list* #'guid
-                                                                           #'revision
-                                                                           (reverse attr-stxs))]
-                  [(guid-private revision-private attr-private ...) (list* (make-id #f 'attr: entity-id-stx '-revision)
-                                                                           (make-id #f 'attr: entity-id-stx '-guid)
-                                                                           (reverse attr-private-stxs))]
-                  [(guid-kw revision-kw attr-kw ...)                (list* '#:guid
-                                                                           '#:revision
-                                                                           (reverse attr-kw-stxs))]
-                  [(attr-type ...)                                  (reverse attr-type-stxs)]
-                  [(attr-type-expr ...)                             (reverse attr-type-expr-stxs)]
-                  [(attr-default ...)                               (reverse attr-default-stxs)]
-                  [(attr-pretty ...)                                (reverse attr-pretty-stxs)]
-                  [(attr-pretty-plural ...)                         (reverse attr-pretty-plural-stxs)]
-                  [(guid-accessor revision-accessor accessor ...)   (list* (make-id entity-id-stx entity-id-stx '-guid)
-                                                                           (make-id entity-id-stx entity-id-stx '-revision)
-                                                                           (reverse attr-accessor-stxs))]
-                  [(revision-mutator mutator ...)                   (list* (make-id entity-id-stx 'set- entity-id-stx '-revision!)
-                                                                           (reverse attr-mutator-stxs))]
-                  [(guid-column revision-column column ...)         (list* #''id
-                                                                           #''revision
-                                                                           (reverse attr-column-stxs))])
+                  [(guid-attr revision-attr attr ...)                     (list* #'guid
+                                                                                 #'revision
+                                                                                 (reverse attr-stxs))]
+                  [(guid-private revision-private attr-private ...)       (list* (make-id #f 'attr: entity-id-stx '-revision)
+                                                                                 (make-id #f 'attr: entity-id-stx '-guid)
+                                                                                 (reverse attr-private-stxs))]
+                  [(guid-kw revision-kw attr-kw ...)                      (list* '#:guid
+                                                                                 '#:revision
+                                                                                 (reverse attr-kw-stxs))]
+                  [(attr-type ...)                                        (reverse attr-type-stxs)]
+                  [(attr-type-expr ...)                                   (reverse attr-type-expr-stxs)]
+                  [(attr-default ...)                                     (reverse attr-default-stxs)]
+                  [(attr-pretty ...)                                      (reverse attr-pretty-stxs)]
+                  [(attr-pretty-plural ...)                               (reverse attr-pretty-plural-stxs)]
+                  [(guid-accessor revision-accessor accessor ...)         (list* (make-id entity-id-stx entity-id-stx '-guid)
+                                                                                 (make-id entity-id-stx entity-id-stx '-revision)
+                                                                                 (reverse attr-accessor-stxs))]
+                  [(attr-guid-accessor+false ...)                         (reverse attr-guid-accessor-stxs)]
+                  [(attr-guid-accessor ...)                               (filter (lambda (x) x)
+                                                                                  (reverse attr-guid-accessor-stxs))]
+                  [(revision-mutator mutator ...)                         (list* (make-id entity-id-stx 'set- entity-id-stx '-revision!)
+                                                                                 (reverse attr-mutator-stxs))]
+                  [(guid-column revision-column column ...)               (list* #''id
+                                                                                 #''revision
+                                                                                 (reverse attr-column-stxs))])
       (quasisyntax/loc entity-id-stx
         (begin (define-guid-type entity-guid)
                
@@ -323,6 +330,12 @@
                
                (define-values (guid-accessor revision-accessor accessor ...)
                  (apply values (map attribute-accessor (entity-attributes entity-private))))
+               
+               (define-values (attr-guid-accessor ...)
+                 (apply values (map attribute-guid-accessor 
+                                    (filter (lambda (att)
+                                              (guid-type? (attribute-type att)))
+                                            (entity-data-attributes entity)))))
                
                (define-values (revision-mutator mutator ...)
                  (apply values (map attribute-mutator (cdr (entity-attributes entity-private)))))
@@ -428,18 +441,22 @@
                             (certify #'guid-private)
                             (certify #'entity)
                             (certify #'guid-accessor)
+                            #f
                             #f)
                            (make-attribute-info
                             (certify #'revision-attr)
                             (certify #'revision-private)
                             (certify #'integer)
                             (certify #'revision-accessor)
+                            #f
                             (certify #'revision-mutator))
                            (make-attribute-info
                             (certify #'attr)
                             (certify #'attr-private)
                             (certify #'attr-type)
                             (certify #'accessor)
+                            (and (syntax->datum #'attr-guid-accessor+false)
+                                 (certify #'attr-guid-accessor+false))
                             (certify #'mutator))
                            ...)))))))))
   

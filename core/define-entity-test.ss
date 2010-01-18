@@ -66,7 +66,7 @@
         (check-equal? (attr-list person guid name)
                       (list (attr person guid)
                             (attr person name)))))
-    
+        
     (test-case "contracts"
       ; Constracts don't check constraints like NOT NULL and string length.
       ; They only check that fields are of the right type or null type.

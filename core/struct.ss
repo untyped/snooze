@@ -565,7 +565,7 @@
                                         [mutator              procedure?])]
  [attribute-primary-key?               (-> attribute? boolean?)]
  [attribute-foreign-key?               (-> attribute? boolean?)]
- [attribute-default                    (-> attribute? any/c)]
+ [attribute-default                    (-> attribute? any)]
  [prop:snooze-struct-entity            struct-type-property?]
  [snooze-struct?                       (-> any/c boolean?)]
  [snooze-struct-entity                 (-> snooze-struct? entity?)]

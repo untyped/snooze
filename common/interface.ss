@@ -49,7 +49,7 @@
     ; Deletes the database record for the given guid.
     ; delete-guid
     
-    ; connection (listof database-guid) -> (listof snooze-struct)
+    ; connection (listof database-guid) -> (gen-> snooze-struct)
     ; Selects a number of similarly typed structs by guid.
     direct-find
     

@@ -38,7 +38,7 @@
           (entity-info-private-id info)])))
 
 (define-struct attribute-info
-  (id private-id type-id accessor-id mutator-id)
+  (id private-id type-id accessor-id guid-accessor-id mutator-id)
   #:transparent)
 
 (define info-cache (make-module-identifier-mapping))
