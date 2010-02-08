@@ -21,9 +21,6 @@
 ; snooze<%> test-suite -> void
 (define (run-snooze-tests snooze back-end-tests)
   (run-tests (make-snooze-tests snooze back-end-tests))
-  ;(send snooze
-  ;      call-with-connection
-  ;      (cut test/text-ui (make-snooze-tests snooze back-end-tests)))
   (void))
 
 ; string -> void
@@ -40,13 +37,15 @@
 
 ; string integer string string [string] -> void
 (define (run-postgresql8-tests server port database username [password #f])
-  (run-snooze-tests
-   (make-snooze (postgresql8:make-database #:server   server
-                                           #:port     port
-                                           #:database database
-                                           #:username username
-                                           #:password password))
-   postgresql8:all-postgresql8-tests))
+  (let ([snooze (make-snooze (postgresql8:make-database #:server                 server
+                                                        #:port                   port
+                                                        #:database               database
+                                                        #:username               username
+                                                        #:password               password
+                                                        #:keepalive-milliseconds 1000))])
+    (run-snooze-tests
+     snooze
+     (postgresql8:make-all-postgresql8-tests snooze))))
 
 ; [(U exn #f)] -> void
 (define (print-usage [exn #f])

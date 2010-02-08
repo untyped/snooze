@@ -60,11 +60,17 @@
     (define/public (set-transaction-pipeline! pipeline)
       (set! transaction-pipeline pipeline))
     
-    ; (-> any) -> any
-    (define/public (call-with-connection thunk)
-      (dynamic-wind void
-                    (cut thunk)
-                    (cut disconnect)))
+    ; (-> any) [boolean] -> any
+    (define/public (call-with-connection thunk [on-demand? #t])
+      (if on-demand?
+          (dynamic-wind void
+                        (cut thunk)
+                        (cut disconnect))
+          (if (thread-cell-ref current-connection-cell)
+              (thunk)
+              (dynamic-wind (cut connect)
+                            (cut thunk)
+                            (cut disconnect)))))
     
     ; -> void
     (define/public (connect)
@@ -324,7 +330,7 @@
     [get-transaction-pipeline  (-> (listof procedure?))]
     [set-transaction-pipeline! (-> (listof procedure?) void?)]
     
-    [call-with-connection      (-> procedure? any)]
+    [call-with-connection      (->* (procedure?) (boolean?) any)]
     [connect                   (-> any)]
     [disconnect                (-> any)]
     [current-connection        (-> connection?)]

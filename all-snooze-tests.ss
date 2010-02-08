@@ -18,6 +18,7 @@
          "audit/all-audit-tests.ss"
          "check/all-check-tests.ss"
          "era/all-era-tests.ss"
+         "generic/connection-pool-test.ss"
          "sql/all-sql-tests.ss")
 
 ; Tests ----------------------------------------
@@ -42,6 +43,7 @@
     
     ; Tests for the back end:
     back-end-tests
+    (make-connection-pool-tests snooze)
     
     ; Tests the front end:
     (make-snooze-create-tests snooze)

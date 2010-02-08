@@ -1,5 +1,5 @@
 #lang scheme/base
-  
+
 (require mzlib/etc
          mzlib/pregexp
          scheme/class
@@ -19,56 +19,59 @@
 
 (define database%
   (class* object% (database<%>)
-
+    
     ; Constructor --------------------
     
     (init-field server       ; string
-                port         ; natural
-                database     ; string
-                username     ; string
-                password     ; (U string #f)
-                ssl          ; (U 'yes 'no 'optional)
-                ssl-encrypt) ; (U 'sslv2-or-v3 'sslv2 'sslv3 'tls)]
+      port         ; natural
+      database     ; string
+      username     ; string
+      password     ; (U string #f)
+      ssl          ; (U 'yes 'no 'optional)
+      ssl-encrypt) ; (U 'sslv2-or-v3 'sslv2 'sslv3 'tls)]
     
     (super-new)
     
     ; Methods -----------------------
-
+    
     ; -> connection
     (define/public (connect)
       (with-snooze-reraise (exn:fail? "Could not connect to database")
-        (define conn (postgresql:connect '#:server      server
-                                         '#:port        port
-                                         '#:database    database
-                                         '#:user        username
-                                         '#:password    password
-                                         '#:ssl         ssl
-                                         '#:ssl-encrypt ssl-encrypt))
-        (send conn exec "SET client_min_messages TO warning;")
-        (send conn exec "SET datestyle TO iso;")
-        (send conn exec "SET regex_flavor TO extended;")
-        ;(send conn exec "SET standard_conforming_strings TO on;")
-        (make-connection conn #f)))
-  
+        (with-handlers ([exn? (lambda (exn)
+                                (raise-exn exn:fail:snooze:connection-count
+                                  (format "could not connect to database: ~a" (exn-message exn))))])
+          (define conn (postgresql:connect '#:server      server
+                                           '#:port        port
+                                           '#:database    database
+                                           '#:user        username
+                                           '#:password    password
+                                           '#:ssl         ssl
+                                           '#:ssl-encrypt ssl-encrypt))
+          (send conn exec "SET client_min_messages TO warning;")
+          (send conn exec "SET datestyle TO iso;")
+          (send conn exec "SET regex_flavor TO extended;")
+          ;(send conn exec "SET standard_conforming_strings TO on;")
+          (make-connection conn #f))))
+    
     ; connection -> void
     (define/public (disconnect conn)
       (with-snooze-reraise (exn:fail? "Could not disconnect from database")
         (send (connection-back-end conn) disconnect)))
-
+    
     ; connection entity -> void
     (define/public (create-table conn entity)
       (with-snooze-reraise (exn:fail? (format "Could not create table for ~a" entity))
         (for-each (cut send (connection-back-end conn) exec <>)
                   (map (cut string-append <> ";")
                        (pregexp-split #px";" (create-sql entity))))))
-
+    
     ; connection entity -> void
     (define/public (drop-table conn entity)
       (with-snooze-reraise (exn:fail? (format "Could not drop table for ~a" entity))
         (for-each (cut send (connection-back-end conn) exec <>)
                   (map (cut string-append <> ";")
                        (pregexp-split #px";" (drop-sql entity))))))
-
+    
     ; connection persistent-struct -> integer
     ;
     ; Inserts a new database record for the struct and returns its ID.
@@ -96,19 +99,19 @@
       (with-snooze-reraise (exn:fail? (format "Could not insert database record for ~a" struct))
         (send (connection-back-end conn) exec (insert-sql struct #t))
         (void)))
-
+    
     ; connection persistent-struct -> void
     (define/public (update-record conn struct)
       (with-snooze-reraise (exn:fail? (format "Could not update database record for ~a" struct))
         (send (connection-back-end conn) exec (update-sql struct))
         (void)))
-
+    
     ; connection guid -> void
     (define/public (delete-record conn guid)
       (with-snooze-reraise (exn:fail? (format "Could not delete database record for ~a" guid))
         (send (connection-back-end conn) exec (delete-sql guid))
         (void)))
-
+    
     ; connection query -> result-generator
     ;
     ; TODO : This procedure is memory-inefficient, because it retrieves the entire result
@@ -137,7 +140,7 @@
         (g:map (make-struct-extractor (query-extract-info query))
                (g:map (make-parser (map expression-type (query-what query)))
                       (g:list (send (connection-back-end conn) map sql vector))))))
-
+    
     ; connection -> boolean
     (define/public (transaction-allowed? conn)
       #t)
@@ -179,7 +182,7 @@
       (map (cut parse-value type:symbol <>)
            (send (connection-back-end conn) query-list 
                  "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;")))
-
+    
     ; connection (U symbol entity) -> boolean
     (define/public (table-exists? conn table)
       ; string
@@ -200,7 +203,7 @@
     (define/public (dump-sql query [output-port (current-output-port)] [format "~a"])
       (fprintf output-port format (query-sql query))
       query)
-
+    
     ))
 
 ; Provide statements -----------------------------

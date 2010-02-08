@@ -33,6 +33,11 @@
   ()
   #:transparent)
 
+; Raised when Snooze tries to roll back a non-existant transaction.
+(define-struct (exn:fail:snooze:connection-count exn:fail:snooze)
+  ()
+  #:transparent)
+
 ; Provide statements --------------------------- 
 
 (provide (all-from-out scheme/contract
