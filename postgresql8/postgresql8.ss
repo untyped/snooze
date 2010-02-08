@@ -3,12 +3,15 @@
 (require "../base.ss")
 
 (require (for-syntax scheme/base)
+         (only-in srfi/13 string-contains)
          (prefix-in postgresql: "../spgsql-hacked/spgsql.ss")
+         (only-in "../spgsql-hacked/private/exceptions.ss" exn:spgsql:backend?)
          (unlib-in gen symbol)
          "../base.ss"
          "../core/struct.ss"
          "../core/snooze-struct.ss"
          "../common/common.ss"
+         "../common/connection-pool.ss"
          "../sql/sql-struct.ss"
          "sql.ss")
 
@@ -17,31 +20,45 @@
     ;(printf "~a~n" sql)
     sql))
 
-;  [#:server      string]
-;  [#:port        integer]
-;   #:database    string
-;   #:username    string
-;  [#:password    (U string #f)]
-;  [#:ssl         (U 'yes 'no 'optional)]
-;  [#:ssl-encrypt (U 'sslv2-or-v3 'sslv2 'sslv3 'tls)]
+;  [#:server                 string]
+;  [#:port                   integer]
+;   #:database               string
+;   #:username               string
+;  [#:password               (U string #f)]
+;  [#:ssl                    (U 'yes 'no 'optional)]
+;  [#:ssl-encrypt            (U 'sslv2-or-v3 'sslv2 'sslv3 'tls)]
+;  [#:pool-connections?      boolean]
+;  [#:keepalive-milliseconds natural]
 ; ->
 ;  database%
 (define (make-postgresql8-database 
-         #:server      [server "localhost"]
-         #:port        [port 5432]
-         #:database    database
-         #:username    username
-         #:password    [password #f]
-         #:ssl         [ssl 'optional]
-         #:ssl-encrypt [ssl-encrypt 'sslv2-or-v3])
-  (new postgresql8-database%
-       [server      server]
-       [port        port]
-       [database    database]
-       [username    username]
-       [password    password]
-       [ssl         ssl]
-       [ssl-encrypt ssl-encrypt]))
+         #:server                  [server "localhost"]
+         #:port                    [port 5432]
+         #:database                database
+         #:username                username
+         #:password                [password #f]
+         #:ssl                     [ssl 'optional]
+         #:ssl-encrypt             [ssl-encrypt 'sslv2-or-v3]
+         #:pool-connections?       [pool-connections? #t]
+         #:keepalive-milliseconds  [keepalive-milliseconds 5000])
+  (if pool-connections?
+      (new (connection-pool-mixin postgresql8-database%)
+           [server                 server]
+           [port                   port]
+           [database               database]
+           [username               username]
+           [password               password]
+           [ssl                    ssl]
+           [ssl-encrypt            ssl-encrypt]
+           [keepalive-milliseconds keepalive-milliseconds])
+      (new postgresql8-database%
+           [server                 server]
+           [port                   port]
+           [database               database]
+           [username               username]
+           [password               password]
+           [ssl                    ssl]
+           [ssl-encrypt            ssl-encrypt])))
 
 ; Database class ---------------------------------
 
@@ -85,7 +102,7 @@
     
     ; -> connection
     (define/public (connect)
-      (with-snooze-reraise (exn:fail? "could not connect to database")
+      (with-handlers ([exn:spgsql:backend? reraise-connect])
         (define conn (postgresql:connect '#:server      server
                                          '#:port        port
                                          '#:database    database
@@ -102,19 +119,19 @@
     
     ; connection -> void
     (define/public (disconnect conn)
-      (with-snooze-reraise (exn:fail? "could not disconnect from database")
+      (with-handlers ([exn:spgsql:backend? (cut reraise <> "could not disconnect from database")])
         (send (connection-back-end conn) disconnect)))
     
     ; connection entity -> void
     (define/public (create-table conn entity)
-      (with-snooze-reraise (exn:fail? (format "could not create table for ~a" entity))
+      (with-handlers ([exn:spgsql:backend? (cut reraise <> (format "could not create table: ~a" entity))])
         (for-each (cut send (connection-back-end conn) exec <>)
                   (map (cut string-append <> ";")
                        (regexp-split #px";" (debug-sql* create-table-sql entity))))))
     
     ; connection entity -> void
     (define/public (drop-table conn entity)
-      (with-snooze-reraise (exn:fail? (format "could not drop table for ~a" entity))
+      (with-handlers ([exn:spgsql:backend? (cut reraise <> (format "could not drop table: ~a" entity))])
         (for-each (cut send (connection-back-end conn) exec <>)
                   (map (cut string-append <> ";")
                        (regexp-split #px";" (debug-sql* drop-table-sql entity))))))
@@ -122,7 +139,7 @@
     ; connection snooze-struct -> snooze-struct
     ; Inserts a new database record for the supplied struct.
     (define/public (insert-struct conn old-struct)
-      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" old-struct))
+      (with-handlers ([exn:spgsql:backend? (cut reraise <> (format "could not insert row: ~a" old-struct))])
         (let* ([entity       (snooze-struct-entity old-struct)]
                [seq-name     (symbol-append (entity-table-name entity) '_seq)]
                [guid         (snooze-struct-guid old-struct)]
@@ -140,7 +157,7 @@
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Updates the existing database record for the supplied struct.
     (define/public (update-struct conn old-struct [check-revision? #t])
-      (with-snooze-reraise (exn:fail? (format "could not update database record for ~a" old-struct))
+      (with-handlers ([exn:spgsql:backend? (cut reraise <> (format "could not update row: ~a" old-struct))])
         (let ([entity   (snooze-struct-entity   old-struct)]
               [guid     (snooze-struct-guid     old-struct)]
               [revision (snooze-struct-revision old-struct)])
@@ -155,7 +172,7 @@
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Deletes the database record for the supplied struct.
     (define/public (delete-struct conn old-struct [check-revision? #t])
-      (with-snooze-reraise (exn:fail? (format "could not delete database record for ~a" old-struct))
+      (with-handlers ([exn:spgsql:backend? (cut reraise <> (format "could not delete row: ~a" old-struct))])
         (let ([entity   (snooze-struct-entity old-struct)]
               [guid     (snooze-struct-guid old-struct)]
               [revision (snooze-struct-revision old-struct)])
@@ -171,7 +188,7 @@
     ; connection database-guid -> void
     ; Deletes the database record for the supplied guid.
     (define/public (delete-guid conn guid)
-      (with-snooze-reraise (exn:fail? (format "could not insert database record for ~a" guid))
+      (with-handlers ([exn:spgsql:backend? (cut reraise <> (format "could not delete row for guid: ~a" guid))])
         (send (connection-back-end conn) exec (debug-sql* delete-sql guid))
         (void)))
     
@@ -193,7 +210,7 @@
           (let* ([sql     (debug-sql* direct-find-sql guids)]
                  [entity  (guid-entity (car guids))]
                  [extract (make-single-item-extractor entity)])
-            (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
+            (with-handlers ([exn:spgsql:backend? (cut reraise <> (format "could not execute query: ~a" sql))])
               (g:map (cut extract <> frame)
                      (g:map (make-parser (map attribute-type (entity-attributes entity)))
                             (g:list (send (connection-back-end conn) map sql list))))))))
@@ -224,7 +241,7 @@
       (let ([sql     (debug-sql* query-sql query)]
             [extract (make-query-extractor query)]
             [xref    (make-query-cross-referencer query)])
-        (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
+        (with-handlers ([exn:spgsql:backend? (cut reraise <> (format "could not execute query: ~a" sql))])
           (g:map (lambda (item)
                    (xref (extract item frame) frame))
                  (g:map (make-parser (map expression-type (query-what query)))
@@ -303,6 +320,20 @@
       (fprintf output-port format (query-sql query))
       query)))
 
+; Helpers ----------------------------------------
+
+; exn -> void
+(define (reraise-connect exn)
+  (cond [(string-contains (exn-message exn) "connection limit exceeded")
+         (raise-exn exn:fail:snooze:connection-count
+           (format "could not connect to database: ~a" (exn-message exn)))]
+        [else (reraise exn "could not connect to database")]))
+
+; exn -> void
+(define (reraise exn msg)
+  (raise-exn exn:fail:snooze
+    (format "~a: ~a" msg (exn-message exn))))
+
 ; Provide statements -----------------------------
 
 ; (contract symbol)
@@ -319,5 +350,11 @@
 (provide/contract
  [make-postgresql8-database
   (->* (#:database string? #:username string?)
-       (#:server string? #:port integer? #:password (or/c string? false/c) #:ssl ssl/c #:ssl-encrypt ssl-encrypt/c)
+       (#:server string?
+                 #:port                   integer?
+                 #:password               (or/c string? #f)
+                 #:ssl                    ssl/c
+                 #:ssl-encrypt            ssl-encrypt/c
+                 #:pool-connections?      boolean?
+                 #:keepalive-milliseconds natural-number/c)
        (is-a?/c database<%>))])

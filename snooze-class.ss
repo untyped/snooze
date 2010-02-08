@@ -32,9 +32,9 @@
 
 ; Constructor ------------------------------------
 
-; database<%> [#:auto-connect? boolean] -> snooze<%>
-(define (make-snooze database #:auto-connect? [auto-connect? #f])
-  (new snooze% [database database] [auto-connect? auto-connect?]))
+; database<%> [#:connect-on-demand? boolean] -> snooze<%>
+(define (make-snooze database #:connect-on-demand? [connect-on-demand? #f])
+  (new snooze% [database database] [connect-on-demand? connect-on-demand?]))
 
 ; Classes ----------------------------------------
 
@@ -67,7 +67,7 @@
     (init-field database)
     
     ; boolean
-    (init-field [auto-connect? #f])
+    (init-field [connect-on-demand? #f])
     
     (super-new)
     
@@ -95,7 +95,9 @@
     (define/public (call-with-connection thunk)
       (if (thread-cell-ref current-connection-cell)
           (thunk)
-          (dynamic-wind (cut connect)
+          (dynamic-wind (if connect-on-demand?
+                            void
+                            (cut connect))
                         (cut thunk)
                         (cut disconnect))))
     
@@ -111,31 +113,28 @@
         (thread-cell-set! current-connection-cell #f)))
     
     ; -> void
-    (define (auto-connect)
-      (when (and auto-connect? (not (thread-cell-ref current-connection-cell)))
+    (define (connect-on-demand)
+      (when (and connect-on-demand? (not (thread-cell-ref current-connection-cell)))
         (connect)))
     
     ; -> connection
-    ;
-    ; Returns the current database connection One connection is stored per thread.
-    ; If the thread is suspended or killed, the connection is disconnected and set to #f.
     (define/public (current-connection)
       (or (thread-cell-ref current-connection-cell)
           (raise-exn exn:fail:snooze "no database connection: use call-with-connection to set one up")))
     
     ; entity -> void
     (define/public (create-table entity)
-      (auto-connect)
+      (connect-on-demand)
       (call-with-transaction (cut send database create-table (current-connection) entity)))
     
     ; entity -> void
     (define/public (drop-table entity)
-      (auto-connect)
+      (connect-on-demand)
       (call-with-transaction (cut send database drop-table (current-connection) entity)))
     
     ; snooze-struct -> snooze-struct
     (define/public (save! struct)
-      (auto-connect)
+      (connect-on-demand)
       (parameterize ([currently-saving struct])
         (let ([guid   (snooze-struct-guid   struct)]
               [entity (snooze-struct-entity struct)])
@@ -157,7 +156,7 @@
     (define/public (delete! struct)
       (unless (snooze-struct-saved? struct)
         (raise-exn exn:fail:snooze (format "unsaved structs cannot be deleted ~a" struct)))
-      (auto-connect)
+      (connect-on-demand)
       (parameterize ([currently-deleting struct])
         (let ([guid   (snooze-struct-guid   struct)]
               [entity (snooze-struct-entity struct)])
@@ -183,7 +182,7 @@
     
     ; select -> result-generator
     (define/public (g:find select)
-      (auto-connect)
+      (connect-on-demand)
       (call-with-log
        (query-logger)
        select
@@ -206,7 +205,7 @@
     
     ; (listof database-guid) -> (listof snooze-struct)
     (define/public (find-by-guids guids)
-      (auto-connect)
+      (connect-on-demand)
       (call-with-log
        (direct-find-logger)
        guids
@@ -282,7 +281,7 @@
     ; The extra arguments are passed to the transaction hook (if it is present)
     ; but *not* to the body thunk.
     (define/public (call-with-transaction #:metadata [metadata null] body)
-      (auto-connect)
+      (connect-on-demand)
       (let ([conn (current-connection)])
         (if (send database transaction-allowed? conn)
             (call-with-transaction-frame 
@@ -321,12 +320,12 @@
     
     ; -> (listof symbol)
     (define/public (table-names)
-      (auto-connect)
+      (connect-on-demand)
       (send database table-names (current-connection)))
     
     ; (U symbol entity) -> boolean
     (define/public (table-exists? table)
-      (auto-connect)
+      (connect-on-demand)
       (send database table-exists? (current-connection) table))
     
     ; query -> string
@@ -351,4 +350,4 @@
  [query-logger       (parameter/c (-> query? number? any))]
  [direct-find-logger (parameter/c (-> (listof database-guid?) number? any))]
  [snooze%            class?]
- [make-snooze        (->* ((is-a?/c database<%>)) (#:auto-connect? boolean?) any)])
+ [make-snooze        (->* ((is-a?/c database<%>)) (#:connect-on-demand? boolean?) any)])

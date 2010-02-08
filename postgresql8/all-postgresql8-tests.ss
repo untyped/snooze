@@ -2,10 +2,12 @@
   
 (require "../test-base.ss")
 
-(require "sql-test.ss")
+(require "postgresql8-test.ss"
+         "sql-test.ss")
 
-(define all-postgresql8-tests
+; Tests ------------------------------------------
+
+(define/provide-test-suite all-postgresql8-tests
   (test-suite "postgresql8"
+    postgresql8-tests
     sql-tests))
-
-(provide all-postgresql8-tests)

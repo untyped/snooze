@@ -26,25 +26,28 @@
                                #:username [username "snooze"]
                                #:password [password #f]
                                tests)
-  (parameterize ([current-snooze    (make-snooze (make-postgresql8-database
+  (parameterize ([current-snooze    (make-snooze #:connect-on-demand? #f
+                                                 (make-postgresql8-database
                                                   #:server   server
                                                   #:port     port
                                                   #:database database
                                                   #:username username
-                                                  #:password password))]
+                                                  #:password password
+                                                  #:keepalive-milliseconds 500))]
                  [direct-query-proc (lambda (sql)
                                       (let ([conn (send (current-snooze) current-connection)])
                                         (send (connection-back-end conn) map sql list)))])
-    (send (current-snooze) call-with-connection (cut run-tests tests))))
+    (run-tests tests)))
 
 ; (U string path ':memory: ':temp:) test-suite -> any
 (define (run-tests/sqlite3 location tests)
-  (parameterize ([current-snooze    (make-snooze (make-sqlite3-database location))]
+  (parameterize ([current-snooze    (make-snooze #:connect-on-demand? #f
+                                                 (make-sqlite3-database location))]
                  [direct-query-proc (lambda (sql)
                                       (let* ([conn (send (current-snooze) current-connection)]
                                              [ans  (sqlite:select (connection-back-end conn) sql)])
                                         (if (null? ans) null (map vector->list (cdr ans)))))])
-    (send (current-snooze) call-with-connection (cut run-tests tests))))
+    (run-tests tests)))
 
 ; string -> time-tai
 (define (string->time-tai str)

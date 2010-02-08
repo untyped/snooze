@@ -28,7 +28,9 @@
   (test-suite "snooze"
     
     #:before
-    drop-all-tables
+    (lambda ()
+      (connect)
+      (drop-all-tables))
     
     ; Tests that can be run without a database connection:
     all-core-tests
