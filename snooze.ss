@@ -20,4 +20,5 @@
          (struct-out exn:fail:snooze:query)
          (struct-out exn:fail:snooze:revision)
          (struct-out exn:fail:snooze:transaction)
-         (struct-out exn:fail:snooze:check))
+         (struct-out exn:fail:snooze:check)
+         (struct-out exn:fail:snooze:connection-count))
