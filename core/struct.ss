@@ -5,7 +5,7 @@
 (require (for-syntax scheme/base
                      (unlib-in syntax))
          scheme/dict
-         (unlib-in enumeration)
+         (unlib-in enumeration symbol)
          "../common/connection.ss"
          "core-snooze-interface.ss")
 
@@ -64,7 +64,7 @@
 ; guid -> void
 (define (set-guid-temporary-id! guid)
   (when (database-guid? guid)
-    (set-guid-id! guid (gensym (entity-name (guid-entity guid))))))
+    (set-guid-id! guid (gensym/interned (entity-name (guid-entity guid))))))
 
 ; Attribute types --------------------------------
 
@@ -302,7 +302,7 @@
 
 ; entity -> temporary-guid
 (define (entity-make-temporary-guid entity)
-  (entity-make-guid entity (gensym (entity-name entity))))
+  (entity-make-guid entity (gensym/interned (entity-name entity))))
 
 ; entity any -> boolean
 (define (entity-guid? entity guid)
