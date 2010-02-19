@@ -93,7 +93,7 @@
           ([struct-type          struct-type?]
            [predicate            (-> any/c boolean?)]
            [constructor          (-> attr-contract ... predicate)]
-           [id-accessor          (-> predicate (or/c natural-number/c #f))]
+           [id-accessor          (-> predicate (or/c natural-number/c symbol? #f))]
            [saved-predicate      (-> predicate boolean?)]
            [pretty-formatter     (->* (predicate) () #:rest any/c string?)]
            [defaults-constructor (->* ()          (make-kw-arg ...) predicate)]
