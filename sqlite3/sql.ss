@@ -96,7 +96,7 @@
       (let* ([include-id? (and (database-guid? (snooze-struct-guid struct)) #t)]
              [entity      (snooze-struct-entity struct)]
              [attrs       (entity-attributes entity)]
-             [vals        (snooze-struct-ref* struct)]
+             [vals        (snooze-struct-raw-ref* struct)]
              [table-name  (escape-sql-name (entity-table-name entity))]
              [col-names   (string-join (for/list ([attr (in-list (if include-id? attrs (cddr attrs)))])
                                          (escape-sql-name (attribute-column-name attr)))
@@ -111,7 +111,7 @@
     (define/public (update-sql struct)
       (let* ([entity (snooze-struct-entity struct)]
              [exprs  (for/list ([attr (in-list (entity-attributes entity))]
-                                [val  (in-list (snooze-struct-ref* struct))])
+                                [val  (in-list (snooze-struct-raw-ref* struct))])
                        (string-append (escape-sql-name (attribute-column-name attr))
                                       " = "
                                       (escape-sql-value (attribute-type attr) val)))])

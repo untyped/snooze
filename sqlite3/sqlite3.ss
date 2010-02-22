@@ -86,7 +86,7 @@
           (apply (entity-private-constructor entity)
                  guid
                  (or revision 0)
-                 (cddr (snooze-struct-ref* old-struct))))))
+                 (cddr (snooze-struct-raw-ref* old-struct))))))
     
     ; connection snooze-struct [boolean] -> snooze-struct
     ; Updates the existing database record for the supplied struct.
@@ -98,7 +98,7 @@
                [new-struct (apply (entity-private-constructor entity)
                                   guid
                                   (add1 revision)
-                                  (cddr (snooze-struct-ref* old-struct)))])
+                                  (cddr (snooze-struct-raw-ref* old-struct)))])
           (when check-revision? (check-revision conn entity guid revision))
           (sqlite:exec/ignore (connection-back-end conn) (debug-sql* update-sql new-struct))
           new-struct)))
@@ -116,7 +116,7 @@
           (apply (entity-private-constructor entity)
                  guid
                  #f
-                 (cddr (snooze-struct-ref* old-struct))))))
+                 (cddr (snooze-struct-raw-ref* old-struct))))))
     
     ; connection database-guid -> void
     ; Deletes the database record for the supplied guid.

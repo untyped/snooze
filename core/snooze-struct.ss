@@ -42,7 +42,7 @@
               [(temporary-guid? val) (error "temporary guid found in foreign key" val)]
               [else                  val]))))
 
-; snooze-struct boolean -> any
+; snooze-struct -> list
 (define (snooze-struct-ref* struct)
   (let ([data (struct->vector struct)])
     (list* (vector-ref data 1)
@@ -59,12 +59,26 @@
           [(temporary-guid? val) (error "temporary guid found in foreign key" val)]
           [else                  val])))
 
+; snooze-struct -> list
+(define (snooze-struct-raw-ref* struct)
+  (let ([data (struct->vector struct)])
+    (list* (vector-ref data 1)
+           (vector-ref data 2)
+           (for/list ([val (in-vector data 3)])
+             val))))
+
+; snooze-struct -> list
+(define (snooze-struct-raw-data-ref* struct)
+  (let ([data (struct->vector struct)])
+    (for/list ([val (in-vector data 3)])
+      val)))
+
 ; snooze-struct <attr any> ... -> snooze-struct
 (define (snooze-struct-set original . args)
   (let*-values ([(entity)             (snooze-struct-entity original)]
                 [(arg-attrs arg-vals) (check-attribute-keywords entity args)]
                 [(attrs)              (entity-attributes entity)]
-                [(existing)           (snooze-struct-ref* original)])
+                [(existing)           (snooze-struct-raw-ref* original)])
     (apply (entity-private-constructor entity)
            (for/list ([attr     (in-list attrs)]
                       [existing (in-list existing)])
@@ -98,7 +112,7 @@
     (apply (entity-private-constructor entity)
            (entity-make-temporary-guid entity) 
            #f
-           (snooze-struct-data-ref* original))))
+           (snooze-struct-raw-data-ref* original))))
 
 ; (U snooze-struct guid) (U snooze-struct guid) -> boolean
 (define (snooze-struct-guid-equal? val1 val2 [equal? equal?])
@@ -113,8 +127,8 @@
 (define (snooze-struct-data-equal? struct1 struct2 [equal? equal?])
   (and (eq? (snooze-struct-entity struct1)
             (snooze-struct-entity struct2))
-       (for/and ([val1 (in-list (snooze-struct-data-ref* struct1))]
-                 [val2 (in-list (snooze-struct-data-ref* struct2))])
+       (for/and ([val1 (in-list (snooze-struct-raw-data-ref* struct1))]
+                 [val2 (in-list (snooze-struct-raw-data-ref* struct2))])
          (equal? (if (snooze-struct? val1)
                      (snooze-struct-guid val1)
                      val1)
@@ -213,6 +227,8 @@
  [snooze-struct-ref             (-> snooze-struct? (or/c attribute? symbol?) any)]
  [snooze-struct-ref*            (-> snooze-struct? list?)]
  [snooze-struct-data-ref*       (-> snooze-struct? list?)]
+ [snooze-struct-raw-ref*        (-> snooze-struct? list?)]
+ [snooze-struct-raw-data-ref*   (-> snooze-struct? list?)]
  [snooze-struct-set             (->* (snooze-struct?) () #:rest attr/value-list? snooze-struct?)]
  [make-snooze-struct            (->* (entity?) () #:rest attr-value-list/c snooze-struct?)]
  [make-snooze-struct/defaults   (->* (entity?) () #:rest attr/value-list? snooze-struct?)]

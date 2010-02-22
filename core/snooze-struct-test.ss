@@ -121,8 +121,8 @@
            [q (snooze-struct-copy p)])
       (check-not-eq? p q)
       (check-not-equal? p q)
-      (check-equal? (cdr (snooze-struct-ref* p))
-                    (cdr (snooze-struct-ref* q)))))
+      (check-equal? (cdr (snooze-struct-raw-ref* p))
+                    (cdr (snooze-struct-raw-ref* q)))))
   
   (test-case "snooze-struct-{guid,data,}-equal?"
     (let ([p  (make-person/defaults #:name "P")])

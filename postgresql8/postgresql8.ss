@@ -150,7 +150,7 @@
           (let ([new-struct (apply (entity-private-constructor entity)
                                    guid
                                    (or revision 0)
-                                   (cddr (snooze-struct-ref* old-struct)))])
+                                   (cddr (snooze-struct-raw-ref* old-struct)))])
             (send (connection-back-end conn) exec (debug-sql* insert-sql new-struct))
             new-struct))))
     
@@ -165,7 +165,7 @@
           (let ([ans (apply (entity-private-constructor entity)
                             guid
                             (add1 revision)
-                            (cddr (snooze-struct-ref* old-struct)))])
+                            (cddr (snooze-struct-raw-ref* old-struct)))])
             (send (connection-back-end conn) exec (debug-sql* update-sql ans))
             ans))))
     
@@ -183,7 +183,7 @@
           (apply (entity-private-constructor entity)
                  guid
                  #f
-                 (cddr (snooze-struct-ref* old-struct))))))
+                 (cddr (snooze-struct-raw-ref* old-struct))))))
     
     ; connection database-guid -> void
     ; Deletes the database record for the supplied guid.

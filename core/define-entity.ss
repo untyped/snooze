@@ -314,7 +314,7 @@
                                       (syntax/loc entity-id-stx
                                         (list (cons prop:serializable
                                                     (make-serialize-info
-                                                     (lambda (struct) (list->vector (snooze-struct-ref* struct)))
+                                                     (lambda (struct) (list->vector (snooze-struct-raw-ref* struct)))
                                                      (quote-syntax deserialize-info)
                                                      #t
                                                      (or (current-load-relative-directory) (current-directory))))

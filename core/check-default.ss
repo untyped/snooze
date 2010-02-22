@@ -30,7 +30,7 @@
       ; attribute constraints
       (apply check-problems
              (for/list ([attr (in-list (cddr (entity-attributes entity)))]
-                        [val  (in-list (cddr (snooze-struct-ref* struct)))])
+                        [val  (in-list (cddr (snooze-struct-raw-ref* struct)))])
                (check-attribute-value attr val)))
       ; uniqueness constraints
       (apply check-problems
