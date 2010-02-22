@@ -172,13 +172,14 @@
                                                                                (syntax->list #'(expr ...))))]))
                                              
 (define (expand-aggregate stx)
-  (syntax-case* stx (count* count min max average) symbolic-identifier=?
-    [(count*)           #`(sql:count*)]
-    [(count*   alias)   #`(sql:count*  #,(expand-expression+unquote #'alias))]
-    [(count    alias)   #`(sql:count   #,(expand-expression+unquote #'alias))]
-    [(min      alias)   #`(sql:min     #,(expand-expression+unquote #'alias))]
-    [(max      alias)   #`(sql:max     #,(expand-expression+unquote #'alias))]
-    [(average  alias)   #`(sql:average #,(expand-expression+unquote #'alias))]))
+  (syntax-case* stx (count-distinct count count* min max average) symbolic-identifier=?
+    [(count*)               #`(sql:count*)]
+    [(count*         alias) #`(sql:count*         #,(expand-expression+unquote #'alias))]
+    [(count-distinct alias) #`(sql:count-distinct #,(expand-expression+unquote #'alias))]
+    [(count          alias) #`(sql:count          #,(expand-expression+unquote #'alias))]
+    [(min            alias) #`(sql:min            #,(expand-expression+unquote #'alias))]
+    [(max            alias) #`(sql:max            #,(expand-expression+unquote #'alias))]
+    [(average        alias) #`(sql:average        #,(expand-expression+unquote #'alias))]))
 
 (define expand-expression
   ((or-expand "expression")
