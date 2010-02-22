@@ -4,6 +4,7 @@
 
 (require (unlib-in list)
          "attribute-keyword.ss"
+         "check.ss"
          "struct.ss")
 
 ; snooze-struct -> guid
@@ -159,6 +160,24 @@
                   (entity-name struct)
                   ans)))))
 
+; snooze-struct -> void
+(define (check-snooze-struct/exn struct)
+  (let ([results (check-snooze-struct struct)])
+    (when (check-errors? results)
+      (raise-exn exn:fail:snooze:check:save
+        (format "failed to save ~s: ~s" struct results)
+        struct
+        results))))
+
+; snooze-struct -> void
+(define (check-old-snooze-struct/exn struct)
+  (let ([results (check-old-snooze-struct struct)])
+    (when (check-errors? results)
+      (raise-exn exn:fail:snooze:check:save
+        (format "failed to delete ~s: ~s" struct results)
+        struct
+        results))))
+
 (define snooze-struct-equal+hash
   (list (lambda (a b equal?)
           (and (equal? (snooze-struct-revision a)
@@ -204,4 +223,6 @@
  [format-snooze-struct          (->* (snooze-struct?) () #:rest any/c string?)]
  [check-snooze-struct           (->* (snooze-struct?) () #:rest any/c (listof check-result?))]
  [check-old-snooze-struct       (->* (snooze-struct?) () #:rest any/c (listof check-result?))]
+ [check-snooze-struct/exn       (-> snooze-struct? void?)]
+ [check-old-snooze-struct/exn   (-> snooze-struct? void?)]
  [snooze-struct-equal+hash      (list/c procedure? procedure? procedure?)])

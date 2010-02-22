@@ -33,7 +33,9 @@
 (define-struct (exn:fail:snooze:transaction exn:fail:snooze) () #:transparent)
 
 ; Raised when a struct cannot be saved/deleted because of failed checks.
-(define-struct (exn:fail:snooze:check exn:fail:snooze) (results) #:transparent)
+(define-struct (exn:fail:snooze:check exn:fail:snooze) (struct results) #:transparent)
+(define-struct (exn:fail:snooze:check:save exn:fail:snooze:check) () #:transparent)
+(define-struct (exn:fail:snooze:check:delete exn:fail:snooze:check) () #:transparent)
 
 ; Raised when the database connection limit is exceeded.
 (define-struct (exn:fail:snooze:connection-count exn:fail:snooze) () #:transparent)

@@ -147,29 +147,17 @@
 (define (make-default-delete-check entity)
   default-check-old-snooze-struct)
 
-; entity -> ((connection guid -> guid) connection guid -> guid)
+; entity -> ((connection snooze-struct -> snooze-struct) connection snooze-struct -> snooze-struct)
 (define (make-default-save-hook entity)
-  (lambda (continue conn guid)
-    (let ([results (check-snooze-struct guid)])
-      (if (check-errors? results)
-          (raise-exn exn:fail:snooze:check
-            (format "failed validation: could not save ~s:~n~a"
-                    guid
-                    (pretty-format results))
-            results)
-          (continue conn guid)))))
+  (lambda (continue conn struct)
+    (check-snooze-struct/exn struct)
+    (continue conn struct)))
 
 ; entity -> ((connection guid -> guid) connection guid -> guid)
 (define (make-default-delete-hook entity)
-  (lambda (continue conn guid)
-    (let ([results (check-old-snooze-struct guid)])
-      (if (check-errors? results)
-          (raise-exn exn:fail:snooze:check
-            (format "failed validation: could not delete ~s:~n~a"
-                    guid
-                    (pretty-format results))
-            results)
-          (continue conn guid)))))
+  (lambda (continue conn struct)
+    (check-old-snooze-struct/exn struct)
+    (continue conn struct)))
 
 ; Helpers ----------------------------------------
 
