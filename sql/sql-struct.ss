@@ -16,15 +16,15 @@
 
 ; Sources --------------------------------------
 
-(define-struct source () #:transparent)
+(define-struct source () #:prefab)
 
-(define-struct (source-alias source) (name value) #:transparent)
+(define-struct (source-alias source) (name value) #:prefab)
 
 ; (struct symbol entity)
-(define-struct (entity-alias source-alias) () #:transparent)
+(define-struct (entity-alias source-alias) () #:prefab)
 
 ; (struct symbol query)
-(define-struct (query-alias source-alias) () #:transparent)
+(define-struct (query-alias source-alias) () #:prefab)
 
 ; source-alias -> (listof column)
 (define (source-alias-columns alias)
@@ -34,18 +34,18 @@
       (query-what (source-alias-value alias))))
 
 ; (struct symbol source source (U expression #f))
-(define-struct (join source) (op left right on) #:transparent)
+(define-struct (join source) (op left right on) #:prefab)
 
 ; Expressions ------------------------------------
 
 ; (struct type)
-(define-struct expression (type) #:transparent)
+(define-struct expression (type) #:prefab)
 
 ; (struct type symbol)
-(define-struct (column expression) (name) #:transparent)
+(define-struct (column expression) (name) #:prefab)
 
 ; (struct type entity-alias attribute)
-(define-struct (attribute-alias column) (entity attribute) #:transparent)
+(define-struct (attribute-alias column) (entity attribute) #:prefab)
 
 ; entity-alias attribute -> value
 (define (create-attribute-alias entity attr)
@@ -55,20 +55,20 @@
                         attr))
 
 ; (struct type symbol expression)
-(define-struct (expression-alias column) (value) #:transparent) 
+(define-struct (expression-alias column) (value) #:prefab) 
 
 ; symbol expression -> value
 (define (create-expression-alias name value)
   (make-expression-alias (expression-type value) name value))
 
 ; (struct type symbol (listof expression)
-(define-struct (function expression) (op args) #:transparent)
+(define-struct (function expression) (op args) #:prefab)
 
 ; (struct type symbol (listof (U entity-alias attribute-alias)))
 (define-struct (aggregate function) () #:transparent)
 
 ; (struct type any)
-(define-struct (literal expression) (value) #:transparent)
+(define-struct (literal expression) (value) #:prefab)
 
 ; literal-value -> literal
 (define (create-literal val)
@@ -92,7 +92,7 @@
 ; Ordering ---------------------------------------
 
 ; (struct expression (U 'asc 'desc))
-(define-struct order (expression direction) #:transparent)
+(define-struct order (expression direction) #:prefab)
 
 ; Queries ----------------------------------------
 
@@ -121,7 +121,7 @@
    local-columns
    imported-columns
    extract-info)
-  #:transparent)
+  #:prefab)
 
 ; Predicates -----------------------------------
 
