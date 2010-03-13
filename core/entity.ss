@@ -10,6 +10,7 @@
          "struct.ss"
          "pretty.ss")
 
+;   model
 ;   symbol
 ;   symbol
 ;   (listof symbol)
@@ -34,7 +35,8 @@
 ;   struct-type
 ;   (any ... -> snooze-struct)
 ;   (any -> boolean)
-(define (create-entity name
+(define (create-entity model
+                       name
                        plural-name
                        attr-names
                        make-attr-types
@@ -58,6 +60,7 @@
   ; entity
   (define entity
     (make-vanilla-entity
+     model
      name
      plural-name
      table-name
@@ -218,7 +221,8 @@
 
 (provide/contract
  [rename create-entity make-entity
-         (->* (symbol?
+         (->* (model?
+               symbol?
                symbol?
                (listof symbol?)
                (-> entity? (listof type?))

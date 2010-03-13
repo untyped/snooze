@@ -299,7 +299,8 @@
                                                        (list attr-pretty-plural ...)
                                                        attr-pretty-names)]
                         [make-attr-types          (lambda (entity) (list attr-type-expr ...))])
-                   (make-entity 'entity
+                   (make-entity (current-model)
+                                'entity
                                 'plural
                                 attr-names
                                 make-attr-types

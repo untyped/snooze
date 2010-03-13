@@ -198,9 +198,36 @@
 (define type:time-utc (make-time-utc-type #t))
 (define type:binary   (make-binary-type   #t))
 
+; Models -----------------------------------------
+
+; (struct symbol (hasheqof symbol entity)
+(define-struct model (name entities) #:transparent)
+
+; symbol -> model
+(define (create-model name)
+  (make-model name (make-hasheq)))
+
+; symbol -> entity
+(define (model-entity? model name)
+  (and (hash-ref (model-entities model) name #f) #t))
+
+; symbol -> entity
+(define (model-entity model name)
+  (hash-ref (model-entities model) name))
+
+; model entity -> void
+(define (model-add-entity! model entity)
+  (if (hash-ref (model-entities model) (entity-name entity) #f)
+      (error "model already contains entity with that name" entity)
+      (hash-set! (model-entities model) (entity-name entity) entity)))
+
+; (parameter model)
+(define current-model (make-parameter (create-model 'default)))
+
 ; Entities ---------------------------------------
 
-; (struct symbol 
+; (struct model
+;         symbol 
 ;         symbol
 ;         symbol
 ;         string
@@ -224,7 +251,8 @@
 ;         (snooze-struct -> (listof check-result))
 ;         (snooze-struct -> (listof check-result))
 (define-struct entity 
-  (name
+  (model
+   name
    plural-name
    table-name
    pretty-name
@@ -253,9 +281,12 @@
   #:mutable
   #:property 
   prop:custom-write
-  (lambda (entity port write?)
-    (fprintf port "#<entity:~a>" (entity-name entity))))
+  (lambda (entity out write?)
+    ((if write? write display)
+     (vector 'entity (entity-name entity))
+     out)))
 
+;  model
 ;  symbol
 ;  symbol
 ;  symbol
@@ -272,6 +303,7 @@
 ; the entity. This procedure gets around the field contracts on entity during
 ; the creation process.
 (define (make-vanilla-entity
+         model
          name
          plural-name
          table-name
@@ -280,21 +312,23 @@
          pretty-formatter
          guid-constructor
          guid-predicate)
-  (let ([empty-hook  (lambda (continue conn guid) (continue conn guid))]
-        [empty-check (lambda (guid) null)])
-    (make-entity name plural-name table-name pretty-name pretty-name-plural pretty-formatter
-                 #f                       ; struct type
-                 #f #f #f #f #f #f #f #f  ; constructors and predicates
-                 guid-constructor         ; guid constructor
-                 guid-predicate           ; guid predicate
-                 null                     ; attributes
-                 #f                       ; default-alias
-                 #f                       ; default-order
-                 null                     ; uniqueness-constraints
-                 empty-hook               ; hooks
-                 empty-hook               ;
-                 empty-check              ; validation
-                 empty-check)))           ;
+  (let* ([empty-hook  (lambda (continue conn guid) (continue conn guid))]
+         [empty-check (lambda (guid) null)]
+         [entity      (make-entity model name plural-name table-name pretty-name pretty-name-plural pretty-formatter
+                                   #f                       ; struct type
+                                   #f #f #f #f #f #f #f #f  ; constructors and predicates
+                                   guid-constructor         ; guid constructor
+                                   guid-predicate           ; guid predicate
+                                   null                     ; attributes
+                                   #f                       ; default-alias
+                                   #f                       ; default-order
+                                   null                     ; uniqueness-constraints
+                                   empty-hook               ; hooks
+                                   empty-hook               ;
+                                   empty-check              ; validation
+                                   empty-check)])           ;
+    (model-add-entity! model entity)
+    entity))
 
 ; entity natural -> guid
 (define (entity-make-guid entity id)
@@ -387,10 +421,12 @@
   #:transparent
   #:property
   prop:custom-write
-  (lambda (attribute port write?)
-    (fprintf port "#<attr:~a-~a>" 
+  (lambda (attribute out write?)
+    ((if write? write display)
+     (vector 'attr
              (entity-name (attribute-entity attribute))
-             (attribute-name attribute))))
+             (attribute-name attribute))
+     out)))
 
 ; attribute -> boolean
 (define (attribute-primary-key? attr)
@@ -492,7 +528,15 @@
  [type:time-tai                        time-tai-type?]
  [type:time-utc                        time-utc-type?]
  [type:binary                          binary-type?]
- [struct entity                        ([name                   symbol?]
+ [struct model                         ([name                   symbol?]
+                                        [entities               (hash/c symbol? entity?)])]
+ [create-model                         (-> symbol? model?)]
+ [model-entity?                        (-> model? symbol? boolean?)]
+ [model-entity                         (-> model? symbol? entity?)]
+ [model-add-entity!                    (-> model? entity? void?)]
+ [current-model                        (parameter/c model?)]
+ [struct entity                        ([model                  model?]
+                                        [name                   symbol?]
                                         [plural-name            symbol?]
                                         [table-name             symbol?]
                                         [pretty-name            string?]
@@ -523,7 +567,8 @@
                                                                     snooze-struct?)]
                                         [save-check             procedure?]
                                         [delete-check           procedure?])]
- [make-vanilla-entity                  (-> symbol?
+ [make-vanilla-entity                  (-> model?
+                                           symbol?
                                            symbol?
                                            symbol?
                                            string?
