@@ -23,14 +23,14 @@
     
     ; query -> (U single-item-extractor multi-item-extractor)
     (define/public (make-query-extractor query)
-      (let ([extract-info (query-extract-info query)])
-        (if (or (pair? extract-info) (null? extract-info))
+      (let ([info (query-extract-info query)])
+        (if (or (pair? info) (null? info))
             (make-multiple-item-extractor
-             (map (lambda (item)
-                    (and (entity? item) item))
-                  extract-info))
+             (map (lambda (info)
+                    (and info (model-entity (current-model) info)))
+                  info))
             (make-single-item-extractor
-             (and (entity? extract-info) extract-info)))))
+             (and info (model-entity (current-model) info))))))
     
     ; (U entity #f) -> single-item-extractor
     ; where single-item-extractor

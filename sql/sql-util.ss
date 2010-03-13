@@ -17,7 +17,7 @@
 (define source->sources
   (match-lambda
     [(? join? join)          (append (source->sources (join-left join)) (source->sources (join-right join)))]
-    [(? query-alias? alias)  (list alias)]
+    [(? query-alias?  alias) (list alias)]
     [(? entity-alias? alias) (list alias)]))
 
 ; source -> column-list column-list
@@ -44,7 +44,7 @@
                     [(? join? join)          (cons (join-on join)
                                                    (append (loop (join-left join))
                                                            (loop (join-right join))))]
-                    [(? query-alias? alias)  (loop (query-from (source-alias-value alias)))]
+                    [(? query-alias? alias)  (loop (query-from (query-alias-query alias)))]
                     [(? entity-alias? alias) null]))]
          ; Empty hash table in which to store the results:
          [hash  (make-hash)])
@@ -99,14 +99,14 @@
     [(? expression? expr)
      (list expr)]
     [(? entity-alias? alias)
-     (list (make-attribute-alias alias (car (entity-attributes (source-alias-value alias)))))]
+     (list (make-attribute-alias alias (car (entity-attributes (entity-alias-entity alias)))))]
     [(? query-alias? alias)
      (source-alias-columns alias)]))
 
 ;   ((opt-listof (U expression entity-alias query-alias))
 ; ->
 ;    (listof column)
-;    (opt-listof (U entity type)))
+;    (opt-listof (U symbol #f)))
 ;
 ; where (opt-listof x) = (U x (listof x))
 (define (expand-what-argument argument)
@@ -117,7 +117,7 @@
 ;   ((listof (U expression entity-alias query-alias))
 ; -> 
 ;    (listof column)
-;    (listof (U entity type)))
+;    (listof (U symbol #f)))
 (define (expand-what-list argument)
   (for/fold ([what-accum null] [info-accum null])
             ([arg argument])
@@ -129,24 +129,24 @@
 ;   ((U expression entity-alias query-alias)
 ; -> 
 ;    (listof column)
-;    (opt-listof (U entity type)))
+;    (opt-listof (U symbol #f)))
 (define expand-what-item
   (match-lambda
     [(and argument (struct attribute-alias (type _ _ attr)))
      (values (list argument)
-             type)]
+             #f)]
     [(? expression-alias? argument)
      (values (list argument) 
-             (expression-type argument))]
+             #f)]
     [(? expression? expr)
      (values (list (make-expression-alias (gensym 'expr) expr))
-             (expression-type expr))]
+             #f)]
     [(? entity-alias? alias)
      (values (source-alias-columns alias)
-             (source-alias-value alias))]
+             (entity-name (entity-alias-entity alias)))]
     [(? query-alias? alias)
      (values (source-alias-columns alias)
-             (query-extract-info (source-alias-value alias)))]))
+             (query-extract-info (query-alias-query alias)))]))
 
 ; (listof (U expression entity-alias query-alias)) -> (listof column)
 (define (expand-group-argument group)
@@ -407,6 +407,6 @@
                                  (or/c (listof expression?) #f))]
  [expand-what-argument       (-> (opt-listof (or/c expression? source/c))
                                  (values (listof column?)
-                                         (opt-listof (or/c entity? type?))))]
+                                         (opt-listof (or/c symbol? #f))))]
  [expand-group-argument      (-> (opt-listof (or/c expression? source/c))
                                  (listof column?))])

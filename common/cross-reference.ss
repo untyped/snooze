@@ -45,28 +45,28 @@
     
     ; query -> (query-result -> query-result)
     (define/public (make-query-cross-referencer query)
-      (let ([cols     (query-what query)]
-            [entities+types (query-extract-info query)]
-            [xrefs    (source->foreign-keys (query-from query))])
-        (make-cross-referencer cols entities+types xrefs)))
+      (make-cross-referencer
+       (query-what query)
+       (query-extract-info query)
+       (source->foreign-keys (query-from query))))
     
     ;  (listof column)
-    ;  (U entity type (listof (U entity type)))
+    ;  (U symbol #f (listof (U symbol #f)))
     ;  (hashof column column)
     ; -> 
     ;  (query-result -> query-result)
-    (define/public (make-cross-referencer cols entities+types xrefs)
+    (define/public (make-cross-referencer cols info xrefs)
       ; Pass throughs: there's NEVER any cross-referencing to do if:
       ;   - we're not selecting more than one entity;
       ;   - there are no cross references in the FROM clause.
-      (if (or (<= (count-entities entities+types) 1)
+      (if (or (<= (count-entities info) 1)
               (zero? (dict-count xrefs)))
           ; Create a dummy cross-referencer that does nothing:
           (lambda (item frame) item)
           ; Create a real cross-referencer:
-          (let*-values ([(sizes) (entities->sizes entities+types)]
+          (let*-values ([(sizes) (entities->sizes info)]
                         ; Mask out any primary and foreign keys that aren't part of an extracted snooze-struct:
-                        [(cols)  (entities->mask entities+types cols)]
+                        [(cols)  (entities->mask info cols)]
                         [(mutators local-indices remote-indices)
                          (for/fold ([mutators null] [local-indices null] [remote-indices null])
                                    ([fk (in-list cols)])
@@ -90,40 +90,40 @@
 
 ; Helpers ----------------------------------------
 
-; (listof (U entity type)) [natural] -> natural
-(define (count-entities entities+types [accum 0])
-  (cond [(pair?   entities+types)
-         (if (entity? (car entities+types))
-             (count-entities (cdr entities+types) (add1 accum))
-             (count-entities (cdr entities+types) accum))]
-        [(null?   entities+types) accum]
-        [(entity? entities+types) 1]
+; (listof (U symbol #f)) [natural] -> natural
+(define (count-entities info [accum 0])
+  (cond [(pair? info)
+         (if (car info)
+             (count-entities (cdr info) (add1 accum))
+             (count-entities (cdr info) accum))]
+        [(null? info) accum]
+        [info 1]
         [else 0]))
 
-; (listof (U entity type)) -> (listof (U column #f))
+; (listof (U symbol #f)) -> (listof (U column #f))
 ;
 ; Returns a mask of booleans over the query's columns:
 ; any columns not involved in entities are masked out with #f.
 ;
 ; We need this to avoid cross-referencing columns that aren't inside entities.
 ; See the test case "make-cross-referencer: mixture of entities and single columns" for more information.
-(define (entities->mask entities+types cols)
+(define (entities->mask info cols)
   (map (cut and <> <>)
-       (append-map (lambda (entity+type)
-                     (if (entity? entity+type)
-                         (make-list (length (entity-attributes entity+type)) #t)
+       (append-map (lambda (info)
+                     (if info
+                         (make-list (length (entity-attributes (model-entity (current-model) info))) #t)
                          (list #f)))
-                   entities+types)
+                   info)
        cols))
 
-; (listof (U entity type)) -> (listof integer)
+; (listof (U symbol #f)) -> (listof integer)
 ; Works out the size of each item in a result row.
-(define (entities->sizes entities+types)
-  (map (lambda (entity+type)
-         (if (entity? entity+type)
-             (length (entity-attributes entity+type))
+(define (entities->sizes info)
+  (map (lambda (info)
+         (if info
+             (length (entity-attributes (model-entity (current-model) info)))
              1))
-       entities+types))
+       info))
 
 ; column (listof column) (listof integer) -> (U natural #f)
 ; Works out which struct any given column is inside.

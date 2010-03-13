@@ -22,24 +22,24 @@
 (define sql:alias
   (match-lambda*
     [(list (? symbol? id) (? entity? item))
-     (make-entity-alias id item)]
+     (make-entity-alias id (entity-name item))]
     [(list (? symbol? id) (? query? item))
      (make-query-alias id item)]
     [(list (? symbol? id) (? non-alias-expression? item))
      (make-expression-alias id item)]
-    [(list (and alias (struct entity-alias (name entity))) (? attribute? attr))
-     (define entity (source-alias-value alias))
-     (if (eq? (attribute-entity attr) entity)
-         (make-attribute-alias alias attr)
-         (raise-exn exn:fail:contract
-           (format "Entity does not contain that attribute: ~a ~a" entity attr)))]
-    [other (raise-exn exn:fail:contract (format "Bad arguments to sql:alias: ~s" other))]))
+    [(list (? entity-alias? alias) (? attribute? attr))
+     (let ([entity (entity-alias-entity alias)])
+       (if (eq? (attribute-entity attr) entity)
+           (make-attribute-alias alias attr)
+           (raise-exn exn:fail:contract
+             (format "attribute not found: ~a ~a" entity attr))))]
+    [other (raise-exn exn:fail:contract (format "bad arguments to sql:alias: ~s" other))]))
 
 ; entity-alias (U symbol attribute) -> attribute-alias
 ;
 ; Provides backwards compatibility with the q:attr form in a previous Snooze query language.
 (define (sql:attr alias attr+name)
-  (make-attribute-alias alias (entity-attribute (source-alias-value alias) attr+name)))
+  (make-attribute-alias alias (entity-attribute (entity-alias-entity alias) attr+name)))
 
 ; any -> boolean
 (define (non-alias-expression? item)

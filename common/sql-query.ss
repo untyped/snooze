@@ -155,8 +155,8 @@
     ; entity-alias output-port -> void
     (define (display-from/entity alias out)
       (match alias
-        [(struct entity-alias (id entity))
-         (display (escape-sql-name (entity-table-name entity)) out)
+        [(struct entity-alias (id entity-name))
+         (display (escape-sql-name (entity-table-name (model-entity (current-model) entity-name))) out)
          (display " AS " out)
          (display (escape-sql-name id) out)]))
     

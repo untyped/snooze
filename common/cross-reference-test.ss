@@ -68,15 +68,10 @@
   (test-suite "cross-reference.ss"
     
     (test-case "count-entities"
-      (check-equal? (count-entities person) 1)
-      (check-equal? (count-entities type:integer) 0)
-      (check-equal? (count-entities (list person person)) 2)
-      (check-equal? (count-entities (list (attribute-type (attr person guid))
-                                          person
-                                          (attribute-type (attr pet owner))
-                                          pet
-                                          course))
-                    3))
+      (check-equal? (count-entities 'person) 1)
+      (check-equal? (count-entities #f) 0)
+      (check-equal? (count-entities '(person person)) 2)
+      (check-equal? (count-entities '(#f person #f pet course)) 3))
     
     (test-equal? "column->struct-index"
       (for/list ([i (in-range 0 10)])
@@ -129,7 +124,7 @@
                            (list pet3 per3)
                            (list pet4 per4))]
              [xref*  (make-cross-referencer (append (entity-columns pet) (entity-columns person))
-                                            (list pet person)
+                                            '(pet person)
                                             (build-hash (sql-list pet.owner person.guid)))]
              [xref   (cut xref* <> (transaction-frame-push #f))]
              [do-row (g:map xref (g:list input))])
@@ -170,7 +165,7 @@
              [xref*  (make-cross-referencer (append (entity-columns pet)
                                                     (entity-columns person)
                                                     (entity-columns vehicle))
-                                            (list pet person vehicle)
+                                            '(pet person vehicle)
                                             (build-hash (sql-list pet.owner        person.guid
                                                                   vehicle.owner    person.guid
                                                                   vehicle.occupant pet.guid)))]
@@ -207,7 +202,7 @@
                            (list pet2 per2 veh2))]
              [xref*  (make-cross-referencer (append (entity-columns pet)
                                                     (entity-columns vehicle))
-                                            (list pet vehicle)
+                                            '(pet vehicle)
                                             (build-hash (sql-list pet.owner person.guid)))]
              [xref   (cut xref* <> (transaction-frame-push #f))]
              [do-row (g:map xref (g:list input))])
@@ -231,7 +226,7 @@
                                                       (list expr2)
                                                       (entity-columns person)
                                                       (list expr3))
-                                              (list type:integer pet type:integer person type:integer)
+                                              '(#f pet #f person #f)
                                               (build-hash (sql-list pet.owner person.guid)))]
                [xref   (cut xref* <> (transaction-frame-push #f))]
                [do-row (g:map xref (g:list input))])

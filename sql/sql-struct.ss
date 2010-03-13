@@ -16,59 +16,69 @@
 
 ; Sources --------------------------------------
 
-(define-struct source () #:prefab)
+(define-serializable-struct source () #:transparent)
 
-(define-struct (source-alias source) (name value) #:prefab)
+; (struct symbol)
+(define-serializable-struct (source-alias source) (name) #:transparent)
+
+; (struct symbol symbol)
+(define-serializable-struct (entity-alias source-alias) (entity-name) #:transparent)
 
 ; (struct symbol entity)
-(define-struct (entity-alias source-alias) () #:prefab)
+(define (entity-alias-entity alias)
+  (model-entity (current-model) (entity-alias-entity-name alias)))
 
 ; (struct symbol query)
-(define-struct (query-alias source-alias) () #:prefab)
+(define-serializable-struct (query-alias source-alias) (query) #:transparent)
 
 ; source-alias -> (listof column)
 (define (source-alias-columns alias)
   (if (entity-alias? alias)
       (map (cut create-attribute-alias alias <>)
-           (entity-attributes (source-alias-value alias)))
-      (query-what (source-alias-value alias))))
+           (entity-attributes (entity-alias-entity alias)))
+      (query-what (query-alias-query alias))))
 
 ; (struct symbol source source (U expression #f))
-(define-struct (join source) (op left right on) #:prefab)
+(define-serializable-struct (join source) (op left right on) #:transparent)
 
 ; Expressions ------------------------------------
 
 ; (struct type)
-(define-struct expression (type) #:prefab)
+(define-serializable-struct expression (type) #:transparent)
 
 ; (struct type symbol)
-(define-struct (column expression) (name) #:prefab)
+(define-serializable-struct (column expression) (name) #:transparent)
 
-; (struct type entity-alias attribute)
-(define-struct (attribute-alias column) (entity attribute) #:prefab)
+; (struct type entity-alias symbol)
+(define-serializable-struct (attribute-alias column) (entity attribute-name) #:transparent)
 
 ; entity-alias attribute -> value
 (define (create-attribute-alias entity attr)
   (make-attribute-alias (attribute-type attr) 
                         (symbol-append (source-alias-name entity) '- (attribute-name attr))
                         entity
-                        attr))
+                        (attribute-name attr)))
+
+; attribute-alias -> attribute
+(define (attribute-alias-attribute alias)
+  (entity-attribute (entity-alias-entity (attribute-alias-entity alias))
+                    (attribute-alias-attribute-name alias)))
 
 ; (struct type symbol expression)
-(define-struct (expression-alias column) (value) #:prefab) 
+(define-serializable-struct (expression-alias column) (value) #:transparent) 
 
 ; symbol expression -> value
 (define (create-expression-alias name value)
   (make-expression-alias (expression-type value) name value))
 
 ; (struct type symbol (listof expression)
-(define-struct (function expression) (op args) #:prefab)
+(define-serializable-struct (function expression) (op args) #:transparent)
 
 ; (struct type symbol (listof (U entity-alias attribute-alias)))
-(define-struct (aggregate function) () #:transparent)
+(define-serializable-struct (aggregate function) () #:transparent)
 
 ; (struct type any)
-(define-struct (literal expression) (value) #:prefab)
+(define-serializable-struct (literal expression) (value) #:transparent)
 
 ; literal-value -> literal
 (define (create-literal val)
@@ -92,7 +102,7 @@
 ; Ordering ---------------------------------------
 
 ; (struct expression (U 'asc 'desc))
-(define-struct order (expression direction) #:prefab)
+(define-serializable-struct order (expression direction) #:transparent)
 
 ; Queries ----------------------------------------
 
@@ -107,8 +117,8 @@
 ;         (U integer #f)
 ;         (listof column)
 ;         (listof column)
-;         (U entity type (listof (U entity type))))
-(define-struct query
+;         (U symbol #f (listof (U symbol #f))))
+(define-serializable-struct query
   (what
    distinct
    from
@@ -121,7 +131,7 @@
    local-columns
    imported-columns
    extract-info)
-  #:prefab)
+  #:transparent)
 
 ; Predicates -----------------------------------
 
@@ -192,25 +202,28 @@
 
 (provide/contract
  [struct source                        ()]
- [struct (source-alias source)         ([name symbol?] [value (or/c entity? query?)])]
- [struct (entity-alias source-alias)   ([name symbol?] [value entity?])]
- [struct (query-alias source-alias)    ([name symbol?] [value query?])]
- [struct (join source)                 ([op symbol?] [left source?] [right source?] [on (or/c expression? false/c)])]
+ [struct (source-alias source)         ([name symbol?])]
+ [struct (entity-alias source-alias)   ([name symbol?] [entity-name symbol?])]
+ [entity-alias-entity                  (-> entity-alias? entity?)]
+ [struct (query-alias source-alias)    ([name symbol?] [query query?])]
+ [struct (join source)                 ([op symbol?] [left source?] [right source?] [on (or/c expression? #f)])]
  [struct expression                    ([type type?])]
  [struct (column expression)           ([type type?] [name symbol?])]
+ [create-attribute-alias               (-> entity-alias? attribute? attribute-alias?)]
+ [attribute-alias-attribute            (-> attribute-alias? attribute?)]
  [struct (function expression)         ([type type?] [op symbol?] [args (listof function-arg/c)])]
  [struct (aggregate function)          ([type type?] [op symbol?] [args (listof function-arg/c)])]
  [struct order                         ([expression expression?] [direction (symbols 'asc 'desc)])]
  [struct query                         ([what             (listof column?)]
-                                        [distinct         (or/c (listof expression?) false/c)]
+                                        [distinct         (or/c (listof expression?) #f)]
                                         [from             source?]
-                                        [where            (or/c expression? false/c)]
+                                        [where            (or/c expression? #f)]
                                         [group            (listof expression?)]
                                         [order            (listof order?)]
-                                        [having           (or/c expression? false/c)]
-                                        [limit            (or/c integer? false/c)]
-                                        [offset           (or/c integer? false/c)]
+                                        [having           (or/c expression? #f)]
+                                        [limit            (or/c integer? #f)]
+                                        [offset           (or/c integer? #f)]
                                         [local-columns    (listof column?)]
                                         [imported-columns (listof column?)]
-                                        [extract-info     (or/c entity? type? (listof (or/c entity? type?)))])]
+                                        [extract-info     (or/c symbol? #f (listof (or/c symbol? #f)))])]
  [source-alias-columns                 (-> source-alias? (listof column?))])

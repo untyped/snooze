@@ -20,7 +20,7 @@
     (test-case "alias"
       (begin-with-definitions
         
-        (define p (make-entity-alias 'p person))
+        (define p (make-entity-alias 'p 'person))
         (define q (make-query null #f p #f null null #f #f #f null null null))
         
         (check-equal? (sql:alias 'p person) p "entity")
@@ -163,11 +163,11 @@
         (define select1 (sql:select #:from p1))
         
         (check-equal? (query-extract-info (sql:select #:from p1))
-                      person
+                      'person
                       "entity")
         
         (check-equal? (query-extract-info (sql:select #:from (sql:outer p1 p2)))
-                      (list person pet)
+                      '(person pet)
                       "join")))
     
     (test-case "select : queries in #:from get quoted"
@@ -333,20 +333,19 @@
         (define p1-average-id   (sql:average (sql p1.revision)))
         
         (check-equal? (query-extract-info (sql:select #:what (sql p1.revision) #:from p1))
-                      (make-integer-type #f 0 #f)
+                      #f
                       "single attribute")
         
         (check-equal? (query-extract-info (sql:select #:what (list (sql p1.revision) (sql p1.name)) #:from p1))
-                      (list (make-integer-type #f 0 #f)
-                            (make-string-type #t #f))
+                      '(#f #f)
                       "list of attributes")
         
         (check-equal? (query-extract-info (sql:select #:from p1))
-                      person
+                      'person
                       "single entity")
         
         (check-equal? (query-extract-info (sql:select #:from (sql:outer p1 p2)))
-                      (list person person)
+                      '(person person)
                       "multiple entities")
         
         (check-equal? (query-extract-info (sql:select #:what (list p1-count-id
@@ -355,11 +354,7 @@
                                                                    p1-min-revision
                                                                    p1-average-id)
                                                       #:from p1))
-                      (list (make-integer-type #t #f #f)
-                            (make-integer-type #t #f #f)
-                            (make-integer-type #f  0 #f)
-                            (make-integer-type #f  0 #f)
-                            (make-real-type    #t #f #f))
+                      '(#f #f #f #f #f)
                       "aggregates")
         
         (check-equal? (query-extract-info (sql:select #:what (list (sql:alias 'column1 (sql:+ (sql p1.revision) (sql p1.revision)))
@@ -367,7 +362,7 @@
                                                                    (sql:alias 'column3 (sql:string-append (sql p1.name) " rocks!"))
                                                                    (sql:alias 'column4 (sql:> (sql p1.revision) 123)))
                                                       #:from p1))
-                      (list type:integer type:real type:string type:boolean)
+                      '(#f #f #f #f)
                       "expressions")))))
 
 ; Provide statements -----------------------------
