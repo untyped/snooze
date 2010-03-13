@@ -40,7 +40,7 @@
   (test-suite "type"
     
     (test-case "type-name"
-      (check-equal? (type-name (make-guid-type #f person)) 'person))))
+      (check-equal? (type-name (entity-make-guid-type person #f)) 'person))))
 
 ; Entity tests ---------------------------------
 
@@ -105,7 +105,7 @@
           (check-equal? (map attribute-column-name attrs) '(id revision owner name))
           (check-equal? (map attribute-index       attrs) '(0 1 2 3))
           (check-equal? (cddr (map attribute-type attrs))
-                        (list (make-guid-type #t person)
+                        (list (entity-make-guid-type person #t)
                               (make-string-type #t #f)))))
       
       (test-case "entity-has-attribute?"
@@ -142,7 +142,7 @@
                               (length expected))
                         expected))
         
-        (let ([expected (list 'guid 'id 0 #t #t (make-guid-type #f pet))])
+        (let ([expected (list 'guid 'id 0 #t #t (entity-make-guid-type pet #f))])
           (check-attribute 'guid expected)
           (check-attribute (attr pet guid) expected))
         
@@ -150,7 +150,7 @@
           (check-attribute 'revision expected)
           (check-attribute (attr pet revision) expected))
         
-        (let ([expected (list 'owner 'owner 2 #t #t (make-guid-type #t person))])
+        (let ([expected (list 'owner 'owner 2 #t #t (entity-make-guid-type person #t))])
           (check-attribute 'owner expected)
           (check-attribute (attr pet owner) expected))
         

@@ -16,8 +16,10 @@
 ;   (listof symbol)
 ;   (entity -> (listof type))
 ;   (listof (snooze -> any))
-;   (snooze<%> (U natural #f) -> guid)
-;   (any -> boolean)
+;   ((U natural #f) -> guid)
+;   ((U guid any) -> boolean)
+;   (-> boolean guid)
+;   (-> (U guid-type any) boolean?)
 ;   [#:table-name               symbol]
 ;   [#:pretty-name              string]
 ;   [#:pretty-name-plural       string]
@@ -43,6 +45,8 @@
                        attr-defaults
                        guid-constructor
                        guid-predicate
+                       guid-type-constructor
+                       guid-type-predicate
                        #:table-name               [table-name               (name->database-name name)]
                        #:pretty-name              [pretty-name              (name->pretty-name   name)]
                        #:pretty-name-plural       [pretty-name-plural       (name->pretty-name   plural-name)]
@@ -68,7 +72,9 @@
      pretty-name-plural
      pretty-formatter
      guid-constructor
-     guid-predicate))
+     guid-predicate
+     guid-type-constructor
+     guid-type-predicate))
   
   ; (listof type)
   (define attr-types
@@ -113,7 +119,7 @@
   (define guid-attribute
     (let* ([name             'guid]
            [col              'guid]
-           [type             (make-guid-type #f entity)]
+           [type             (guid-type-constructor #f)]
            [default-maker    (cut entity-make-temporary-guid entity)]
            [index            0])
       (create-attribute name col "unique ID" "unique IDs" type entity index default-maker struct-accessor struct-mutator)))
@@ -227,7 +233,9 @@
                (listof symbol?)
                (-> entity? (listof type?))
                (listof procedure?)
-               procedure?
+               (-> (or/c symbol? natural-number/c) guid?)
+               (-> any/c boolean?)
+               (-> boolean? guid-type?)
                (-> any/c boolean?))
               (#:table-name symbol?
                             #:pretty-name              string?

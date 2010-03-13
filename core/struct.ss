@@ -39,24 +39,6 @@
 (define (guid-entity guid)
   (unbox (guid-entity-box guid)))
 
-; (_ id entity)
-(define-syntax (define-guid-type stx)
-  (syntax-case stx ()
-    [(_ id)
-     (with-syntax ([struct-id (make-id #f #'id '-guid)])
-       #'(define-serializable-struct (id guid)
-           ()
-           #:transparent
-           #:property
-           prop:guid-entity-box
-           (box #f)
-           #:property
-           prop:custom-write
-           (lambda (guid out write?)
-             ((if write? write display)
-              (vector 'struct-id (guid-id guid))
-              out))))]))
-
 ; guid -> guid
 (define (copy-guid guid)
   ((entity-guid-constructor (guid-entity guid)) (guid-id guid)))
@@ -68,11 +50,27 @@
 
 ; Attribute types --------------------------------
 
+; property
+; guid-type -> boolean
+; guid-type -> entity
+(define-values (prop:guid-type-entity-box guid-type-entity? guid-type-entity-box)
+  (make-struct-type-property 'guid-type-entity-box))
+
 ; (struct boolean)
 (define-serializable-struct type (allows-null?) #:transparent)
 
-; (struct boolean entity)
-(define-serializable-struct (guid-type type) (entity) #:transparent)
+; guid-type -> entity
+(define (guid-type-entity type)
+  (unbox (guid-type-entity-box type)))
+
+; (struct boolean)
+(define-serializable-struct
+  (guid-type type)
+  ()
+  #:transparent
+  #:property
+  prop:guid-type-entity-box
+  (box #f))
 
 ; (struct boolean)
 (define-serializable-struct (boolean-type type) () #:transparent)
@@ -117,7 +115,7 @@
       (or (not check-constraints?)
           (type-allows-null? type))
       (match type
-        [(struct guid-type (_ entity))     ((entity-predicate entity) val)]
+        [(? guid-type?)                    ((entity-predicate (guid-type-entity type)) val)]
         [(? boolean-type?)                 (boolean? val)]
         [(struct integer-type (_ min max)) (and (integer? val)
                                                 (or (not check-constraints?)
@@ -173,7 +171,7 @@
 (define (type-contract type)
   (flat-named-contract
    (match type
-     [(struct guid-type (null? entity))     `(foreign-key/c ,(entity-name entity))]
+     [(? guid-type?)                        `(guid-attr/c ,(entity-name (guid-type-entity type)))]
      [(? boolean-type?)                     '(boolean-attr/c)]
      [(struct numeric-type (null? min max)) `(,(if (integer-type? type) 'integer-attr/c 'real-attr/c)
                                               ,@(if min `(#:min-value ,min) null)
@@ -207,13 +205,17 @@
 (define (create-model name)
   (make-model name (make-hasheq)))
 
-; symbol -> entity
+; model symbol -> entity
 (define (model-entity? model name)
   (and (hash-ref (model-entities model) name #f) #t))
 
-; symbol -> entity
+; model symbol -> entity
 (define (model-entity model name)
   (hash-ref (model-entities model) name))
+
+; model symbol symbol -> attribute
+(define (model-attribute model entity-name attribute-name)
+  (entity-attribute (model-entity model entity-name) attribute-name))
 
 ; model entity -> void
 (define (model-add-entity! model entity)
@@ -244,6 +246,8 @@
 ;         (snooze-struct #:kw any ... -> snooze-struct)
 ;         ((U natural symbol) -> guid)
 ;         ((U guid any) -> boolean)
+;         (boolean -> guid-type)
+;         ((U guid-type any) -> boolean)
 ;         (listof attribute)
 ;         (listof (cons attribute (listof attribute)))
 ;         ((snooze-struct -> snooze-struct) snooze-struct -> snooze-struct)
@@ -269,6 +273,8 @@
    copy-constructor
    guid-constructor
    guid-predicate
+   guid-type-constructor
+   guid-type-predicate
    attributes
    default-alias
    default-order
@@ -295,6 +301,8 @@
 ;  (snooze-struct any ... -> string)
 ;  ((U natural symbol) -> guid)
 ;  ((U guid any) -> boolean)
+;  (boolean -> guid-type)
+;  ((U guid-type any) -> boolean)
 ; ->
 ;  entity
 ;
@@ -311,7 +319,9 @@
          pretty-name-plural
          pretty-formatter
          guid-constructor
-         guid-predicate)
+         guid-predicate
+         guid-type-constructor
+         guid-type-predicate)
   (let* ([empty-hook  (lambda (continue conn guid) (continue conn guid))]
          [empty-check (lambda (guid) null)]
          [entity      (make-entity model name plural-name table-name pretty-name pretty-name-plural pretty-formatter
@@ -319,6 +329,8 @@
                                    #f #f #f #f #f #f #f #f  ; constructors and predicates
                                    guid-constructor         ; guid constructor
                                    guid-predicate           ; guid predicate
+                                   guid-type-constructor    ; guid type constructor
+                                   guid-type-predicate      ; guid type predicate
                                    null                     ; attributes
                                    #f                       ; default-alias
                                    #f                       ; default-order
@@ -341,6 +353,14 @@
 ; entity any -> boolean
 (define (entity-guid? entity guid)
   ((entity-guid-predicate entity) guid))
+
+; entity [boolean] -> guid-type
+(define (entity-make-guid-type entity [allow-null? #f])
+  ((entity-guid-type-constructor entity) allow-null?))
+
+; entity any -> boolean
+(define (entity-guid-type? entity type)
+  ((entity-guid-type-predicate entity) type))
 
 ; entity (U symbol attribute) -> boolean
 (define (entity-has-attribute? entity name+attr)
@@ -473,9 +493,10 @@
 ; Provide statements -----------------------------
 
 (provide (all-from-out "core-snooze-interface.ss")
-         define-guid-type
          guid
-         struct:guid)
+         struct:guid
+         prop:guid-entity-box
+         prop:guid-type-entity-box)
 
 (provide/contract
  [current-snooze                       (parameter/c (or/c (is-a?/c snooze<%>) #f))]
@@ -488,8 +509,10 @@
  [set-guid-temporary-id!               (-> guid? void?)]
  [guid-entity-box                      (-> struct-type? box?)]
  [guid-entity                          (-> guid? entity?)]
+ [guid-type-entity-box                 (-> struct-type? box?)]
+ [guid-type-entity                     (-> guid-type? entity?)]
  [struct type                          ([allows-null? boolean?])]
- [struct (guid-type type)              ([allows-null? boolean?] [entity entity?])]
+ [struct (guid-type type)              ([allows-null? boolean?])]
  [struct (boolean-type type)           ([allows-null? boolean?])]
  [struct (numeric-type type)           ([allows-null? boolean?]
                                         [min-value    (or/c number? #f)]
@@ -533,6 +556,7 @@
  [create-model                         (-> symbol? model?)]
  [model-entity?                        (-> model? symbol? boolean?)]
  [model-entity                         (-> model? symbol? entity?)]
+ [model-attribute                      (-> model? symbol? symbol? entity?)]
  [model-add-entity!                    (-> model? entity? void?)]
  [current-model                        (parameter/c model?)]
  [struct entity                        ([model                  model?]
@@ -553,6 +577,8 @@
                                         [copy-constructor       procedure?]
                                         [guid-constructor       (-> (or/c natural-number/c symbol?) guid?)]
                                         [guid-predicate         (-> any/c boolean?)]
+                                        [guid-type-constructor  (-> boolean? guid-type?)]
+                                        [guid-type-predicate    (-> any/c boolean?)]
                                         [attributes             (listof attribute?)]
                                         [default-alias          any/c]
                                         [default-order          list?]
@@ -576,10 +602,14 @@
                                            procedure?
                                            procedure?
                                            procedure?
+                                           procedure?
+                                           procedure?
                                            entity?)]
  [entity-make-guid                     (-> entity? (or/c natural-number/c symbol?) guid?)]
  [entity-make-temporary-guid           (-> entity? temporary-guid?)]
  [entity-guid?                         (-> entity? any/c boolean?)]
+ [entity-make-guid-type                (->* (entity?) (boolean?) guid-type?)]
+ [entity-guid-type?                    (-> entity? any/c boolean?)]
  [entity-has-attribute?                (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-guid-attribute?               (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-attribute                     (-> entity? (or/c symbol? attribute?) attribute?)]

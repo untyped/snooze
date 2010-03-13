@@ -75,7 +75,7 @@
       "\"my-id\"")
     
     (test-case "escape-sql-value : guid"
-      (let ([t (make-guid-type #t person)])
+      (let ([t (entity-make-guid-type person #t)])
         (check-equal? (escape-sql-value t #f) "NULL")
         (check-equal? (escape-sql-value t (entity-make-guid person 123)) "123")
         (check-exn exn:fail? (cut escape-sql-value t (entity-make-guid course 123)))))

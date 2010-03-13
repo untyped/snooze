@@ -79,7 +79,7 @@
         [(symbol? val)        (make-literal type:symbol   val)]
         [(time-utc? val)      (make-literal type:time-utc val)]
         [(time-tai? val)      (make-literal type:time-tai val)]
-        [(guid? val)          (make-literal (make-guid-type #f (guid-entity val)) val)]
+        [(guid? val)          (make-literal (entity-make-guid-type (guid-entity val) #f) val)]
         [(snooze-struct? val) (create-literal (snooze-struct-guid val))]
         [else                 (raise-type-error 'create-literal
                                                 "(U boolean integer real string symbol time-tai time-utc)"

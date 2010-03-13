@@ -18,7 +18,8 @@
                     make-check-warning
                     make-check-error
                     make-check-failure
-                    make-check-fatal)
+                    make-check-fatal
+                    make-guid-type)
          "define-entity.ss"
          "provide-entity.ss"
          "snooze-struct.ss"

@@ -111,7 +111,11 @@
         (check-not-exn (cut sql (select #:from a #:limit 10 #:offset 10)))
         (check-not-exn (cut sql (select #:from a #:limit '10 #:offset '10)))
         (check-not-exn (cut sql (select #:from a #:limit `10 #:offset `10)))
-        (check-not-exn (cut sql (select #:from a #:limit ,10 #:offset ,10)))))))
+        (check-not-exn (cut sql (select #:from a #:limit ,10 #:offset ,10)))))
+    
+    (test-case "serialize"
+      (let ([original (sql (select #:from person #:order ((asc person.guid))))])
+        (check-equal? (deserialize (serialize original)) original)))))
 
 ; Provide statements -----------------------------
 

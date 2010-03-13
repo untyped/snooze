@@ -28,38 +28,42 @@
   ; Lists are accumulated in reverse order and re-reversed in "finish".
   
   ; Entity:
-  (define entity-id-stx #f)               ; person
-  (define plural-id-stx #f)               ; people
-  (define private-id-stx #f)              ; entity:person
-  (define struct-type-stx #f)             ; struct:person
-  (define constructor-stx #f)             ; make-person
-  (define predicate-stx #f)               ; person?
-  (define entity-guid-stx #f)             ; guid:person
-  (define entity-guid-struct-type-stx #f) ; struct:guid:person
-  (define entity-guid-constructor-stx #f) ; make-guid:person
-  (define entity-guid-predicate-stx #f)   ; guid:person?
+  (define entity-id-stx #f)                    ; person
+  (define plural-id-stx #f)                    ; people
+  (define private-id-stx #f)                   ; entity:person
+  (define struct-type-stx #f)                  ; struct:person
+  (define constructor-stx #f)                  ; make-person
+  (define predicate-stx #f)                    ; person?
+  (define entity-guid-stx #f)                  ; person-guid
+  (define entity-guid-struct-type-stx #f)      ; struct:person-guid
+  (define entity-guid-constructor-stx #f)      ; make-person-guid
+  (define entity-guid-predicate-stx #f)        ; person-guid?
+  (define entity-guid-type-stx #f)             ; person-guid-type
+  (define entity-guid-type-struct-type-stx #f) ; struct:person-guid-type
+  (define entity-guid-type-constructor-stx #f) ; make-person-guid-type
+  (define entity-guid-type-predicate-stx #f)   ; person-guid-type?
   
-  (define id-accessor-stx #f)             ; person-id
-  (define saved-predicate-stx #f)         ; person-saved?
-  (define pretty-formatter-stx #f)        ; format-person
-  (define defaults-constructor-stx #f)    ; make-person/defaults
-  (define copy-constructor-stx #f)        ; person-set
-  (define default-order-stx #f)           ; (sql-list (asc person.name) ...)
-  (define deserialize-info-stx #f)        ; deserialize-info:person
-  (define property-stxs null)             ; (... (cons prop:bar bar) (cons prop:foo foo))
-  (define entity-kw-stxs null)            ; #:table-name 'Person ...
+  (define id-accessor-stx #f)                  ; person-id
+  (define saved-predicate-stx #f)              ; person-saved?
+  (define pretty-formatter-stx #f)             ; format-person
+  (define defaults-constructor-stx #f)         ; make-person/defaults
+  (define copy-constructor-stx #f)             ; person-set
+  (define default-order-stx #f)                ; (sql-list (asc person.name) ...)
+  (define deserialize-info-stx #f)             ; deserialize-info:person
+  (define property-stxs null)                  ; (... (cons prop:bar bar) (cons prop:foo foo))
+  (define entity-kw-stxs null)                 ; #:table-name 'Person ...
   
   ; Attributes:
-  (define attr-stxs null)                 ; (gender age name)
-  (define attr-private-stxs null)         ; (attr:person-gender attr:person-age attr:person-name attr:person-revision attr:person-guid)
-  (define attr-type-stxs null)            ; (boolean integer person ...)
-  (define attr-type-expr-stxs null)       ; ((make-symbol-type #t) (make-integer-type #f) ...)
-  (define attr-default-stxs null)         ; (#t 123 ...)
-  (define attr-kw-stxs null)              ; (#:person-gender #:person-age #:person-name #:person-revision #:person-guid)
-  (define attr-column-stxs null)          ; ('gender 'age 'name)
-  (define attr-accessor-stxs null)        ; (person-gender person-age person-name person-revision person-guid)
-  (define attr-guid-accessor-stxs null)   ; (#f #f pet-owner-guid #f) <= people don't have foreign-keys so had to use pet for this example
-  (define attr-mutator-stxs null)         ; (set-person-gender! set-person-age! set-person-name! set-person-revision! set-person-guid!)
+  (define attr-stxs null)                      ; (gender age name)
+  (define attr-private-stxs null)              ; (attr:person-gender attr:person-age attr:person-name attr:person-revision attr:person-guid)
+  (define attr-type-stxs null)                 ; (boolean integer person ...)
+  (define attr-type-expr-stxs null)            ; ((make-symbol-type #t) (make-integer-type #f) ...)
+  (define attr-default-stxs null)              ; (#t 123 ...)
+  (define attr-kw-stxs null)                   ; (#:person-gender #:person-age #:person-name #:person-revision #:person-guid)
+  (define attr-column-stxs null)               ; ('gender 'age 'name)
+  (define attr-accessor-stxs null)             ; (person-gender person-age person-name person-revision person-guid)
+  (define attr-guid-accessor-stxs null)        ; (#f #f pet-owner-guid #f) <= people don't have foreign-keys so had to use pet for this example
+  (define attr-mutator-stxs null)              ; (set-person-gender! set-person-age! set-person-name! set-person-revision! set-person-guid!)
   (define attr-pretty-stxs null)
   (define attr-pretty-plural-stxs null)
   
@@ -68,23 +72,27 @@
   (define (parse-name stx)
     (syntax-case stx ()
       [(name other ...)
-       (begin (set! entity-id-stx               #'name)
-              (set! plural-id-stx               (make-id #'name (name->plural-name (syntax->datum #'name))))
-              (set! private-id-stx              (make-id #f 'entity: #'name))
-              (set! struct-type-stx             (make-id #'name 'struct: #'name))
-              (set! constructor-stx             (make-id #'name 'make- #'name))
-              (set! predicate-stx               (make-id #'name #'name '?))
-              (set! entity-guid-stx             (make-id #'name 'guid: #'name))
-              (set! entity-guid-struct-type-stx (make-id #'name 'struct:guid: #'name))
-              (set! entity-guid-constructor-stx (make-id #'name 'make-guid: #'name))
-              (set! entity-guid-predicate-stx   (make-id #'name 'guid: #'name '?))
-              (set! id-accessor-stx             (make-id #'name #'name '-id))
-              (set! saved-predicate-stx         (make-id #'name #'name '-saved?))
-              (set! pretty-formatter-stx        (make-id #'name 'format- #'name))
-              (set! defaults-constructor-stx    (make-id #'name 'make- #'name '/defaults))
-              (set! copy-constructor-stx        (make-id #'name #'name '-set))
-              (set! default-order-stx           #'null)
-              (set! deserialize-info-stx        (make-id #'name 'deserialize-info: #'name '-v0))
+       (begin (set! entity-id-stx                    #'name)
+              (set! plural-id-stx                    (make-id #'name (name->plural-name (syntax->datum #'name))))
+              (set! private-id-stx                   (make-id #f 'entity: #'name))
+              (set! struct-type-stx                  (make-id #'name 'struct: #'name))
+              (set! constructor-stx                  (make-id #'name 'make- #'name))
+              (set! predicate-stx                    (make-id #'name #'name '?))
+              (set! entity-guid-stx                  (make-id #f #'name '-guid))
+              (set! entity-guid-struct-type-stx      (make-id #f 'struct: #'name '-guid))
+              (set! entity-guid-constructor-stx      (make-id #f 'make- #'name '-guid))
+              (set! entity-guid-predicate-stx        (make-id #f #'name '-guid?))
+              (set! entity-guid-type-stx             (make-id #'name #'name '-guid-type))
+              (set! entity-guid-type-struct-type-stx (make-id #'name 'struct: #'name '-guid-type))
+              (set! entity-guid-type-constructor-stx (make-id #'name 'make- #'name '-guid-type))
+              (set! entity-guid-type-predicate-stx   (make-id #'name #'name '-guid-type?))
+              (set! id-accessor-stx                  (make-id #'name #'name '-id))
+              (set! saved-predicate-stx              (make-id #'name #'name '-saved?))
+              (set! pretty-formatter-stx             (make-id #'name 'format- #'name))
+              (set! defaults-constructor-stx         (make-id #'name 'make- #'name '/defaults))
+              (set! copy-constructor-stx             (make-id #'name #'name '-set))
+              (set! default-order-stx                #'null)
+              (set! deserialize-info-stx             (make-id #'name 'deserialize-info: #'name '-v0))
               (parse-attrs #'(other ...)))]))
   
   (define (parse-attrs stx)
@@ -133,7 +141,7 @@
           [binary   (set! my-type-expr-stx #'(make-binary-type allows-null?))]
           [entity   (if (or (bound-identifier=? #'entity entity-id-stx)
                             (with-handlers ([exn? (lambda _ #f)]) (entity-info-ref #'entity)))
-                        (begin (set! my-type-expr-stx #'(make-guid-type allows-null? entity))
+                        (begin (set! my-type-expr-stx #'(entity-make-guid-type entity allows-null?))
                                (set! my-guid-accessor-stx (make-id entity-id-stx entity-id-stx '- my-name-stx '-guid)))
                         (raise-syntax-error #f "not a valid attribute type" complete-stx stx))])))
     
@@ -233,34 +241,38 @@
   
   (define (finish-entity)
     (with-syntax (; Entity:
-                  [entity                   entity-id-stx]
-                  [plural                   plural-id-stx]
-                  [entity-private           private-id-stx]
-                  [struct-type              struct-type-stx]
-                  [constructor              constructor-stx]
-                  [predicate                predicate-stx]
-                  [entity-guid              entity-guid-stx]
-                  [entity-guid-struct-type  entity-guid-struct-type-stx]
-                  [entity-guid-constructor  entity-guid-constructor-stx]
-                  [entity-guid-predicate    entity-guid-predicate-stx]
+                  [entity                       entity-id-stx]
+                  [plural                       plural-id-stx]
+                  [entity-private               private-id-stx]
+                  [struct-type                  struct-type-stx]
+                  [constructor                  constructor-stx]
+                  [predicate                    predicate-stx]
+                  [entity-guid                  entity-guid-stx]
+                  [struct:entity-guid           entity-guid-struct-type-stx]
+                  [entity-guid-constructor      entity-guid-constructor-stx]
+                  [entity-guid-predicate        entity-guid-predicate-stx]
+                  [entity-guid-type             entity-guid-type-stx]
+                  [struct:entity-guid-type      entity-guid-type-struct-type-stx]
+                  [entity-guid-type-constructor entity-guid-type-constructor-stx]
+                  [entity-guid-type-predicate   entity-guid-type-predicate-stx]
                   
-                  [find-one                 (make-id entity-id-stx 'find- entity-id-stx)]
-                  [find-all                 (if (eq? (syntax->datum entity-id-stx)
-                                                     (syntax->datum plural-id-stx))
-                                                (make-id entity-id-stx 'find-all- plural-id-stx)
-                                                (make-id entity-id-stx 'find- plural-id-stx))]
-                  [find-count               (make-id entity-id-stx 'find-count- plural-id-stx)]
-                  [g:find                   (make-id entity-id-stx 'g: plural-id-stx)]
+                  [find-one                     (make-id entity-id-stx 'find- entity-id-stx)]
+                  [find-all                     (if (eq? (syntax->datum entity-id-stx)
+                                                         (syntax->datum plural-id-stx))
+                                                    (make-id entity-id-stx 'find-all- plural-id-stx)
+                                                    (make-id entity-id-stx 'find- plural-id-stx))]
+                  [find-count                   (make-id entity-id-stx 'find-count- plural-id-stx)]
+                  [g:find                       (make-id entity-id-stx 'g: plural-id-stx)]
                   
-                  [id-accessor              id-accessor-stx]
-                  [saved-predicate          saved-predicate-stx]
-                  [pretty-formatter         pretty-formatter-stx]
-                  [defaults-constructor     defaults-constructor-stx]
-                  [copy-constructor         copy-constructor-stx]
-                  [default-order            default-order-stx]
-                  [deserialize-info         deserialize-info-stx]
-                  [(property ...)           (reverse property-stxs)]
-                  [(entity-kw ...)          (reverse entity-kw-stxs)]
+                  [id-accessor                  id-accessor-stx]
+                  [saved-predicate              saved-predicate-stx]
+                  [pretty-formatter             pretty-formatter-stx]
+                  [defaults-constructor         defaults-constructor-stx]
+                  [copy-constructor             copy-constructor-stx]
+                  [default-order                default-order-stx]
+                  [deserialize-info             deserialize-info-stx]
+                  [(property ...)               (reverse property-stxs)]
+                  [(entity-kw ...)              (reverse entity-kw-stxs)]
                   ; Attributes:
                   [(guid-attr revision-attr attr ...)                     (list* #'guid
                                                                                  #'revision
@@ -288,7 +300,25 @@
                                                                                  #''revision
                                                                                  (reverse attr-column-stxs))])
       (quasisyntax/loc entity-id-stx
-        (begin (define-guid-type entity-guid)
+        (begin (define-serializable-struct (entity-guid guid)
+                 ()
+                 #:transparent
+                 #:property
+                 prop:guid-entity-box
+                 (box #f)
+                 #:property
+                 prop:custom-write
+                 (lambda (guid out write?)
+                   ((if write? write display)
+                    (vector 'entity-guid (guid-id guid))
+                    out)))
+               
+               (define-serializable-struct (entity-guid-type guid-type)
+                 ()
+                 #:transparent
+                 #:property
+                 prop:guid-type-entity-box
+                 (box #f))
                
                (define-values (entity-private struct-type constructor predicate)
                  (let* ([attr-names               (list 'attr ...)]
@@ -307,6 +337,8 @@
                                 (list attr-default ...)
                                 entity-guid-constructor
                                 entity-guid-predicate
+                                entity-guid-type-constructor
+                                entity-guid-type-predicate
                                 #:attr-column-names        (list column ...)
                                 #:attr-pretty-names        attr-pretty-names
                                 #:attr-pretty-names-plural attr-pretty-names-plural
@@ -324,7 +356,8 @@
                                         (list property ...)))
                                 entity-kw ...)))
                
-               (set-box! (guid-entity-box entity-guid-struct-type) entity-private)
+               (set-box! (guid-entity-box      struct:entity-guid)      entity-private)
+               (set-box! (guid-type-entity-box struct:entity-guid-type) entity-private)
                
                (define-values (guid-private revision-private attr-private ...)
                  (apply values (entity-attributes entity-private)))
