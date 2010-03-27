@@ -127,6 +127,10 @@
         (set! claimed-connections (dict-set claimed-connections evt conn))
         conn))
     
+    ; thead-dead-evt -> boolean
+    (define (claimed-connection? evt)
+      (and (dict-ref claimed-connections evt #f) #t))
+    
     ; thread-dead-evt -> void
     (define (unclaim-connection! evt)
       (let ([conn (dict-ref claimed-connections evt)])
@@ -156,10 +160,11 @@
     
     ; connection -> void
     (define/override (disconnect conn)
-      (let ([ans (async-send tx-channel 'disconnect (current-thread) conn)])
-        (if (exn? ans)
-            (raise ans)
-            ans)))))
+      (when (claimed-connection? (thread-dead-evt (current-thread)))
+        (let ([ans (async-send tx-channel 'disconnect (current-thread) conn)])
+          (if (exn? ans)
+              (raise ans)
+              ans))))))
 
 ; Provides ---------------------------------------
 
