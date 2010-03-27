@@ -58,18 +58,12 @@
     ; (alistof thread-dead-evt connection)
     (field [claimed-connections null])
     
-    ; natural
-    (field [claimed-count 0])
-    
     ; Connections that are not claimed by a thread.
     ; The connections are "hashed" against alarm-evts that will trigger when they
     ; are to be cleaned up.
     ; 
     ; (alistof alarm-evt connection)
     (field [unclaimed-connections null])
-    
-    ; natural
-    (field [unclaimed-count 0])
     
     (super-new)
     
@@ -124,28 +118,27 @@
                [conn (and pos (dict-iterate-value unclaimed-connections pos))])
           (and pos
                (set! unclaimed-connections (dict-remove unclaimed-connections evt))
-               (set! unclaimed-count (sub1 unclaimed-count))
                conn)))
       
       (let ([conn (or (reclaim-connection!)
                       (super connect))])
         (set! claimed-connections (dict-set claimed-connections evt conn))
-        (set! claimed-count (add1 claimed-count))
         conn))
+    
+    ; thead-dead-evt -> boolean
+    (define (claimed-connection? evt)
+      (and (dict-ref claimed-connections evt #f) #t))
     
     ; thread-dead-evt -> void
     (define (unclaim-connection! evt)
       (let ([conn (dict-ref claimed-connections evt)])
-        (set! claimed-connections (dict-remove claimed-connections evt))
-        (set! claimed-count (sub1 claimed-count))
+        (set! claimed-connections   (dict-remove claimed-connections evt))
         (set! unclaimed-connections (dict-set unclaimed-connections (release-evt) conn))
-        (set! unclaimed-count (add1 unclaimed-count))
         (void)))
     
     ; alarm-evt -> void
     (define (release-connection! evt)
       (let ([conn (dict-ref unclaimed-connections evt)])
-        (set! unclaimed-count (sub1 unclaimed-count))
         (set! unclaimed-connections (dict-remove unclaimed-connections evt))
         (super disconnect conn)))
     
@@ -165,10 +158,11 @@
     
     ; connection -> void
     (define/override (disconnect conn)
-      (let ([ans (async-send tx-channel 'disconnect (current-thread) conn)])
-        (if (exn? ans)
-            (raise ans)
-            ans)))))
+      (when (claimed-connection? (thread-dead-evt (current-thread)))
+        (let ([ans (async-send tx-channel 'disconnect (current-thread) conn)])
+          (if (exn? ans)
+              (raise ans)
+              ans))))))
 
 ; Provides ---------------------------------------
 
