@@ -8,7 +8,7 @@
 
 (define release-notes
   '((p "Changes and additions:")
-    (ul (li "not changes yet..."))))
+    (ul (li "added " (tt "sql-list") " syntax."))))
 
 (define primary-file "main.ss")
 
