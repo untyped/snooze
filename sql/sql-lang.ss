@@ -187,6 +187,11 @@
 ; Expressions ----------------------------------
 
 ; attribute-alias -> aggregate
+(define (sql:count-distinct arg)
+  (let ([arg (quote-argument arg)])
+    (make-aggregate type:integer 'count-distinct (list arg))))
+
+; attribute-alias -> aggregate
 (define (sql:count arg)
   (let ([arg (quote-argument arg)])
     (make-aggregate type:integer 'count (list arg))))
@@ -470,6 +475,7 @@
  [rename sql:entity          entity          (case-> (-> entity? entity-alias?)
                                                      (-> symbol? entity? entity-alias?))]
  [rename sql:attr            attr            (-> entity-alias? (or/c attribute? symbol?) attribute-alias?)]
+ [rename sql:count-distinct  count-distinct  (-> attribute-alias? aggregate?)]
  [rename sql:count           count           (-> attribute-alias? aggregate?)]
  [rename sql:count*          count*          (->* () ((or/c entity-alias? query-alias?)) aggregate?)]
  [rename sql:min             min             (-> quotable? aggregate?)]

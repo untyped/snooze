@@ -212,19 +212,20 @@
   (match agg
     [(struct aggregate (type op args))
      (case op
-       [(count)   (display "count(" out)]
-       [(count*)  (display "count(" out)]
-       [(max)     (display "max(" out)]
-       [(min)     (display "min(" out)]
-       [(average) (display "average(" out)]
-       [else      (raise-exn exn:fail:contract (format "Unknown aggregate operator: ~a" op))])
+       [(count-distinct) (display "count(distinct " out)]
+       [(count)          (display "count(" out)]
+       [(count*)         (display "count(" out)]
+       [(max)            (display "max(" out)]
+       [(min)            (display "min(" out)]
+       [(average)        (display "average(" out)]
+       [else             (raise-exn exn:fail:contract (format "Unknown aggregate operator: ~a" op))])
      (case op
-       [(count*)  (if (null? args)
-                      (begin (display "*)" out))
-                      (begin (display-expression (car args) imported out)
-                             (display ".*)" out)))]
-       [else      (display-expression (car args) imported out)
-                  (display ")" out)])]))
+       [(count*)         (if (null? args)
+                             (begin (display "*)" out))
+                             (begin (display-expression (car args) imported out)
+                                    (display ".*)" out)))]
+       [else             (display-expression (car args) imported out)
+                         (display ")" out)])]))
 
 ; function (listof column) output-port -> void
 (define (display-expression/function func imported out)
@@ -280,7 +281,7 @@
       (if default
           (display default out)
           (error (format "~a: expected one or more arguments, received ~s" op args)))))
-  
+
 ; symbol (listof expression) string string (listof column) output-port -> void
 (define (display-expression/outfix op args prefix suffix imported out)
   (display "(" out)
