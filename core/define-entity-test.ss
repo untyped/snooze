@@ -87,7 +87,22 @@
       (check-exn exn:fail:contract? (cut make-course/defaults #:notes (lambda (x) (add1 x))))
       (check-not-exn (cut make-tree-node/defaults #:color 'red))
       (check-not-exn (cut make-tree-node/defaults #:color (color red)))
-      (check-exn exn:fail:contract? (cut make-tree-node/defaults #:color 'white)))))
+      (check-exn exn:fail:contract? (cut make-tree-node/defaults #:color 'white)))
+    
+    (test-case "attr/c"
+      (check-pred flat-contract? (attr/c person name))
+      (let ([contract (attr/c person name)])
+        (check-false ((flat-contract-predicate contract) (attr person name)))
+        (check-true  ((flat-contract-predicate contract) "Name"))
+        (check-true  ((flat-contract-predicate contract) #f)))
+      (let ([contract (attr/c person guid)])
+        (check-false ((flat-contract-predicate contract) (attr pet owner)))
+        (check-false ((flat-contract-predicate contract) "Name"))
+        ; Doesn't like guids:
+        (check-false ((flat-contract-predicate contract) (entity-make-temporary-guid person)))
+        ; Does like snooze-structs:
+        (check-true  ((flat-contract-predicate contract) (make-person "Dave")))
+        (check-true  ((flat-contract-predicate contract) #f))))))
 
 ; Provide statements -----------------------------
 

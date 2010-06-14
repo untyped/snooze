@@ -107,7 +107,13 @@
     (check-counts
      (list 0 0 0 3) 
      (lambda ()
-       (quick-sleep (current-keepalive))))))
+       (quick-sleep (current-keepalive)))))
+  
+  (test-case "disconnections without connections"
+    (let ([a (current-inexact-milliseconds)])
+      (for ([i (in-range 1 1000)])
+        (send (current-snooze) disconnect))
+      (printf "time ~a" (- (current-inexact-milliseconds) a)))))
 
 ; Helpers ----------------------------------------
 

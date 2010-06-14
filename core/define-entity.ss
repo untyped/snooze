@@ -519,6 +519,10 @@
      (syntax/loc stx
        (list (attr id attr-id) ...))]))
 
+; (_ entity-id attribute-id) -> contract
+(define-syntax-rule (attr/c entity-id attr-id)
+  (type-contract (attribute-type (attr entity-id attr-id))))
+
 ; Helpers ----------------------------------------
 
 ; (listof (cons property any)) -> boolean
@@ -532,4 +536,5 @@
 
 (provide define-entity
          attr
-         attr-list)
+         attr-list
+         attr/c)
