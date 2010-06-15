@@ -1,5 +1,5 @@
 [.]
-scm = svn
+scm = git
 
 [planetdev/unlib]
 path = planetdev/unlib
