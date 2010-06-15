@@ -214,7 +214,7 @@
     
     (test-case "parse-value : time-utc : 10/01/27"
       (let ([t (make-time-utc-type #t)])
-        (check-equal? (escape-sql-value t (date->time-utc (string->date "27/01/10" "~d/~m/~Y")))
+        (check-equal? (escape-sql-value t (date->time-utc (string->date "27/01/10+0" "~d/~m/~Y~z")))
                       "'0010-01-27 00:00:00.000000000'")))
     
     (test-case "parse-value : binary"
