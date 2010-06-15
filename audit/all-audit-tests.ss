@@ -6,16 +6,14 @@
          srfi/19/time
          srfi/26/cut
          (planet untyped/unlib:3/time)
-         (planet untyped/unlib:3/pipeline)
          "../snooze.ss"
+         "../snooze-syntax.ss"
          "../test-base.ss"
-         "../test-data.ss"
-         "../test-util.ss"
          "audit.ss")
 
 ; Tests ----------------------------------------
 
-(define-persistent-struct audit-metadata
+(define-snooze-struct audit-metadata
   ([transaction-id (make-integer-type #f #f)]
    [message        (make-string-type #t #f 256)]))
 
@@ -31,7 +29,7 @@
              (make-audit-metadata (struct-id txn) message))
            (super-new))
          [snooze   snooze]
-         [entities (list entity:course entity:person entity:pet)]))
+         [entities (list course person pet)]))
   
   (define-audit-interface trail)
   
@@ -62,14 +60,14 @@
     (send trail clear!)
     (for-each delete! (find-metas)))
   
-  ; entity attribute persistent-struct -> (listof any)
-  (define (find-history entity attr struct)
-    (map (cut audit-delta-value <> (attribute-type attr))
+  ; entity attribute snooze-struct -> (listof any)
+  (define (find-history entity att struct)
+    (map (cut audit-delta-value <> (attribute-type att))
          (find-all (sql:select #:what  DELTA
                                #:from  (sql:inner (sql:inner ENTITY ATTR (sql:= ENTITY-id ATTR-entity-id))
                                                   DELTA (sql:= ATTR-id DELTA-attribute-id))
                                #:where (sql:and (sql:= ENTITY-name (entity-table-name entity))
-                                                (sql:= ATTR-name (attribute-column-name attr))
+                                                (sql:= ATTR-name (attribute-column-name att))
                                                 (sql:= DELTA-struct-id (struct-id struct)))
                                #:order (list (sql:asc DELTA-id))))))
   
@@ -78,38 +76,28 @@
     
     #:before
     (lambda ()
-      (drop-table entity:audit-attribute)
-      (drop-table entity:audit-transaction)
-      (drop-table entity:audit-metadata)
-      (drop-table entity:audit-delta)
+      (drop-all-tables)
       (send trail init!)
-      (create-table entity:audit-metadata)
-      (for-each create-table (list entity:course entity:person entity:pet)))
+      (create-table audit-metadata)
+      (for-each create-table (list course person pet)))
     
     #:after
-    (lambda ()
-      (drop-table entity:audit-attribute)
-      (drop-table entity:audit-transaction)
-      (drop-table entity:audit-metadata)
-      (drop-table entity:audit-delta)
-      (drop-table entity:course)
-      (drop-table entity:person))
+    drop-all-tables
     
     ; Initialising -------------------------------
     
     (test-case "init-audit-trail!"
-      (check-true (table-exists? entity:audit-attribute))
-      (check-true (table-exists? entity:audit-transaction))
-      (check-true (table-exists? entity:audit-delta))
-      (check-true (andmap procedure? (send snooze get-transaction-pipeline)))
-      (check-true (andmap procedure? (entity-insert-pipeline entity:person)))
-      (check-true (andmap procedure? (entity-update-pipeline entity:person)))
-      (check-true (andmap procedure? (entity-delete-pipeline entity:person)))
-      (check-true (andmap procedure? (entity-insert-pipeline entity:pet)))
-      (check-true (andmap procedure? (entity-update-pipeline entity:pet)))
-      (check-true (andmap procedure? (entity-delete-pipeline entity:pet))))
+      (check-true (table-exists? audit-attribute))
+      (check-true (table-exists? audit-transaction))
+      (check-true (table-exists? audit-delta))
+      (check-true (procedure? (send snooze get-transaction-hook)))
+      (check-true (procedure? (entity-delete-hook person)))
+      (check-true (procedure? (entity-delete-hook pet))))
     
     ; Auditing changes ---------------------------
+    
+    #;(test-case "audit-attributes generated correctly"
+        (fail "Not implemented."))
     
     (test-case "audit basic insert, update and delete"
       (begin-with-definitions
@@ -152,11 +140,11 @@
     (test-case "audit the different attribute types"
       (begin-with-definitions
         (define time (string->time-tai "2001-01-01 01:01:01"))
-        (define course (save! (make-course 'COURSE "Course" 123 1.23 #t time)))
+        (define course1 (save! (make-course 'COURSE "Course" 123 1.23 #t time)))
         
         (clear-trail!)
         
-        (save! (copy-course course
+        (save! (copy-course course1
                             #:code   'ESRUOC
                             #:name   "esruoC"
                             #:value  321
@@ -164,20 +152,20 @@
                             #:active #f
                             #:start  (current-time time-tai)))
         
-        (check-equal? (find-history entity:course attr:course-id       course) (list))
-        (check-equal? (find-history entity:course attr:course-revision course) (list))
-        (check-equal? (find-history entity:course attr:course-code     course) (list 'COURSE))
-        (check-equal? (find-history entity:course attr:course-name     course) (list "Course"))
-        (check-equal? (find-history entity:course attr:course-value    course) (list 123))
-        (check-equal? (find-history entity:course attr:course-rating   course) (list 1.23))
-        (check-equal? (find-history entity:course attr:course-start    course) (list time))
+        (check-equal? (find-history course (attr course id)       course1) (list))
+        (check-equal? (find-history course (attr course revision) course1) (list))
+        (check-equal? (find-history course (attr course code)     course1) (list 'COURSE))
+        (check-equal? (find-history course (attr course name)     course1) (list "Course"))
+        (check-equal? (find-history course (attr course value)    course1) (list 123))
+        (check-equal? (find-history course (attr course rating)   course1) (list 1.23))
+        (check-equal? (find-history course (attr course start)    course1) (list time))
         
         (check-true (andmap (lambda (delta)
-                              (eq? (audit-delta-struct-id delta) (struct-id course)))
+                              (eq? (audit-delta-struct-id delta) (struct-id course1)))
                             (find-deltas)))
         
         (check-true (andmap (lambda (delta)
-                              (eq? (audit-delta-struct-revision delta) (struct-revision course)))
+                              (eq? (audit-delta-struct-revision delta) (struct-revision course1)))
                             (find-deltas)))))
     
     (test-case "audit insert/update sequence correctly summarised"
@@ -185,7 +173,7 @@
         
         (clear-trail!)
         
-        (define person
+        (define person1
           (call-with-transaction
            (lambda ()
              (let ([ans (save! (make-person "Dave"))])
@@ -201,11 +189,11 @@
         
         (check-equal? (length deltas) 2)
         (check-equal? (car deltas)
-                      (copy-audit-delta (make-insert-delta (car txns) (struct-guid person))
+                      (copy-audit-delta (make-insert-delta (car txns) (struct-guid person1))
                                         #:id       (struct-id (car deltas))
                                         #:revision 0))
         (check-equal? (cadr deltas)
-                      (copy-audit-delta (make-update-delta (car txns) (struct-guid person) 0 attr:person-name "Dave")
+                      (copy-audit-delta (make-update-delta (car txns) (struct-guid person1) 0 (attr person name) "Dave")
                                         #:id       (struct-id (cadr deltas))
                                         #:revision 0))))
     
@@ -214,7 +202,7 @@
         
         (clear-trail!)
         
-        (define person
+        (define person1
           (call-with-transaction
            (lambda ()
              (define ans (save! (make-person "Dave")))
@@ -231,11 +219,11 @@
         
         (check-equal? (length deltas) 2)
         (check-equal? (car deltas)
-                      (copy-audit-delta (make-insert-delta (car txns) (struct-guid person))
+                      (copy-audit-delta (make-insert-delta (car txns) (struct-guid person1))
                                         #:id       (struct-id (car deltas))
                                         #:revision 0))
         (check-equal? (cadr deltas)
-                      (copy-audit-delta (make-delete-delta (car txns) (struct-guid person) 0 attr:person-name "Dave")
+                      (copy-audit-delta (make-delete-delta (car txns) (struct-guid person1) 0 (attr person name) "Dave")
                                         #:id       (struct-id (cadr deltas))
                                         #:revision 0))))
     
@@ -244,7 +232,7 @@
         
         (clear-trail!)
         
-        (define person
+        (define person1
           (let ([ans (save! (make-person "Dave"))])
             (clear-trail!)
             (call-with-transaction
@@ -261,11 +249,11 @@
         (check-equal? (audit-metadata-message (car metas)) "update/update sequence")
         (check-equal? (length deltas) 2)
         (check-equal? (car deltas)
-                      (copy-audit-delta (make-update-delta (car txns) (struct-guid person) 0 attr:person-name "Dave")
+                      (copy-audit-delta (make-update-delta (car txns) (struct-guid person1) 0 (attr person name) "Dave")
                                         #:id       (struct-id (car deltas))
                                         #:revision 0))
         (check-equal? (cadr deltas)
-                      (copy-audit-delta (make-update-delta (car txns) (struct-guid person) 1 attr:person-name "Noel")
+                      (copy-audit-delta (make-update-delta (car txns) (struct-guid person1) 1 (attr person name) "Noel")
                                         #:id       (struct-id (cadr deltas))
                                         #:revision 0))))
     
@@ -274,7 +262,7 @@
         
         (clear-trail!)
         
-        (define person
+        (define person1
           (let ([ans (save! (make-person "Dave"))])
             (clear-trail!)
             (call-with-transaction
@@ -291,11 +279,11 @@
         (check-equal? (audit-metadata-message (car metas)) "update/delete sequence")
         (check-equal? (length deltas) 2)
         (check-equal? (car deltas)
-                      (copy-audit-delta (make-update-delta (car txns) (struct-guid person) 0 attr:person-name "Dave")
+                      (copy-audit-delta (make-update-delta (car txns) (struct-guid person1) 0 (attr person name) "Dave")
                                         #:id       (struct-id (car deltas))
                                         #:revision 0))
         (check-equal? (cadr deltas)
-                      (copy-audit-delta (make-delete-delta (car txns) (struct-guid person) 1 attr:person-name "Noel")
+                      (copy-audit-delta (make-delete-delta (car txns) (struct-guid person1) 1 (attr person name) "Noel")
                                         #:id       (struct-id (cadr deltas))
                                         #:revision 0))))
     
@@ -378,7 +366,7 @@
         (define deltas (find-deltas))
         
         (check-equal? (length txns) 1) ; Outer transaction only
-        (check-equal? (length deltas) 1 "SQLite will fail this check")
+        (check-equal? (length deltas) 1)
         
         (check-true (andmap (lambda (delta)
                               (= (audit-delta-struct-id delta) (struct-id dave)))
@@ -416,9 +404,9 @@
                 (define audit-attr (car (find-attrs)))
                 
                 ; attribute
-                (define attr (id->attribute (struct-id audit-attr)))
+                (define att (id->attribute (struct-id audit-attr)))
                 
-                (check-eq? attr attr:person-name))))
+                (check-eq? att (attr person name)))))
     
     (test-case "audit-deltas->guids"
       (begin-with-definitions
@@ -475,17 +463,17 @@
         
         ; (listof audit-delta)
         (define id-history 
-          (filter (lambda (delta) (equal? (audit-delta-attribute delta) attr:person-id))
+          (filter (lambda (delta) (equal? (audit-delta-attribute delta) (attr person id)))
                   history))
         
         ; (listof audit-delta)
         (define revision-history 
-          (filter (lambda (delta) (equal? (audit-delta-attribute delta) attr:person-revision))
+          (filter (lambda (delta) (equal? (audit-delta-attribute delta) (attr person revision)))
                   history))
         
         ; (listof audit-delta)
         (define name-history 
-          (filter (lambda (delta) (equal? (audit-delta-attribute delta) attr:person-name))
+          (filter (lambda (delta) (equal? (audit-delta-attribute delta) (attr person name)))
                   history))
         
         (check-equal? (length history) 3)
@@ -606,12 +594,12 @@
         (clear-trail!)
         
         (match-define 
-         (list noel dave)
-         (call-with-transaction
-          (lambda ()
-            (list (save! (make-person "Noel"))
-                  (save! (make-person "Dave"))))
-          "0"))
+            (list noel dave)
+          (call-with-transaction
+           (lambda ()
+             (list (save! (make-person "Noel"))
+                   (save! (make-person "Dave"))))
+           "0"))
         
         (define matt
           (call-with-transaction 
@@ -655,12 +643,12 @@
         (clear-trail!)
         
         (match-define 
-         (list noel dave)
-         (call-with-transaction
-          (lambda ()
-            (list (save! (make-person "Noel"))
-                  (save! (make-person "Dave"))))
-          "0"))
+            (list noel dave)
+          (call-with-transaction
+           (lambda ()
+             (list (save! (make-person "Noel"))
+                   (save! (make-person "Dave"))))
+           "0"))
         
         (define matt
           (call-with-transaction 
@@ -700,11 +688,11 @@
         (check-equal? (length txns) 6)
         (check-equal? (map audit-metadata-message metas) 
                       (list "0" "1" "2" "3" "4" "Rollback 1"))
-        (check-equal? (person-name (find-by-id entity:person (struct-id dave))) "Dave")
-        (check-equal? (person-name (find-by-id entity:person (struct-id noel))) "Noel")
-        (check-false  (find-by-id entity:person (struct-id matt)))
-        (check-equal? (find-by-id entity:person (struct-id bree)) bree)
-        (check-false  (find-by-id entity:pet (struct-id william)))))))
+        (check-equal? (person-name (find-by-id person (struct-id dave))) "Dave")
+        (check-equal? (person-name (find-by-id person (struct-id noel))) "Noel")
+        (check-false  (find-by-id person (struct-id matt)))
+        (check-equal? (find-by-id person (struct-id bree)) bree)
+        (check-false  (find-by-id pet (struct-id william)))))))
 
 ; Provide statements -----------------------------
 

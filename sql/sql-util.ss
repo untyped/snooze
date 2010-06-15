@@ -2,13 +2,11 @@
 
 (require (for-syntax scheme/base
                      "../base.ss")
-         scheme/contract
-         scheme/match
-         (only-in srfi/1/list append-map)
-         srfi/26/cut
-         (planet untyped/unlib:3/symbol)
-         "../base.ss"
-         "../era/era.ss"
+         "../base.ss")
+
+(require (only-in srfi/1 append-map)
+         (unlib-in match symbol)
+         "../core/struct.ss"
          "sql-struct.ss")
 
 ; Extract info and automatic #:what arguments ----
@@ -19,7 +17,7 @@
 (define source->sources
   (match-lambda
     [(? join? join)          (append (source->sources (join-left join)) (source->sources (join-right join)))]
-    [(? query-alias? alias)  (list alias)]
+    [(? query-alias?  alias) (list alias)]
     [(? entity-alias? alias) (list alias)]))
 
 ; source -> column-list column-list
@@ -29,16 +27,46 @@
 (define source->columns
   (match-lambda
     [(? join? join)          
-     (define-values (left-local left-imported)
-       (source->columns (join-left join)))
-     (define-values (right-local right-imported)
-       (source->columns (join-right join)))
-     (values (append left-local right-local)
-             (append left-imported right-imported))]
+     (let*-values ([(left-local  left-imported)  (source->columns (join-left  join))]
+                   [(right-local right-imported) (source->columns (join-right join))])
+       (values (append left-local right-local)
+               (append left-imported right-imported)))]
     [(? query-alias? alias)  
      (values null (source-alias-columns alias))]
     [(? entity-alias? alias)
      (values (source-alias-columns alias) null)]))
+
+; join -> (hasheqof attribute-alias (U attribute-alias literal))
+(define (source->foreign-keys source)
+  (let* (; Collect the criteria from all joins in the select:
+         [exprs (let loop ([source source])
+                  (match source
+                    [(? join? join)          (cons (join-on join)
+                                                   (append (loop (join-left join))
+                                                           (loop (join-right join))))]
+                    [(? query-alias? alias)  (loop (query-from (query-alias-query alias)))]
+                    [(? entity-alias? alias) null]))]
+         ; Empty hash table in which to store the results:
+         [hash  (make-hash)])
+    ; Iterate through the expressions collected above, extracting and caching any fk=pk constraints:
+    (for ([expr (in-list exprs)])
+      (let loop ([expr expr])
+        (match expr
+          [(struct function (_ (eq? '=) (list (? attribute-alias? col1) (? attribute-alias? col2))))
+           (let ([fk    (or (and (attribute-foreign-key? (attribute-alias-attribute col1)) col1)
+                            (and (attribute-foreign-key? (attribute-alias-attribute col2)) col2))]
+                 [pk    (or (and (attribute-primary-key? (attribute-alias-attribute col1)) col1)
+                            (and (attribute-primary-key? (attribute-alias-attribute col2)) col2)
+                            (and (literal? col1) col1)
+                            (and (literal? col2) col2))])
+             (when (and fk pk)
+               (hash-set! hash fk pk)))]
+          [(? function?)
+           (for-each loop (function-args expr))]
+          [(? expression-alias?)
+           (loop (expression-alias-value expr))]
+          [_ (void)])))
+    hash))
 
 ; source -> (opt-listof (U expression entity-alias query-alias))
 (define (make-default-what-argument from)
@@ -46,10 +74,39 @@
       (source->sources from)
       (car (source->sources from))))
 
+;  ((opt-listof (U expression entity-alias query-alias))
+; ->
+;  (listof expression)
+(define (expand-distinct-argument argument)
+  (cond [(eq? argument #t) null]
+        [(eq? argument #f) #f]
+        [(pair? argument)  (expand-distinct-list argument)]
+        [else              (expand-distinct-item argument)]))
+
+;  ((listof (U expression entity-alias query-alias))
+; -> 
+;  (listof expression)
+(define (expand-distinct-list argument)
+  (for/fold ([accum null])
+            ([arg   argument])
+            (append accum (expand-distinct-item arg))))
+
+;  (U expression entity-alias query-alias)
+; -> 
+;  (listof expression)
+(define expand-distinct-item
+  (match-lambda
+    [(? expression? expr)
+     (list expr)]
+    [(? entity-alias? alias)
+     (list (make-attribute-alias alias (car (entity-attributes (entity-alias-entity alias)))))]
+    [(? query-alias? alias)
+     (source-alias-columns alias)]))
+
 ;   ((opt-listof (U expression entity-alias query-alias))
 ; ->
 ;    (listof column)
-;    (opt-listof (U entity type)))
+;    (opt-listof (U symbol #f)))
 ;
 ; where (opt-listof x) = (U x (listof x))
 (define (expand-what-argument argument)
@@ -60,7 +117,7 @@
 ;   ((listof (U expression entity-alias query-alias))
 ; -> 
 ;    (listof column)
-;    (listof (U entity type)))
+;    (listof (U symbol #f)))
 (define (expand-what-list argument)
   (for/fold ([what-accum null] [info-accum null])
             ([arg argument])
@@ -72,24 +129,24 @@
 ;   ((U expression entity-alias query-alias)
 ; -> 
 ;    (listof column)
-;    (opt-listof (U entity type)))
+;    (opt-listof (U symbol #f)))
 (define expand-what-item
   (match-lambda
     [(and argument (struct attribute-alias (type _ _ attr)))
      (values (list argument)
-             type)]
+             #f)]
     [(? expression-alias? argument)
      (values (list argument) 
-             (expression-type argument))]
+             #f)]
     [(? expression? expr)
      (values (list (make-expression-alias (gensym 'expr) expr))
-             (expression-type expr))]
+             #f)]
     [(? entity-alias? alias)
      (values (source-alias-columns alias)
-             (source-alias-value alias))]
+             (entity-name (entity-alias-entity alias)))]
     [(? query-alias? alias)
      (values (source-alias-columns alias)
-             (query-extract-info (source-alias-value alias)))]))
+             (query-extract-info (query-alias-query alias)))]))
 
 ; (listof (U expression entity-alias query-alias)) -> (listof column)
 (define (expand-group-argument group)
@@ -125,7 +182,7 @@
 (define (check-where-clause where sources columns)
   (when where
     (check-expression 'where-clause where sources columns)))
-     
+
 ; (listof expression) source-list column-list -> void
 (define (check-group-clause group sources columns)
   (for-each (cut check-expression 'group-clause <> sources columns) group))
@@ -254,7 +311,7 @@
       [(list-rest curr rest)
        (when (memq (car names) (cdr names))
          (raise-exn exn:fail:contract
-           (format "~a: column selected more than once: ~a ~s" 'from-clause (car names) (car columns))))
+           (format "~a: column selected more than once: ~a ~s" 'what-clause (car names) (car columns))))
        (loop (cdr columns) (cdr names))])))
 
 ; symbol attribute-alias column-list -> void
@@ -344,9 +401,12 @@
 (provide/contract
  [source->sources            (-> source? (listof source/c))]
  [source->columns            (-> source? (values (listof column?) (listof column?)))]
+ [source->foreign-keys       (-> source? (and/c hash? #;hash-eq?))]
  [make-default-what-argument (-> source? (opt-listof source/c))]
+ [expand-distinct-argument   (-> (or/c boolean? (opt-listof (or/c expression? source/c)))
+                                 (or/c (listof expression?) #f))]
  [expand-what-argument       (-> (opt-listof (or/c expression? source/c))
                                  (values (listof column?)
-                                         (opt-listof (or/c entity? type?))))]
+                                         (opt-listof (or/c symbol? #f))))]
  [expand-group-argument      (-> (opt-listof (or/c expression? source/c))
                                  (listof column?))])

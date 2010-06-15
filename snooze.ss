@@ -1,34 +1,26 @@
 #lang scheme/base
 
+(require "base.ss")
+
 (require scheme/unit
-         (planet untyped/unlib:3/gen)
-         "annotation.ss"
-         "base.ss"
-         "persistent-struct.ss"
-         "persistent-struct-syntax.ss"
-         "quick-find.ss"
-         "schema.ss"
+         (unlib-in gen)
+         "snooze-api.ss"
          "snooze-class.ss"
-         "snooze-interface.ss"
-         "snooze-syntax.ss"
-         "era/era.ss"
+         "core/core.ss"
          "sql/sql.ss")
 
 ; Provide statements -----------------------------
 
-(provide (all-from-out (planet untyped/unlib:3/gen)
-                       "annotation.ss"
-                       "persistent-struct.ss"
-                       "persistent-struct-syntax.ss"
-                       "schema.ss"
+(provide (unlib-out gen)
+         (all-from-out "snooze-api.ss"
                        "snooze-class.ss"
-                       "snooze-interface.ss"
-                       "snooze-syntax.ss"
-                       "quick-find.ss"
-                       "era/era.ss"
+                       "core/core.ss"
                        "sql/sql.ss")
-         (struct-out exn:snooze)
          (struct-out exn:fail:snooze)
          (struct-out exn:fail:snooze:query)
          (struct-out exn:fail:snooze:revision)
-         (struct-out exn:fail:snooze:transaction))
+         (struct-out exn:fail:snooze:transaction)
+         (struct-out exn:fail:snooze:check)
+         (struct-out exn:fail:snooze:check:save)
+         (struct-out exn:fail:snooze:check:delete)
+         (struct-out exn:fail:snooze:connection-count))

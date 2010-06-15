@@ -1,0 +1,7 @@
+[.]
+scm = svn
+
+[planetdev/unlib]
+path = planetdev/unlib
+repository = http://svn.untyped.com/unlib/trunk/src
+scm = svn

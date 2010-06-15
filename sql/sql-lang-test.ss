@@ -4,13 +4,12 @@
          (only-in srfi/1 unzip2)
          srfi/19
          srfi/26
-         "../persistent-struct-syntax.ss"
          "../test-base.ss"
-         "../test-data.ss"
-         "../era/era.ss"
+         "../core/core.ss"
          "sql-alias.ss"
          (prefix-in sql: "sql-lang.ss")
-         "sql-struct.ss")
+         "sql-struct.ss"
+         "sql-syntax.ss")
 
 ; Tests ------------------------------------------
 
@@ -21,10 +20,10 @@
     (test-case "alias"
       (begin-with-definitions
         
-        (define p (make-entity-alias 'p entity:person))
+        (define p (make-entity-alias 'p 'person))
         (define q (make-query null #f p #f null null #f #f #f null null null))
         
-        (check-equal? (sql:alias 'p entity:person) p "entity")
+        (check-equal? (sql:alias 'p person) p "entity")
         
         (check-equal? (sql:alias 'q q)
                       (make-query-alias 'q q)
@@ -38,12 +37,12 @@
           (cut sql:alias 'm (make-expression-alias 'l (make-literal 1)))
           "expression-alias")
         
-        (check-equal? (sql:alias p attr:person-name)
-                      (make-attribute-alias p attr:person-name)
+        (check-equal? (sql:alias p (attr person name))
+                      (make-attribute-alias p (attr person name))
                       "attribute")
         
         (check-exn exn:fail:contract?
-          (cut sql:alias 'p-name p attr:pet-name)
+          (cut sql:alias 'p-name p (attr pet name))
           "incorrect attribute")))
     
     (test-case "expressions : function arities and self-quoting literals"
@@ -83,33 +82,36 @@
              args)))
     
     (test-case "sql:in"
-      (begin-with-definitions
-        
-        (define-alias p person)
-        
-        (check-not-exn
-          (cut sql:in 123 '(123 234 345))
-          "valid list")
-        
-        (check-exn exn:fail:contract?
-          (cut sql:in 123 '(#f 234 345))
-          "invalid list (list items of different types)")
-        
-        (check-exn exn:fail:contract?
-          (cut sql:in "123" '(123 234 345))
-          "invalid list (arguments of different types)")
-        
-        (check-not-exn
-          (cut sql:in 123 (sql:select #:what p-id #:from p))
-          "valid subquery")
-        
-        (check-exn exn:fail:contract?
-          (cut sql:in 123 (sql:select #:from p))
-          "invalid subquery (incorrect arity)")
-        
-        (check-exn exn:fail:contract?
-          (cut sql:in "123" (sql:select #:what p-id #:from p))
-          "invalid subquery (arguments of different types)")))
+      (define-alias p person)
+      (define-alias c course)
+      
+      (check-not-exn
+        (cut sql:in 123 '(123 234 345))
+        "valid list")
+      
+      (check-exn exn:fail:contract?
+        (cut sql:in 123 '(#f 234 345))
+        "invalid list (list items of different types)")
+      
+      (check-exn exn:fail:contract?
+        (cut sql:in "123" '(123 234 345))
+        "invalid list (arguments of different types)")
+      
+      (check-not-exn
+        (cut sql:in 123 (sql:select #:what (sql c.value) #:from c))
+        "valid integer subquery")
+      
+      (check-not-exn
+        (cut sql:in (make-person "Dave") (sql:select #:what (sql p.guid) #:from p))
+        "valid guid subquery")
+      
+      (check-exn exn:fail:contract?
+        (cut sql:in 123 (sql:select #:from p))
+        "invalid subquery (incorrect arity)")
+      
+      (check-exn exn:fail:contract?
+        (cut sql:in "123" (sql:select #:what (sql p.guid) #:from p))
+        "invalid subquery (arguments of different types)"))
     
     (test-case "sql:if and sql:cond"
       (check-equal? (sql:cond [#t "a"] [#f "b"] [else "c"])
@@ -129,15 +131,15 @@
         (define-alias p3 person)
         
         (check-not-exn 
-          (cut sql:inner p1 p2 (sql:= p1-name p2-name))
+          (cut sql:inner p1 p2 (sql:= (sql p1.name) (sql p2.name)))
           "valid")
         
         (check-exn exn:fail:contract?
-          (cut sql:inner p1 p3 (sql:= p1-name p2-name))
+          (cut sql:inner p1 p3 (sql:= (sql p1.name) (sql p2.name)))
           "invalid")
         
         (check-exn exn:fail:contract?
-          (cut sql:inner p1 p3 (sql:= p1-name p2-name))
+          (cut sql:inner p1 p3 (sql:= (sql p1.name) (sql p2.name)))
           "tricky")))
     
     (test-case "select : single-item versus multi-item"
@@ -146,8 +148,8 @@
         (define-alias p1 person)
         (define-alias p2 person)
         
-        (define select1 (sql:select #:what (list p1-name) #:from p1))
-        (define select2 (sql:select #:what p1-name #:from p1))
+        (define select1 (sql:select #:what (list (sql p1.name)) #:from p1))
+        (define select2 (sql:select #:what (sql p1.name) #:from p1))
         
         (check-equal? (query-what select1) (query-what select2) "what")
         (check-equal? (query-extract-info select1) (list (query-extract-info select2)) "expand-info")))
@@ -155,23 +157,23 @@
     (test-case "select : no #:what"
       (begin-with-definitions
         
-        (define p1 (sql:alias 'p1 entity:person))
-        (define p2 (sql:alias 'p2 entity:pet))
+        (define p1 (sql:alias 'p1 person))
+        (define p2 (sql:alias 'p2 pet))
         
         (define select1 (sql:select #:from p1))
         
         (check-equal? (query-extract-info (sql:select #:from p1))
-                      entity:person
+                      'person
                       "entity")
         
         (check-equal? (query-extract-info (sql:select #:from (sql:outer p1 p2)))
-                      (list entity:person entity:pet)
+                      '(person pet)
                       "join")))
     
     (test-case "select : queries in #:from get quoted"
       (begin-with-definitions
         
-        (define p1 (sql:alias 'p1 entity:person))
+        (define p1 (sql:alias 'p1 person))
         
         (check-pred query-alias?
                     (query-from (sql:select #:from (sql:select #:from p1)))
@@ -185,23 +187,23 @@
         (define-alias p1-count (sql:count* p1))
         
         (check-not-exn
-          (cut sql:select #:what p1-name #:from p1)
+          (cut sql:select #:what (sql p1.name) #:from p1)
           "correct entity")
         
         (check-not-exn
-          (cut sql:select #:what p1-name #:from (sql:outer p1 p2))
+          (cut sql:select #:what (sql p1.name) #:from (sql:outer p1 p2))
           "join")
         
         (check-exn exn:fail:contract?
-          (cut sql:select #:what p1-name #:from p2)
+          (cut sql:select #:what (sql p1.name) #:from p2)
           "incorrect entity")
         
         (check-not-exn
-          (cut sql:select #:what p1-name #:from (sql:select #:what p1-name #:from p1))
+          (cut sql:select #:what (sql p1.name) #:from (sql:select #:what (sql p1.name) #:from p1))
           "subquery with correct #:what")
         
         (check-exn exn:fail:contract?
-          (cut sql:select #:what p1-name #:from (sql:select #:what p1-id #:from p1))
+          (cut sql:select #:what (sql p1.name) #:from (sql:select #:what (sql p1.guid) #:from p1))
           "subquery with incorrect #:what")
         
         (check-not-exn
@@ -220,23 +222,23 @@
           "no entity")
         
         (check-not-exn
-          (cut sql:select #:distinct (sql:= p1-name "x") #:from p1)
+          (cut sql:select #:distinct (sql:= (sql p1.name) "x") #:from p1)
           "single entity")
         
         (check-not-exn
-          (cut sql:select #:distinct (sql:= p1-name p2-name) #:from (sql:outer p1 p2))
+          (cut sql:select #:distinct (sql:= (sql p1.name) (sql p2.name)) #:from (sql:outer p1 p2))
           "join")
         
         (check-exn exn:fail:contract?
-          (cut sql:select #:distinct (sql:= p1-name "x") #:from p2)
+          (cut sql:select #:distinct (sql:= (sql p1.name) "x") #:from p2)
           "incorrect entity")
         
         (check-not-exn
-          (cut sql:select #:distinct (sql:= p1-name "x") #:from (sql:select #:what p1-name #:from p1))
+          (cut sql:select #:distinct (sql:= (sql p1.name) "x") #:from (sql:select #:what (sql p1.name) #:from p1))
           "subquery with correct #:what")
         
         (check-exn exn:fail:contract?
-          (cut sql:select #:distinct (sql:= p1-name "x") #:from (sql:select #:what p1-id #:from p1))
+          (cut sql:select #:distinct (sql:= (sql p1.name) "x") #:from (sql:select #:what (sql p1.guid) #:from p1))
           "subquery with incorrect #:what")
         
         (check-not-exn
@@ -249,29 +251,29 @@
         (define-alias p1 person)
         (define-alias p2 person)
         
-        (define p1-max-id (sql:alias 'p1-max-id (sql:max p1-id)))
+        (define p1-max-revision (sql:alias 'p1-max-revision (sql:max (sql p1.guid))))
         
         (check-not-exn
-          (cut sql:select #:what p1-id #:from p1 #:where (sql:= p1-name "Dave"))
+          (cut sql:select #:what (sql p1.guid) #:from p1 #:where (sql:= (sql p1.name) "Dave"))
           "entity")
         
         (check-not-exn
-          (cut sql:select #:what p1-id #:from (sql:outer p1 p2) #:where (sql:= p1-name "Dave"))
+          (cut sql:select #:what (sql p1.guid) #:from (sql:outer p1 p2) #:where (sql:= (sql p1.name) "Dave"))
           "join")
         
         (check-not-exn
-          (cut sql:select #:what p1-id #:from (sql:select #:from p1) #:where (sql:= p1-name "Dave"))
+          (cut sql:select #:what (sql p1.guid) #:from (sql:select #:from p1) #:where (sql:= (sql p1.name) "Dave"))
           "subquery")
         
         (check-not-exn
           (cut sql:select 
-               #:what  p2-id
-               #:from  (sql:outer (sql:select #:what p1-max-id #:from p1) p2)
-               #:where (sql:= p2-id p1-max-id))
+               #:what  (sql p2.guid)
+               #:from  (sql:outer (sql:select #:what p1-max-revision #:from p1) p2)
+               #:where (sql:= (sql p2.guid) p1-max-revision))
           "expression alias")
         
         (check-exn exn:fail:contract?
-          (cut sql:select #:from p2 #:where (sql:= p1-name "Dave"))
+          (cut sql:select #:from p2 #:where (sql:= (sql p1.name) "Dave"))
           "incorrect entity")))
     
     (test-case "select : members of #:order must be defined in #:what or #:from"
@@ -280,42 +282,42 @@
         (define-alias p1 person)
         (define-alias p2 person)
         
-        (define-alias expr1 (sql:+ p1-id 1))
+        (define-alias expr1 (sql:string-append (sql p1.name) "abc"))
         
         (check-not-exn
-          (cut sql:select #:what p1-id #:from p1 #:order (list (sql:asc p1-name)))
+          (cut sql:select #:what (sql p1.guid) #:from p1 #:order (list (sql:asc (sql p1.name))))
           "entity")
         
         (check-exn exn:fail:contract?
-          (cut sql:select #:what p1-id #:from p1 #:order (list (sql:asc p2-name)))
+          (cut sql:select #:what (sql p1.guid) #:from p1 #:order (list (sql:asc (sql p2.name))))
           "incorrect entity")
         
         (check-not-exn
           (cut sql:select
-               #:what  p1-id
+               #:what  (sql p1.guid)
                #:from  (sql:outer p1 p2)
-               #:order (list (sql:asc p1-name)))
+               #:order (list (sql:asc (sql p1.name))))
           "join")
         
         (check-not-exn
           (cut sql:select
-               #:what  p1-id
+               #:what  (sql p1.guid)
                #:from  (sql:select #:from p1)
-               #:order (list (sql:asc p1-name)))
+               #:order (list (sql:asc (sql p1.name))))
           "subquery")
         
         (check-exn exn:fail:contract?
           (cut sql:select
-               #:what  p2-name
+               #:what  (sql p2.name)
                #:from  (sql:select #:from p2)
-               #:order (list (sql:asc p1-name)))
+               #:order (list (sql:asc (sql p1.name))))
           "incorrect subquery")
         
         (check-not-exn
           (cut sql:select
-               #:what  (list p1-id expr1)
+               #:what  (list (sql p1.guid) expr1)
                #:from  (sql:select #:from (sql:outer p1 p2))
-               #:order (list (sql:asc expr1) (sql:desc p1-id) (sql:asc p2-id)))
+               #:order (list (sql:asc expr1) (sql:desc (sql p1.guid)) (sql:asc (sql p2.guid))))
           "expressions and attributes in #:what")))
     
     (test-case "select : extract-info"
@@ -324,43 +326,43 @@
         (define-alias p1 person)
         (define-alias p2 person)
         
-        (define p1-count-id   (sql:count   p1-id))
-        (define p1-count      (sql:count*  p1))
-        (define p1-max-id     (sql:max     p1-id))
-        (define p1-min-id     (sql:min     p1-id))
-        (define p1-average-id (sql:average p1-id))
+        (define p1-count-id     (sql:count   (sql p1.guid)))
+        (define p1-count        (sql:count*  p1))
+        (define p1-max-revision (sql:max     (sql p1.revision)))
+        (define p1-min-revision (sql:min     (sql p1.revision)))
+        (define p1-average-id   (sql:average (sql p1.revision)))
         
-        (check-equal? (query-extract-info (sql:select #:what p1-id #:from p1))
-                      type:integer
+        (check-equal? (query-extract-info (sql:select #:what (sql p1.revision) #:from p1))
+                      #f
                       "single attribute")
         
-        (check-equal? (query-extract-info (sql:select #:what (list p1-id p1-revision p1-name) #:from p1))
-                      (list type:id type:revision type:string)
+        (check-equal? (query-extract-info (sql:select #:what (list (sql p1.revision) (sql p1.name)) #:from p1))
+                      '(#f #f)
                       "list of attributes")
         
         (check-equal? (query-extract-info (sql:select #:from p1))
-                      entity:person
+                      'person
                       "single entity")
         
         (check-equal? (query-extract-info (sql:select #:from (sql:outer p1 p2)))
-                      (list entity:person entity:person)
+                      '(person person)
                       "multiple entities")
         
         (check-equal? (query-extract-info (sql:select #:what (list p1-count-id
                                                                    p1-count
-                                                                   p1-max-id
-                                                                   p1-min-id
+                                                                   p1-max-revision
+                                                                   p1-min-revision
                                                                    p1-average-id)
                                                       #:from p1))
-                      (list type:integer type:integer type:integer type:integer type:real)
+                      '(#f #f #f #f #f)
                       "aggregates")
         
-        (check-equal? (query-extract-info (sql:select #:what (list (sql:alias 'column1 (sql:+ p1-id p1-revision))
+        (check-equal? (query-extract-info (sql:select #:what (list (sql:alias 'column1 (sql:+ (sql p1.revision) (sql p1.revision)))
                                                                    (sql:alias 'column2 (sql:+ p1-count-id 1.5))
-                                                                   (sql:alias 'column3 (sql:string-append p1-name " rocks!"))
-                                                                   (sql:alias 'column4 (sql:> p1-id 123)))
+                                                                   (sql:alias 'column3 (sql:string-append (sql p1.name) " rocks!"))
+                                                                   (sql:alias 'column4 (sql:> (sql p1.revision) 123)))
                                                       #:from p1))
-                      (list type:integer type:real type:string type:boolean)
+                      '(#f #f #f #f)
                       "expressions")))))
 
 ; Provide statements -----------------------------

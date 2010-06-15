@@ -4,8 +4,7 @@
          scheme/contract
          srfi/26/cut)
 
-(require "../base.ss"
-         "../snooze.ss"
+(require "../snooze.ss"
          "cache.ss"
          "entity.ss")
 
@@ -18,7 +17,7 @@
 
 ; Persistent struct types ------------------------
 
-(define-persistent-struct audit-attribute
+(define-snooze-struct audit-attribute
   ([entity-id (make-integer-type #f #f) #:column-name 'entityID]
    [name      (make-symbol-type #f #f 32)])
   #:table-name 'auditattributes)
@@ -131,6 +130,6 @@
 
 ; Provide statements -----------------------------
 
-(provide (persistent-struct-out audit-attribute)
+(provide (snooze-struct-out audit-attribute)
          attribute-cache<%>
          attribute-cache%)

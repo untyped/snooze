@@ -1,79 +1,41 @@
 #lang scheme/base
 
-(require mzlib/etc
-         srfi/26/cut)
-
-(require "snooze-syntax.ss"
+(require srfi/26
+         "snooze-api.ss"
          "test-base.ss"
-         "test-data.ss"
-         "test-util.ss"
-         "era/era.ss")
+         "core/core.ss")
 
-(provide make-snooze-modify-tests)
-  
 ; Tests ------------------------------------------
 
-; snooze% -> test-suite
-(define (make-snooze-modify-tests snooze)
-  (define-snooze-interface snooze)
-  
-  ; course
-  (define course (make-course 'code "Name" 12345 1234.5 #t (string->time-tai "2001-01-01 01:01:01")))
-  
-  ; test-suite
+; This tests the functional update process and its effect on structs.
+
+(define snooze-modify-tests
   (test-suite "snooze-modify-tests"
     
-    #:before
-    (lambda ()
-      (create-table entity:course)
-      (create-table entity:person))
+    (test-case "copying a saved struct : creates an independent copy, unsaved, with the same guid"
+      (recreate-test-tables)
+      (let* ([per  (save! (make-person "Per"))]                   ; saved
+             [per2 (person-set per #:name "Per2")])               ; unsaved
+        (check-not-eq? per per2))) ; different structs in memory
     
-    #:after
-    (lambda ()
-      (drop-table entity:course)
-      (drop-table entity:person))
+    (test-case "saving a copy of a struct updates the original struct, so that they refer to the same struct"
+      (recreate-test-tables)
+      (let* ([per   (save! (make-person "Per"))]                   ; saved
+             [per2 (save! (person-set per #:name "Per2"))])       ; saved
+        (check-equal? (person-name per)  "Per")
+        (check-equal? (person-name per2) "Per2")
+        (check-not-eq? per per2))) ; different structs in memory
     
-    ; ***** NOTE *****
-    ; Each test below depends on the tests before it.
-    ; Add/edit tests at your peril!
-    ; ****************
-    
-    (test-case "new struct has #f id"
-      (check-false (struct-id course)))
-    
-    (test-case "first save! inserts a database record, updates id in struct, and returns the struct"
-      (let ([return-value (save! course)])
-        (check-pred integer? (struct-id course))
-        (check-equal? (find-by-id entity:course (struct-id course)) course)
-        (check-equal? return-value course)))
-    
-    (test-case "subsequent save! updates database record and returns the struct id"
-      (set-course-value! course 54321)
-      (let ([return-value (save! course)])
-        (check-equal? (course-value (find-by-id entity:course (struct-id course))) 54321)
-        (check-equal? return-value course)))
-    
-    (test-case "delete! removes database record and sets struct id to #f"
-      (let ([old-id (struct-id course)])
-        (delete! course)
-        (check-false (struct-id course))
-        (check-false (find-by-id entity:course old-id))))
-    
-    (test-case "delete! of unsaved record raises exception"
-      (check-exn exn:fail:snooze? (cut delete! course)))
-    
-    ;(test-case "save/id+revision!"
-    ;  (begin-with-definitions
-    ;    (save/id+revision!
-    ;     (make-person/defaults #:id       10000
-    ;                           #:revision 20000
-    ;                           #:name     "Dave"))
-    ;    ; person
-    ;    (define found (find-by-id entity:person 10000))
-    ;    (check-pred person? found "predicate")
-    ;    (check-equal? (person-id found) 10000 "id")
-    ;    (check-equal? (person-revision found) 20000 "revision")
-    ;    (check-equal? (person-name found) "Dave" "name")
-    ;    (delete! found)))
-    
-    ))
+    (test-case "snooze-struct-copy : creates a totally independent copy"
+      (let* ([test-person (save! (make-person "Per"))]
+             [copy-person (snooze-struct-copy test-person)])
+        (after (check-not-equal? copy-person test-person)
+               (check-pred integer? (snooze-struct-id       test-person))
+               (check-pred integer? (snooze-struct-revision test-person))
+               (check-pred symbol?  (snooze-struct-id       copy-person))
+               (check-false         (snooze-struct-revision copy-person))
+               (delete! test-person))))))
+
+; Provide statements -----------------------------
+
+(provide snooze-modify-tests)

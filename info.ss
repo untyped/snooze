@@ -4,11 +4,11 @@
 
 (define blurb 
   '((p "An Object Relational Mapping (ORM) system. Snooze lets you define special PLT structs called " 
-       (tt "persistent-structs") " and serialize them to an SQLite or PostgreSQL database.")))
+       (tt "snooze-structs") " and serialize them to an SQLite or PostgreSQL database.")))
 
 (define release-notes
   '((p "Changes and additions:")
-    (ul (li "added " (tt "sql-list") " syntax."))))
+    (ul (li "complete me..."))))
 
 (define primary-file "main.ss")
 
@@ -16,9 +16,14 @@
 
 (define categories '(devtools io))
 
-(define scribblings '(("scribblings/snooze.scrbl" (multi-page))))
+;(define scribblings '(("scribblings/snooze.scrbl" (multi-page))))
 
-(define required-core-version "4.0.2.5")
+(define required-core-version "4.1.5.5")
 
 (define repositories '("4.x"))
 
+(define compile-omit-paths
+  '("autoplanet.ss"
+    "build.ss"
+    "planet"
+    "planetdev"))

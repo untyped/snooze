@@ -55,26 +55,26 @@
     (define/public (on-transaction-start)
       (set! transaction (send snooze save! (make-audit-transaction (current-time time-utc)))))
     
-    ; (U persistent-struct #f) -> void
+    ; (U snooze-struct #f) -> void
     (define/public (on-transaction-end metadata-struct)
       (cond [(and metadata-struct changes-made?)
              (send snooze save! metadata-struct)]
             [(not changes-made?)
              (send snooze delete! transaction)]))
 
-    ; persistent-struct -> void
+    ; snooze-struct -> void
     (define/public (audit-insert! struct)
       (define delta (make-insert-delta transaction (struct-guid struct)))
       (send snooze save! delta)
       (set! changes-made? #t))
     
-    ; persistent-struct -> void
+    ; snooze-struct -> void
     (define/public (audit-update! new)
       ; integer
       (define id (struct-id new))
       ; entity
       (define entity (struct-entity new))
-      ; persistent-struct
+      ; snooze-struct
       (define old (send snooze find-by-id entity id))
       ; integer
       (define revision (struct-revision old))
@@ -93,7 +93,7 @@
                 (cddr (struct-attributes old))
                 (cddr (struct-attributes new))))
     
-    ; persistent-struct -> void
+    ; snooze-struct -> void
     (define/public (audit-delete! struct)
       ; integer
       (define id (struct-id struct))

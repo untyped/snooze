@@ -1,0 +1,672 @@
+_spgsql_: PostgreSQL connectivity
+=================================
+
+By Ryan Culpepper (ryanc at plt-scheme dot org)
+
+This manual documents spgsql version 5.3 (PLaneT version 2 3).
+
+Keywords: _spgsql_, _postgresql_, _postgres_, _database_, _db_
+
+
+Contents
+========
+
+ - Introduction
+ - Connection API
+ - Query API
+ - SQL Types and Conversions
+ - Usage Notes
+ - Changes from version 4
+ - Acknowledgments
+
+
+Introduction
+============
+
+The spgsql library provides a high-level interface to PostgreSQL
+database servers. It does not rely on any locally-installed PostgreSQL
+client libraries: spgsql is everything you need to connect PLT Scheme
+to a PostgreSQL server.
+
+The spgsql library is object-based, using (lib "class.ss") objects,
+but connection objects do not contain query state, only connection
+state. The query methods are functional in spirit: queries return
+results; they do not stow them away in the connection for later
+manipulation and retrieval. The higher-order query methods are
+patterned after the standard higher-order list processing functions.
+
+Since spgsql does not use foreign connectivity libraries, it works
+seamlessly with PLT Scheme's resource management systems. The library
+communicates with servers using normal, custodian-managed
+ports. Consequently, communication blocks only the thread performing
+the communication, unlike some FFI-based approaches.
+
+Spgsql 5 (that is, PLaneT major version 2) only works with PostgreSQL
+servers version 7.4 and later. For older servers, use spgsql 4
+(PLaneT major version 1).
+
+
+Connection API
+==============
+
+Use the following require line to load spgsql:
+
+  (require (planet "spgsql.ss" ("schematics" "spgsql.plt" 2 0)))
+
+Of course, you must also require (lib "class.ss") in order to call a
+connection's methods.
+
+Creating connections
+--------------------
+
+Use the following procedures to create a connection:
+
+> (connect <connection-keyword-arguments>)
+  connect : <connection-keyword-arguments> -> connection
+
+  Creates a connection to a PostgreSQL server. The 'connect' procedure
+  recognizes the keyword arguments listed below. Only the user and
+  database arguments are mandatory; the other arguments have default
+  values. If neither server hostname nor socket path is specified, the
+  connection defaults to a TCP connection to "localhost".
+
+  When successful, 'connect' returns a connection object. If the
+  connection cannot be made, 'connect' raises an exception.
+
+    #:server
+
+      The server to make a TCP connection to. Defaults to "localhost".
+
+    #:port
+
+      The TCP port the server is listening on. Defaults to 5432.
+
+    #:socket
+
+      The path of the local socket to connect to. You cannot specify
+      both the socket option and the server ano/or port option.
+
+      Local socket connections are only available on Linux (x86) and
+      Mac OS X, at present.
+
+    #:user
+
+      The database user name to connect as. Mandatory argument.
+
+    #:database
+
+      The database to connect to. Mandatory argument.
+
+    #:password
+
+      The user's password. Defaults to #f, meaning no password. If the
+      backend demands a password and none was given, 'connect' raises
+      an authentication error.
+
+   #:allow-cleartext-password?
+
+      Defaults to #f. Unless explicitly set to true, spgsql will raise
+      an error if the backend requests the user's password to be sent
+      un-hashed (regardless of whether the connection is encrypted
+      with SSL).
+
+    #:ssl
+
+      Determines whether to attempt an SSL connection and whether to
+      fall back to non-SSL if that fails. The default is 'no. Only
+      compatible with TCP connections.
+
+      - 'yes: attempt an SSL connection and raise an error if
+         the backend refuses SSL
+      - 'optional: attempt an SSL connection but fall back to
+         non-SSL mode if the backend refuses SSL
+      - 'no: do not attempt SSL connection
+
+  Examples:
+    (connect #:server "db.mysite.tla"
+             #:port 5432
+             #:database "webappdb"
+             #:user "webapp"
+             #:password "ultra5ecret")
+
+    (connect #:user "me"
+             #:database "me"
+             #:password "icecream")
+
+    ;; Typical socket path on some PostgreSQL configurations
+    (connect #:socket "/var/run/postgresql/.s.PGSQL.5432"
+             #:user "me"
+             #:database "me")
+
+A connection contains the following administrative methods:
+
+> (send a-connection disconnect)
+  disconnect : -> void
+
+  Disconnects from the server.
+
+> (send a-connection connected?)
+  connected? : -> boolean
+
+  Returns true if the connection is connected.
+
+
+Query API
+=========
+
+High-level Query Interface
+--------------------------
+
+Spgsql implements a high-level, functional query interface. Once
+connected, connection objects are relatively stateless. When a query
+method is invoked, it either returns a result or, if the query caused
+an error, raises an exception. Different query methods impose
+different constraints on the query results and offer different
+mechanisms for processing the results.
+
+The spgsql query interface does not expose any low-level
+machinery. Programmers who want cursors should use SQL-language
+cursors via the "DECLARE CURSOR", "MOVE", and "FETCH" statements.
+
+A Statement is one of:
+ - a string containing a single SQL statement
+ - an opaque value returned by 'prepare' or 'prepare-multiple' (see below)
+
+A connection supports the following high-level query methods:
+
+> (send a-connection exec a-statement ...)
+  exec : Statement ... -> void
+
+  Executes SQL statements for effect and discards the result(s).
+  Calling 'exec' on multiple statements at once may be more efficient
+  than calling 'exec' multiple times on the statements individually.
+
+  Note: The set of statements passed to 'exec' are executed within
+  their own "mini-transaction"; if any statement fails, the effects of
+  all previous statements in the set are rolled back.
+
+  Example:
+    (send c exec "create table the_numbers (n integer, name varchar)"
+                 "insert into the_numbers (n, name) values (0, 'zero')")
+
+> (send a-connection query-list a-statement)
+  query-list : Statement -> (list-of value)
+
+  Executes a SQL query which must return a recordset of exactly one
+  column; returns the list of (single) values from the query.
+
+> (send a-connection query-row a-statement)
+  query-row : Statement -> (vector-of value)
+
+  Executes a SQL query which must return a recordset of exactly one
+  row; returns its (single) row result as a vector.
+
+> (send a-connection query-maybe-row a-statement)
+  query-maybe-row : Statement -> (vector-of value) or #f
+
+  Like 'query-row', but the query may return zero rows; in that case,
+  the method returns false.
+
+> (send a-connection query-value a-statement)
+  query-value : Statement -> value
+
+  Executes a SQL query which must return a recordset of exactly one
+  column and exactly one row; returns its single value result.
+
+> (send a-connection query-maybe-value a-statement)
+  query-maybe-value : Statement -> value or #f
+
+  Like 'query-value', but the query may return zero rows; in that
+  case, the method returns false.
+
+> (send a-connection map a-statement proc)
+  map : Statement (field ... -> 'a) -> (list-of 'a)
+
+  Executes a SQL query and applies the given function to the contents
+  of each row, returning a list of results.
+
+> (send a-connection for-each a-statement proc)
+  for-each : Statement (field ... -> void) -> void
+
+  Executes a SQL query and applies the given function to the contents
+  of each row, discarding the results.
+
+> (send a-connection mapfilter a-statement map-proc filter-proc)
+  mapfilter : Statement (field ... -> 'a) (field ... -> boolean) -> (list-of 'a)
+
+  Like 'map', but applies the map procedure (given first) to only
+  those rows which satisfy the given predicate (given second).
+
+> (send a-connection fold a-statement proc init)
+  fold : Statement ('a field ... -> 'a) 'a -> 'a
+
+  Left fold over the results of the query.
+
+Connections also support methods for preparing parameterized
+queries. A parameterized query may be executed any number of times
+with different values for its parameters.
+
+A parameterized query is written with positional arguments. For example:
+
+  select * from the_numbers where num > $1;
+
+A Preparable is:
+  - a string containing a single SQL statement
+
+The following methods provide a convenient functional interface for
+common uses of parameterized prepared statements:
+
+> (send a-connection prepare-exec a-preparable)
+  prepare-exec : Preparable -> param ... -> void
+
+> (send a-connection prepare-query-list a-preparable)
+  prepare-query-list : Preparable -> param ... -> (list-of value)
+
+> (send a-connection prepare-query-row a-preparable)
+  prepare-query-row : Preparable -> param ... -> (vector-of value)
+
+> (send a-connection prepare-query-maybe-row a-preparable)
+  prepare-query-maybe-row : Preparable -> param ... -> (vector-of value) or #f
+
+> (send a-connection prepare-query-value a-preparable)
+  prepare-query-value : Preparable -> param ... -> value
+
+> (send a-connection prepare-query-maybe-value a-preparable)
+  prepare-query-maybe-value : Preparable -> param ... -> value or #f
+
+> (send a-connection prepare-map a-preparable proc)
+  prepare-map : Preparable ('a ... -> 'b) -> param ... -> (list-of 'b)
+
+> (send a-connection prepare-for-each a-preparable proc)
+  prepare-for-each : Preparable ('a ... -> void) -> param ... -> void
+
+> (send a-connection prepare-mapfilter a-preparable map-proc filter-proc)
+  prepare-mapfilter : Preparable ('a ... -> 'b) ('a ... -> boolean)
+                   -> param ... -> (list-of 'b)
+
+> (send a-connection prepare-fold a-preparable proc init)
+  prepare-fold : Preparable ('b 'a ... -> 'b) 'b -> param ... -> 'b
+
+  Each of these methods prepares the parameterized SQL statement for
+  later execution and returns a closure. The closure accepts the
+  parameter values and executes the prepared statement, processing the
+  results like the corresponding query method.
+
+  A prepared-statement closure may be executed any number of times.
+  It is possible to prepare a statement that contains no parameters;
+  the resulting procedure should be called with zero arguments.
+
+  Unlike 'exec', 'prepare-exec' only accepts a single statement.
+
+Low-level Query API
+-------------------
+
+In addition to the high-level query API, spgsql connections support
+the following methods for preparing, binding, and executing queries:
+
+A QueryResult is one of:
+  - (make-SimpleResult string)
+  - (make-Recordset (list-of FieldInfo) (list-of (vector-of datum)))
+
+A FieldInfo is (make-FieldInfo string)
+
+> (struct SimpleResult (command))
+> (struct Recordset (info data))
+> (struct FieldInfo (name))
+
+Methods:
+
+> (send a-connection query a-statement)
+  query : Statement -> QueryResult
+
+> (send a-connection query-multiple some-statements)
+  query-multiple : (list-of Statement) -> (list-of QueryResult)
+
+  Executes queries, returning structures that describe the
+  results. Unlike the high-level query methods, 'query-multiple'
+  supports a mixture of recordset-returning queries and effect-only
+  queries.
+
+> (send a-connection prepare a-preparable)
+  prepare : Preparable -> PreparedStatement
+
+> (send a-connection prepare-multiple some-preparables)
+  prepare-multiple : (list-of Preparable) -> (list-of PreparedStatement)
+
+  Prepare parameterized queries. The resulting PreparedStatements are
+  tied to the connection object that prepared them; it is an error to
+  use them with any other connection.
+
+> (send a-connection bind-prepared-statement a-preparedstatement params)
+  bind-prepared-statement : PreparedStatement (list-of param) -> Statement
+
+  Fill in a parameterized prepared query with its parameters. The
+  resulting Statement can be executed with 'query-multiple' or any of
+  the high-level query methods, but it must be used with the same
+  connection object.
+
+  Example:
+    (let ([get-name-pst
+           (send c prepare "select name from the_numbers where n = $1")])
+      (let ([get-name1 (send c bind-prepared-statement get-name-pst (list 1))]
+            [get-name2 (send c bind-prepared-statement get-name-pst (list 2))])
+        (send c query-multiple (list get-name1 get-name2))))
+    =>
+    (list (make-Recordset (list (make-FieldInfo "name")) (list "one"))
+          (make-Recordset (list (make-FieldInfo "name")) (list "two")))
+
+
+SQL Types and Conversions
+=========================
+
+For most basic SQL types, connections automatically process query
+results and paramterized query parameters to convert between Scheme
+values and SQL external representations. When there is no automatic
+conversion to or from a SQL type, you must supply or accept a string
+containing the SQL value's external representation.
+
+  ;; Basic datatypes
+  (send c query-value "select 18") => 18
+  (send c query-value "select false") => #f
+
+  ;; Unsupported conversions
+  (send c query-value "select '{1,2,3}'::int[]") => "{1,2,3}"
+  (send c query-value "select point (1,2)") => "(1,2)"
+
+SQL NULL values are always translated into the unique 'sql-null' value.
+
+> sql-null
+
+> (sql-null? a-value)
+  sql-null? : value -> boolean
+
+  A special value and predicate used to represent NULL values in
+  query results.
+
+Conversions
+-----------
+
+Here are the SQL types known to spgsql with their corresponding Scheme
+representations. The type is listed in the notation accepted by
+spgsql; it generally corresponds to the SQL notation with spaces
+replaced by dashes.
+
+  Type Name                   Aliases                 Scheme datatype
+  --------------------------- ----------------------- ---------------
+  bigint                      int8                    exact integer
+  bigserial                   serial8                 exact integer
+  boolean                     bool                    boolean
+  bytea                                               bytes
+  character-varying           varchar                 string
+  character                   char                    string
+  date                                                sql-date
+  double-precision            double float8           inexact real
+  integer                     int int4                exact integer
+  numeric                     decimal                 number
+  real                        float4                  inexact real
+  smallint                    int2                    exact integer
+  serial                      serial4                 exact integer
+  text                                                string
+  time-without-time-zone      time                    sql-time
+  time-with-time-zone         timetz                  sql-time
+  timestamp-without-time-zone timestamp               sql-timestamp
+  timestamp-with-time-zone    timestamptz             sql-timestamp
+
+  oid                                                 exact integer
+
+A SQL value of type 'numeric'/'decimal' is always converted to either
+an exact rational or +nan.0. When converting Scheme values to SQL
+'numeric', exact rational values representable by finite decimal
+strings are converted without loss of precision. Other real values are
+converted to decimals with a loss of precision.
+
+PostgreSQL defines other datatypes, such as network addresses and
+various geometric concepts. These are not supported by spgsql.
+
+Array types are also not currently supported by spgsql. Support may be
+added in a future version.
+
+SQL Data
+--------
+
+Spgsql provides datatypes for a few SQL types that have no close
+analogues in Scheme.
+
+> (struct sql-date (year month day))
+> (struct sql-time (hour minute second nanosecond tz))
+> (struct sql-timestamp (year month day hour minute second nanosecond tz))
+
+  Representations of SQL dates, times, and timestamps. The 'tz'
+  field may be false to indicate no time zone information.
+
+  The sql-time and sql-timestamp structures store fractional seconds
+  to nanosecond accuracy for compatibility with SRFI 19. Not, however,
+  that PostgreSQL only supports microsecond time accuracy. Fractional
+  seconds are rounded to the nearest microsecond when they are stored
+  in the database.
+
+> (sql-datetime->srfi-date a-sql-date-or-time)
+  sql-datetime->srfi-date : (union sql-date sql-time sql-timestamp) -> date
+
+> (srfi-date->sql-date a-date)
+  srfi-date->sql-date : date -> sql-date
+
+> (srfi-date->sql-time a-date)
+  srfi-date->sql-time : date -> sql-time
+
+> (srfi-date->sql-time-tz a-date)
+  srfi-date->sql-time-tz : date -> sql-time
+
+> (srfi-date->sql-timestamp a-date)
+  srfi-date->sql-timestamp : date -> sql-timestamp
+
+> (srfi-date->sql-timestamp-tz a-date)
+  srfi-date->sql-timestamp-tz : date -> sql-timestamp
+
+  Converts between this library's date and time values and SRFI 19's
+  date values. SRFI dates store more information than SQL dates and
+  times, so converting a SQL time to a SRFI date, for example, puts
+  zeroes in the year, month, and day fields.
+
+Creating SQL Strings
+--------------------
+
+The 'format-sql' and 'concat-sql' macros help construct SQL query
+strings safely:
+
+> (format-sql format-string ... type-spec ...) SYNTAX
+
+  Encodes each tagged datum to a SQL literal expression and inserts it
+  into the format string. The result is a string. A type-spec has one
+  of the following forms, categorized by the SQL statement context it
+  is used in:
+
+  SQL literal expressions:
+
+    - [type-identifier expr]
+
+      Converts the result of 'expr' to the SQL type named by
+      'type-identifier'. The 'type-identifier' must be a syntactic
+      identifier naming a SQL type, and 'expr' must evaluate to a
+      value of the appropriate Scheme datatype.
+
+      Example: This code generates a query that returns all numbers 
+      greater than the value of the Scheme variable 'lower-bound':
+        (format-sql "select n from the_numbers where n >= ~a"
+                    [int4 lower-bound])
+
+      Warning: the type name is not checked. You must avoid specifying
+      type names that contain SQL delimiters such as ')' or '--'.
+
+    - [#:trust expr type-string]
+
+      Performs minimal escaping on the value of 'expr', which must be
+      a string that is a suitable external representation for the SQL
+      type named by 'type-string'.
+
+      Example: Generates a query for boxes containing the origin:
+        (format-sql "select b from some_boxes where ~a <@ b"
+                    [#:trust "(0,0)" "point"]
+
+      Warning: the type name is not checked. You must avoid specifying
+      type names that contain SQL delimiters such as ')' or '--'.
+
+  SQL identifiers:
+
+    - [#:name expr]
+    - [#:Name expr]
+
+      Quotes a SQL identifier (eg, table name or field name). The
+      expression must produce a string. Using '#:name' performs the
+      default case conversion on the name. The following are
+      equivalent:
+
+        [#:name "table"] = [#:name "TABLE"] = [#:name "TaBlE"]
+
+      If '#:Name' is used, the case of the name is preserved.
+
+      Example:
+        (format-sql "select n from ~a"
+                    [#:name "the_numbers"])
+
+  SQL code:
+
+    - [#:sql expr]
+
+      Splices in a string containing arbitrary SQL code. No escaping
+      of is done, but whitespace is added around the spliced code.
+
+      Example:
+        (format-sql "select n from ~a ~a"
+                    [#:name "the_numbers"]
+                    [#:sql (if only-pos? "where n > 0" "")])
+
+  Note: The format string must contain only '~a' placeholders (using
+  '~s' placeholders would generally result in invalid SQL). Literal
+  '~' characters may be written as '~~'.
+
+> (concat-sql string-or-type-spec ...) SYNTAX
+
+  Composes a SQL string by concatenating the literal strings and the
+  interpretations of the type-specs (as above; see 'format-sql').
+
+  Whitespace is added after every fragment. Unlike 'format-sql', the
+  '~' character has no special meaning within the strings.
+
+  Example:
+    (concat-sql "select n"
+                "from" [#:name "the_numbers"]
+                [#:sql (if only-pos? "where n > 0" "")])
+
+
+Usage Notes
+===========
+
+Synchronization
+---------------
+
+Connections are internally synchronized: it is safe to perform
+concurrent queries on the same connection object from different
+threads (by direct query methods or prepared query procedures).
+
+The extent of the synchronization covers only the communication with
+the server, not the processing of returned results. Clients requiring
+synchronized processing of query results must implement the
+synchronization themselves.
+
+(Synchronization was added in spgsql version 5.1.)
+
+Connecting to a Server
+----------------------
+
+By default, many PostgreSQL servers only listen on local domain
+sockets. spgsql 5 provides experimental support for communication over
+local domain sockets, but only on Linux (x86) and Mac OS X.
+
+To find the socket path, look in the directory named by the
+'unix_socket_directory' variable in postgresql.conf.  For example, on
+Ubuntu Feisty Fawn running PostgreSQL 8.2, the socket directory is
+'/var/run/postgresql' and the special file is at
+'/var/run/postgresql/.s.PGSQL.5432'.
+
+If local socket communication is not available, the server must be
+reconfigured to listen to a TCP port and restarted. See the PostgreSQL
+manual for information on doing this.
+
+Passwords and Authentication
+----------------------------
+
+PostgreSQL also comes with a configuration file (pg_hba.conf) which
+lists accepted authentication methods. It is often necessary to add
+lines to this file that describe what authentication method is used
+for TCP connections. By default, spgsql only supports cleartext and
+md5-hashed passwords, and it does not send cleartext passwords unless
+explicitly ordered to.
+
+Server Parameters
+-----------------
+
+The spgsql library only understands the the UTF-8 client encoding.
+Connections set the encoding when they are created; no server
+configuration or user action is necessary. This library does not
+support other encodings. If the server changes the client
+encoding---for example, in response to a SET statement issued by
+the user---the connection automatically disconnects and raises an
+error.
+
+
+Changes from version 4
+======================
+
+Version 5 of spgsql is not source-compatible with prior versions. This
+section outlines the substantial differences.
+
+Connecting
+----------
+
+The old 'connect' procedure with fixed arguments has been replaced by
+a procedure taking keyword arguments.
+
+Support for crypt()-passwords has been dropped.
+
+Queries
+-------
+
+All queries are now restricted to a single SQL statement. Support for
+COPY statements has been dropped.
+
+The old low-level query methods, such as 'query', have been changed or
+removed. The new low-level query methods use different datatypes.
+
+The high-level query methods are mostly the same. The 'fold-right'
+method has been dropped, and the old misnamed 'query-tuple' method has
+been renamed 'query-row' in anticipation of a proper tuple
+representation in the future.
+
+Type conversions are enabled automatically and cannot be
+disabled. Unconverted data is represented as strings. Future
+releases may add the capability to configure type conversions.
+
+The 'sql-format' procedure has been replaced with the 'format-sql'
+macro.
+
+Errors and Events
+-----------------
+
+The exception hierarchy has been dropped. There is no way to tell a
+fatal error from a nonfatal error by the exception object; use the
+'connected?' method instead. Generally, internal errors and
+communication errors are fatal; query errors and user errors are not.
+
+The 'set-notification-handler' and 'set-notice-handler' methods have
+been dropped. Future releases may restore the capability to react to
+asynchronous events.
+
+
+Acknowledgments
+===============
+
+Thanks to Dave Gurnell and Noel Welsh for help implementing SSL
+connections. Further thanks to Dave Gurnell for helping to implement,
+test, and document date and time handling. Thanks to Mike Burns and
+Doug Orleans for help updating spgsql to PLT Scheme 30x.

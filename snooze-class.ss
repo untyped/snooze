@@ -1,46 +1,77 @@
 #lang scheme/base
 
+(require "base.ss")
+
 (require scheme/class
-         scheme/contract
-         mzlib/etc
-         mzlib/kw
-         srfi/26/cut
+         scheme/list
+         srfi/26
          (planet untyped/unlib:3/gen)
          (planet untyped/unlib:3/parameter)
-         (planet untyped/unlib:3/pipeline)
-         "base.ss"
-         "snooze-interface.ss"
-         "era/era.ss"
-         "generic/connection.ss"
-         "generic/database.ss"
+         "core/core.ss"
+         "common/common.ss"
          "sql/sql.ss")
 
-; database<%> -> snooze<%>
-(define (make-snooze database)
-  (new snooze% [database database]))
+; Logging ----------------------------------------
+
+; (parameter (U (query natural -> void) #f))
+(define query-logger (make-parameter #f))
+
+; (parameter (U (guid natural -> void) #f))
+(define direct-find-logger (make-parameter #f))
+
+(define (call-with-log logger msg thunk)
+  (if logger
+      (let ([start #f])
+        (dynamic-wind
+         (lambda ()
+           (set! start (current-inexact-milliseconds)))
+         thunk
+         (lambda ()
+           (logger msg (- (current-inexact-milliseconds) start)))))
+      (thunk)))
+
+; Constructor ------------------------------------
+
+; database<%> [#:connect-on-demand? boolean] -> snooze<%>
+(define (make-snooze database #:connect-on-demand? [connect-on-demand? #f])
+  (new snooze% [database database] [connect-on-demand? connect-on-demand?]))
+
+; Classes ----------------------------------------
 
 (define snooze%
   (class* object% (snooze<%>)
     
-    ; Constructor --------------------------------
-    
-    ; database<%>
-    (init-field [database #f])
-    
-    (super-new)
+    (inspect #f)
     
     ; Fields -------------------------------------
     
-    ; current-connection-cell : (thread-cell (U connection #f))
+    ; (thread-cell (U connection #f))
     ;
     ; A thread-cell to store the current connection. 
     ; See the current-connection method below for more information.
-    (define current-connection-cell
-      (make-thread-cell #f))
+    (field [current-connection-cell (make-thread-cell #f)])
     
-    ; (listof (stage-> any ... -> any))
-    (define transaction-pipeline
-      null)
+    ; (parameter (U transaction-frame #f))
+    (field [current-transaction-frame (make-parameter #f)])
+    
+    ; (connection snooze-struct -> any) connection snooze-struct -> any
+    ;
+    ; A transparent procedure that wraps the body of any
+    ; call-with-transaction block. Must return the same value
+    ; as the transaction body.
+    (field [transaction-hook (lambda (continue conn struct) (continue conn struct))])
+    
+    ; Constructor --------------------------------
+    
+    ; database<%>
+    (init-field database)
+    
+    ; boolean
+    (init-field [connect-on-demand? #f])
+    
+    (super-new)
+    
+    (send database set-snooze! this)
     
     ; Public interface ---------------------------
     
@@ -52,25 +83,23 @@
     (define/public (set-database! new-database)
       (set! database new-database))
     
-    ; -> (listof stage)
-    (define/public (get-transaction-pipeline)
-      transaction-pipeline)
+    ; -> ((connection snooze-struct -> any) connection snooze-struct -> any)
+    (define/public (get-transaction-hook)
+      transaction-hook)
     
-    ; (listof stage) -> void
-    (define/public (set-transaction-pipeline! pipeline)
-      (set! transaction-pipeline pipeline))
+    ; ((connection snooze-struct -> any) connection snooze-struct -> any) -> void
+    (define/public (set-transaction-hook! hook)
+      (set! transaction-hook hook))
     
-    ; (-> any) [boolean] -> any
-    (define/public (call-with-connection thunk [on-demand? #t])
-      (if on-demand?
-          (dynamic-wind void
+    ; (-> any) -> any
+    (define/public (call-with-connection thunk)
+      (if (thread-cell-ref current-connection-cell)
+          (thunk)
+          (dynamic-wind (if connect-on-demand?
+                            void
+                            (cut connect))
                         (cut thunk)
-                        (cut disconnect))
-          (if (thread-cell-ref current-connection-cell)
-              (thunk)
-              (dynamic-wind (cut connect)
-                            (cut thunk)
-                            (cut disconnect)))))
+                        (cut disconnect))))
     
     ; -> void
     (define/public (connect)
@@ -83,129 +112,63 @@
         (send database disconnect (thread-cell-ref current-connection-cell))
         (thread-cell-set! current-connection-cell #f)))
     
+    ; -> void
+    (define (connect-on-demand)
+      (when (and connect-on-demand? (not (thread-cell-ref current-connection-cell)))
+        (connect)))
+    
     ; -> connection
-    ;
-    ; Returns the current database connection One connection is stored per thread.
-    ; If the thread is suspended or killed, the connection is disconnected and set to #f.
     (define/public (current-connection)
       (or (thread-cell-ref current-connection-cell)
-          (raise-exn exn:fail:snooze
-            "No database connection: use call-with-connection to set one up.")))
+          (raise-exn exn:fail:snooze "no database connection: use call-with-connection to set one up")))
     
     ; entity -> void
     (define/public (create-table entity)
-      (connect)
-      (send database create-table (current-connection) entity))
+      (call-with-transaction (cut send database create-table (current-connection) entity)))
     
     ; entity -> void
     (define/public (drop-table entity)
-      (connect)
-      (send database drop-table (current-connection) entity))
+      (connect-on-demand)
+      (call-with-transaction (cut send database drop-table (current-connection) entity)))
     
-    ; persistent-struct -> persistent-struct
+    ; snooze-struct -> snooze-struct
     (define/public (save! struct)
-      ; (U integer #f)
-      (define id (struct-id struct))
-      ; (U integer #f)
-      (define revision (struct-revision struct))
-      ; entity
-      (define entity (struct-entity struct))
-      (connect)
-      (call-with-transaction
-       (lambda ()
-         (if id
-             (begin (if (and revision (record-exists-with-revision? entity id revision))
-                        ; The audit trail package requires us to update the revision *before* calling the pipeline:
-                        (begin (set-struct-revision! struct (add1 revision))
-                               (call-with-pipeline
-                                (append (entity-save-pipeline entity) (entity-update-pipeline entity))
-                                (lambda (conn struct)
-                                  (send database update-record conn struct)
-                                  struct)
-                                (current-connection)
-                                struct))
-                        (raise-exn exn:fail:snooze:revision
-                          "Structure has been revised since it was loaded from the database." 
-                          struct)))
-             ; The audit trail package requires us to update the revision *before* calling the pipeline:
-             (begin (set-struct-revision! struct 0)
-                    ; Run the insert pipeline:
-                    (call-with-pipeline
-                     (append (entity-save-pipeline entity) (entity-insert-pipeline entity))
-                     (lambda (conn struct)
-                       (set-struct-id! struct (send database insert-record conn struct))
-                       struct)
-                     (current-connection)
-                     struct))))))
-    
-    ; persistent-struct -> persistent-struct
-    (define/public (delete! struct)
-      ; (U integer #f)
-      (define id (struct-id struct))
-      ; entity
-      (define entity (struct-entity struct))
-      ; (U integer #f)
-      (define revision (struct-revision struct))
-      (connect)
-      (if id
+      (connect-on-demand)
+      (parameterize ([currently-saving struct])
+        (let ([guid   (snooze-struct-guid   struct)]
+              [entity (snooze-struct-entity struct)])
           (call-with-transaction
            (lambda ()
-             (if (and revision (record-exists-with-revision? entity id (struct-revision struct)))
-                 (call-with-pipeline
-                  (entity-delete-pipeline entity)
-                  (lambda (conn struct)
-                    (send database delete-record conn (struct-guid struct))
-                    (set-struct-id! struct #f)
-                    struct)
-                  (current-connection)
-                  struct)
-                 (raise-exn exn:fail:snooze:revision
-                   "Database has been revised since structure was loaded."
-                   struct))))
-          (raise-exn exn:fail:snooze
-            (format "Cannot delete a struct that has not been saved to the database: ~a" struct))))
+             (transaction-frame-data-add! (get-current-transaction-frame) guid)
+             ((entity-on-save entity)
+              (lambda (conn struct)
+                (transaction-frame-cache-add! 
+                 (get-current-transaction-frame)
+                 (begin
+                   (if (snooze-struct-saved? struct)
+                       (send database update-struct conn struct)
+                       (send database insert-struct conn struct)))))
+              (current-connection)
+              struct))))))
     
-    ; persistent-struct [(listof stage)] -> persistent-struct
-    (define/public (insert/id+revision! struct [pipeline null])
-      ; (U integer #f)
-      (define id (struct-id struct))
-      ; entity
-      (define entity (struct-entity struct))
-      (connect)
-      (call-with-pipeline pipeline
-                          (cut send database insert-record/id <> <>)
-                          (current-connection)
-                          struct)
-      struct)
-    
-    ; persistent-struct [(listof stage)] -> persistent-struct
-    (define/public (update/id+revision! struct [pipeline null])
-      ; (U integer #f)
-      (define id (struct-id struct))
-      ; entity
-      (define entity (struct-entity struct))
-      (connect)
-      (call-with-pipeline pipeline
-                          (cut send database update-record <> <>)
-                          (current-connection)
-                          struct)
-      struct)
-    
-    ; persistent-struct [(listof stage)] -> persistent-struct
-    (define/public (delete/id+revision! struct [pipeline null])
-      ; (U integer #f)
-      (define id (struct-id struct))
-      ; entity
-      (define entity (struct-entity struct))
-      ; (U integer #f)
-      (define revision (struct-revision struct))
-      (connect)
-      (call-with-pipeline pipeline
-                          (lambda (conn struct)
-                            (send database delete-record (current-connection) (struct-guid struct)))
-                          (current-connection)
-                          struct)
-      struct)
+    ; snooze-struct -> snooze-struct
+    (define/public (delete! struct)
+      (unless (snooze-struct-saved? struct)
+        (raise-exn exn:fail:snooze (format "unsaved structs cannot be deleted ~a" struct)))
+      (connect-on-demand)
+      (parameterize ([currently-deleting struct])
+        (let ([guid   (snooze-struct-guid   struct)]
+              [entity (snooze-struct-entity struct)])
+          (call-with-transaction
+           (lambda ()
+             (transaction-frame-data-add! (get-current-transaction-frame) guid)
+             ((entity-on-delete entity)
+              (lambda (conn struct)
+                (transaction-frame-cache-remove!
+                 (get-current-transaction-frame)
+                 (send database delete-struct conn struct)))
+              (current-connection)
+              struct))))))
     
     ; query -> (list-of result)
     (define/public (find-all query)
@@ -213,15 +176,92 @@
     
     ; select -> (U result #f)
     (define/public (find-one query)
-      (define result ((g:find query)))
-      (and (not (g:end? result)) result))
+      (let ([result ((g:find query))])
+        (and (not (g:end? result)) result)))
     
     ; select -> result-generator
     (define/public (g:find select)
-      (connect)
-      (send database g:find (current-connection) select))
+      (connect-on-demand)
+      (call-with-log
+       (query-logger)
+       select
+       (lambda ()
+         (send database g:find
+               (current-connection)
+               select
+               (or (get-current-transaction-frame)
+                   (transaction-frame-push #f))))))
     
-    ; thunk any ... -> any
+    ; entity natural -> snooze-struct
+    (define/public (find-by-id entity id)
+      (let ([ans (find-by-guids (list (entity-make-guid entity id)))])
+        (and (pair? ans) (car ans))))
+    
+    ; database-guid -> snooze-struct
+    (define/public (find-by-guid guid)
+      (let ([ans (find-by-guids (list guid))])
+        (and (pair? ans) (car ans))))
+    
+    ; (listof database-guid) -> (listof snooze-struct)
+    (define/public (find-by-guids guids)
+      (connect-on-demand)
+      (call-with-log
+       (direct-find-logger)
+       guids
+       (lambda ()
+         (cond [(null? guids) null]
+               [(null? (cdr guids))
+                (g:collect (send (get-database) direct-find
+                                 (current-connection)
+                                 guids
+                                 (get-current-transaction-frame)))]
+               [else (let ([lookup (g:collect/hash
+                                    (send (get-database) direct-find
+                                          (current-connection)
+                                          (remove-duplicates guids)
+                                          (get-current-transaction-frame))
+                                    snooze-struct-guid)])
+                       (map (cut hash-ref lookup <>) guids))]))))
+    
+    ; Takes:
+    ;   - a list of structs of the same entity;
+    ;   - a foreign key attribute from that entity.
+    ;
+    ; Iterates through the structs finding any unloaded database-guids in the foreign key attribute.
+    ; Loads the related structs and cross references the foreign keys.
+    ; Returns the original (listof struct) argument, mutated with the cross references in place.
+    ;
+    ; (listof snooze-struct) attribute -> (listof snooze-struct)
+    (define/public (load-related! structs attr)
+      (let ([entity   (attribute-entity attr)]
+            [accessor (attribute-private-accessor attr)]
+            [mutator  (attribute-private-mutator  attr)])
+        
+        ; Quick type check:
+        (unless (and (guid-type? (attribute-type attr))
+                     (memq attr (entity-data-attributes entity)))
+          (raise-type-error 'find-related! "foreign-key-attribute" attr))
+        
+        (let*-values ([(to-mutate to-find)
+                       ; Work out which foreign keys need loading, and which structs need mutating:
+                       (for/fold ([to-mutate null]
+                                  [to-find   null])
+                                 ([struct (in-list structs)])
+                                 (let ([val (accessor struct)])
+                                   (if (database-guid? val)
+                                       (values (cons struct to-mutate)
+                                               (cons val    to-find))
+                                       (values to-mutate to-find))))]
+                      ; Look up the related structs:
+                      [(found) (find-by-guids to-find)])
+          ; Mutate the original structs:
+          (for ([struct (in-list to-mutate)]
+                [found  (in-list found)])
+            (mutator struct found))
+          ; Return the original argument:
+          structs)))
+    
+    ; thunk [#:metadata list] -> any
     ;
     ; If the database allows it, a transaction is started and the thunk argument
     ; is called. Some databases do not allow nested transactions, so a new
@@ -237,136 +277,76 @@
     ;
     ; You are advised to only allow a single thread to execute within a transaction body.
     ;
-    ; The extra arguments are passed to the transaction pipeline (if it is present)
+    ; The extra arguments are passed to the transaction hook (if it is present)
     ; but *not* to the body thunk.
-    (define/public (call-with-transaction body . metadata-args)
-      (connect)
-      ; connection
+    (define/public (call-with-transaction #:metadata [metadata null] body)
+      (connect-on-demand)
       (let ([conn (current-connection)])
-        ; Main procedure body:
         (if (send database transaction-allowed? conn)
             (call-with-transaction-frame 
-             (cut send database call-with-transaction
-                  conn
-                  (lambda ()
-                    (apply call-with-pipeline
-                           (get-transaction-pipeline)
-                           ; Don't pass the pipeline arguments to the body thunk:
-                           (lambda args (body))
-                           conn
-                           metadata-args))))
+             (lambda ()
+               (let ([hook (get-transaction-hook)])
+                 (send database call-with-transaction
+                       conn
+                       (lambda ()
+                         (hook (lambda _ (body)) conn metadata))))))
             (body))))
     
-    ; entity (U integer #f) -> (U persistent-struct #f)
-    (define/public (find-by-id entity id)
-      (cond [(not id) #f]
-            [(integer? id)
-             (let ([x (sql:entity 'x entity)])
-               (find-one (sql:select #:from x #:where (sql:= (sql:attr x 'id) id))))]
-            [else (raise-exn exn:fail:snooze (format "Expected (U integer #f), received ~s." id))]))
+    ; -> (U transaction-frame #f)
+    (define/public (get-current-transaction-frame)
+      (current-transaction-frame))
     
-    
-    ; guid -> (U persistent-struct #f)
-    (define/public (find-by-guid guid)
-      (find-by-id (guid-entity guid) (guid-id guid)))
+    ; (-> any) -> any
+    (define/private (call-with-transaction-frame thunk)
+      (let ([frame (transaction-frame-push (get-current-transaction-frame))]
+            [complete? #f])
+        (call-with-continuation-barrier
+         (lambda ()
+           (dynamic-wind 
+            ; Entry
+            void
+            ; Body
+            (lambda ()
+              (parameterize ([current-transaction-frame frame])
+                (begin0
+                  (thunk)
+                  (set! complete? #t))))
+            ; Exit
+            (lambda ()
+              (if complete?
+                  (transaction-frame-commit! frame)
+                  (transaction-frame-rollback! frame))))))))
     
     ; -> (listof symbol)
     (define/public (table-names)
-      (connect)
+      (connect-on-demand)
       (send database table-names (current-connection)))
     
     ; (U symbol entity) -> boolean
     (define/public (table-exists? table)
-      (connect)
+      (connect-on-demand)
       (send database table-exists? (current-connection) table))
     
     ; query -> string
     (define/public (query->string query)
       (let ([out (open-output-string)])
-        (send database dump-sql query out "~a")
+        (send database debug-sql query out "~a")
         (get-output-string out)))
     
     ;  select
-    ;  [#:output-port output-port]
-    ;  [#:format string]
+    ;  [string]
+    ;  [output-port]
     ; ->
     ;  select
     ;
     ; Prints an SQL string to stdout as a side effect.
-    (define/public (dump-sql query [format "~a~n"] [output-port (current-output-port)])
-      (send database dump-sql query output-port format))
-    
-    ; Helpers ------------------------------------
-    
-    ; entity integer integer -> boolean
-    (define (record-exists-with-revision? entity id revision)
-      ; entity-alias
-      ; attribute-alias
-      ; attribute-alias
-      (define x     (sql:entity 'x entity))
-      (define x-id  (sql:attr x 'id))
-      (define x-rev (sql:attr x 'revision))
-      ; boolean
-      (if (find-one (sql:select #:what x-id 
-                                #:from x
-                                #:where (sql:and (sql:= x-id id) 
-                                                 (sql:= x-rev revision))))
-          #t
-          #f))
-    
-    (inspect #f)))
+    (define/public (debug-sql query #:format [format "~a~n"] #:output-port [output-port (current-output-port)])
+      (send database debug-sql query output-port format))))
 
 ; Provide statements -----------------------------
 
-; contract
-(define snooze%/c
-  (object-contract
-    
-    [field database            (is-a?/c database<%>)]
-    
-    [get-database              (-> (is-a?/c database<%>))]
-    [set-database!             (-> (is-a?/c database<%>) void?)]
-    
-    [get-transaction-pipeline  (-> (listof procedure?))]
-    [set-transaction-pipeline! (-> (listof procedure?) void?)]
-    
-    [call-with-connection      (->* (procedure?) (boolean?) any)]
-    [connect                   (-> any)]
-    [disconnect                (-> any)]
-    [current-connection        (-> connection?)]
-    
-    [create-table              (-> entity? void?)]
-    [drop-table                (-> (or/c entity? symbol?) void?)]
-    
-    [save!                     (-> persistent-struct? persistent-struct?)]
-    [delete!                   (-> persistent-struct? persistent-struct?)]
-    
-    [insert/id+revision!       (->* (persistent-struct?) 
-                                    ((listof procedure?))
-                                    persistent-struct?)]
-    [update/id+revision!       (->* (persistent-struct?) 
-                                    ((listof procedure?))
-                                    persistent-struct?)]
-    [delete/id+revision!       (->* (persistent-struct?)
-                                    ((listof procedure?))
-                                    persistent-struct?)]
-    
-    [find-all                  (-> query? list?)]
-    [find-one                  (-> query? any)]
-    [g:find                    (-> query? procedure?)]
-    
-    [call-with-transaction     (->* (procedure?) () #:rest any/c any)]
-    
-    [find-by-id                (-> entity? (or/c integer? #f) (or/c persistent-struct? #f))]
-    [find-by-guid              (-> guid? (or/c persistent-struct? #f))]
-    
-    [table-names               (-> (listof symbol?))]
-    [table-exists?             (-> (or/c entity? symbol?) boolean?)]
-    
-    [query->string             (-> query? string?)]
-    [dump-sql                  (->* (query?) (string? output-port?) query?)]))
-
 (provide/contract
- [snooze%     class?]
- [snooze%/c   contract?]
- [make-snooze (-> (is-a?/c database<%>) snooze%/c)])
+ [query-logger       (parameter/c (-> query? number? any))]
+ [direct-find-logger (parameter/c (-> (listof database-guid?) number? any))]
+ [snooze%            class?]
+ [make-snooze        (->* ((is-a?/c database<%>)) (#:connect-on-demand? boolean?) any)])

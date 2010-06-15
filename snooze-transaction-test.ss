@@ -1,291 +1,259 @@
 #lang scheme/base
 
-(require mzlib/etc
-         scheme/class
-         srfi/26/cut
-         (planet untyped/unlib:3/pipeline)
-         "base.ss"
-         "snooze-syntax.ss"
-         "test-base.ss"
-         "test-data.ss"
-         "test-util.ss"
-         "era/era.ss"
+(require "test-base.ss")
+
+(require scheme/class
+         srfi/26
+         "snooze-api.ss"
+         "core/core.ss"
          "sql/sql.ss")
+
+; Helpers --------------------------------------
+
+; (-> any) -> any
+(define (call-with-transaction/rollback thunk)
+  (letrec ([ans ans]) ; starts out undefined
+    (with-handlers ([exn:fail? (lambda _ ans)])
+      (call-with-transaction
+       (lambda ()
+         (set! ans (thunk))
+         (error))))))
+
+(define (call-with-transaction-hook new-hook thunk)
+  (let ([old-hook (send (current-snooze) get-transaction-hook)])
+    (dynamic-wind
+     (lambda ()
+       (send (current-snooze) set-transaction-hook! new-hook))
+     thunk
+     (lambda ()
+       (send (current-snooze) set-transaction-hook! old-hook)))))
 
 ; Tests ----------------------------------------
 
-; snooze% -> test-suite
-(define (make-snooze-transaction-tests snooze)
+; test-suite
+(define/provide-test-suite snooze-transaction-tests
   
-  (define-snooze-interface snooze)
-
-  (define-alias per person)
-  (define-alias cou course)
-
-  ; (integer -> course)
-  (define (find-course-by-value val)
-    (find-one (sql:select #:from cou #:where (sql:= cou-value val))))
+  ; ***** NOTE *****
+  ; Each test below depends on the tests before it. Add/edit tests at your peril!
+  ; ****************
   
-  ; time-tai
-  (define time-tai1 (string->time-tai "2001-01-01 01:01:01"))
+  (test-suite "commit"
+    (test-case "insert"
+      (before
+       (recreate-test-tables)
+       (let ([p1 (make-person/defaults #:name "A")])
+         (check-false (find-person #:name "A"))
+         (let ([p2 (call-with-transaction
+                    (lambda ()
+                      (save! p1)))])
+           (check snooze-guid=? p2 p1)
+           (check snooze-data=? p2 p1)
+           (check-not-equal? p2 p1)
+           ; Check against DB:
+           (let ([p3 (find-person #:name "A")])
+             (check snooze-guid=? p3 p1)
+             (check snooze-data=? p3 p1)
+             (check-not-equal? p3 p1))))))
+    (test-case "update"
+      (before
+       (recreate-test-tables)
+       (let ([p1 (save! (make-person/defaults #:name "A"))])
+         (check-equal? (find-person #:name "A") p1)
+         (let ([p2 (call-with-transaction
+                    (lambda ()
+                      (save! (person-set p1 #:name "B"))))])
+           (check snooze-guid=? p2 p1)
+           (check-false (snooze-data=? p2 p1))
+           ; Check against DB:
+           (check-false (find-person #:name "A"))
+           (let ([p3 (find-person #:name "B")])
+             (check-equal? p3 p2))))))
+    (test-case "delete"
+      (before
+       (recreate-test-tables)
+       (let ([p1 (save! (make-person/defaults #:name "A"))])
+         (check-equal? (find-person #:name "A") p1)
+         (let ([p2 (call-with-transaction
+                    (lambda ()
+                      (delete! (person-set p1 #:name "B"))))])
+           (check snooze-guid=? p2 p1)
+           ; Check against DB:
+           (check-false (find-person #:name "A") p2)
+           (check-false (find-person #:name "B") p2))))))
   
-  ; course
-  (define course (make-course 'code "Name" 12345 1234.5 #t time-tai1))
-  
-  ; (U integer #f)
-  ; initialised below
-  (define course-revision #f)
-  
-  ; test-suite
-  (test-suite "snooze-transaction-tests"
+  (test-suite "rollback"
     
-    ; ***** NOTE *****
-    ; Each test below depends on the tests before it. Add/edit tests at your peril!
-    ; ****************
+    (test-case "insert"
+      (before
+       (recreate-test-tables)
+       (let ([p1 (make-person/defaults #:name "A")])
+         (check-false (find-person #:name "A"))
+         (let ([p2 (call-with-transaction/rollback
+                    (lambda ()
+                      (save! p1)))])
+           (check-false (snooze-struct-saved? p1))
+           (check-false (snooze-struct-saved? p2))
+           ; Check against DB:
+           (check-false (find-person #:name "A")))
+         ; Check repeat transaction:
+         (check-not-exn (cut save! p1)))))
     
-    ; create test data for transaction tests
-    #:before
-    (lambda ()
-      (create-table entity:course)
-      (create-table entity:person)
-      (save! course)
-      (set! course-revision (struct-revision course)))
+    (test-case "update"
+      (before
+       (recreate-test-tables)
+       (let ([p1 (save! (make-person/defaults #:name "A"))])
+         (check-equal? (find-person #:name "A") p1)
+         (let ([p2 (call-with-transaction/rollback
+                    (lambda ()
+                      (save! (person-set p1 #:name "B"))))])
+           (check snooze-guid=? p2 p1)
+           (check-false (snooze-data=? p2 p1))
+           ; Check against DB:
+           (check-equal? (find-person #:name "A") p1)
+           (check-false (find-person #:name "B")))
+         ; Check repeat transaction:
+         (check-not-exn (cut save! p1)))))
     
-    ; delete test data from transaction tests
-    #:after
-    (lambda ()
-      (drop-table entity:person)
-      (drop-table entity:course))
+    (test-case "delete"
+      (before
+       (recreate-test-tables)
+       (let ([p1 (save! (make-person/defaults #:name "A"))])
+         (check-equal? (find-person #:name "A") p1)
+         (let ([p2 (call-with-transaction/rollback
+                    (lambda ()
+                      (delete! (person-set p1 #:name "B"))))])
+           (check snooze-guid=? p2 p1)
+           ; Check against DB:
+           (check-equal? (find-person #:name "A") p1)
+           (check-false (find-person #:name "B")))
+         ; Check repeat transaction:
+         (check-not-exn (cut save! p1)))))
     
-    (test-case "call-with-transaction: transaction committed"
-      (check-not-false (find-course-by-value 12345) "Precondition failed.")
-      (call-with-transaction
-       (lambda ()
-         (set-course-value! course 54321)
-         (save! course)))
-      ; Revision number should have increased by 1:
-      (check-equal? (struct-revision course) (add1 course-revision))
-      (check-not-false (find-course-by-value 54321) "Postcondition failed.")
-      ; Need to reset the course-revision variable for subsequent tests:
-      (set! course-revision (struct-revision course)))
-    
-    (test-case "call-with-transaction: transaction aborted"
-      (check-not-false (find-course-by-value 54321) "Precondition failed.")
-      (with-handlers ([exn:snooze? void])
-        (call-with-transaction
-         (lambda ()
-           (set-course-value! course 12345)
-           (save! course)
-           (raise-exn exn:snooze "Aborting transaction."))))
-      (check-equal? (struct-revision course) course-revision "check 1")
-      (check-not-false (find-course-by-value 54321) "Postcondition failed."))
-    
-    (test-case "call-with-transaction: nested transactions aborted"
-      (check-not-false (find-course-by-value 54321) "check 1 - precondition 1")
-      (check-equal? (course-value course) 54321 "check 2 - precondition 2")
-      (with-handlers ([exn:snooze? void])
-        (call-with-transaction
-         (lambda ()
-           (set-course-value! course 12345)
-           (save! course)
+    (test-case "nested transactions"
+      (before
+       (recreate-test-tables)
+       (let ([p1 (save! (make-person/defaults #:name "A"))]
+             [p2 #f]
+             [p3 #f])
+         (with-handlers ([exn? void])
            (call-with-transaction
             (lambda ()
-              (set-course-value! course 13579)
-              (save! course)
-              (raise-exn exn:snooze "Aborting transaction."))))))
-      (check-equal? (struct-revision course) course-revision "check 3")
-      (check-equal? (course-value course) 54321 "check 4")
-      (check-not-false (find-course-by-value 54321) "check 5 - postcondition"))
+              (set! p2 (save! (person-set p1 #:name "B")))
+              (call-with-transaction
+               (lambda ()
+                 (set! p3 (save! (person-set p2 #:name "C")))
+                 (error "aborting transaction"))))))
+         (check-pred snooze-struct-saved? p1)
+         (check snooze-guid=? p2 p1)
+         (check snooze-guid=? p3 p1)
+         (check-equal? (person-name p1) "A")
+         (check-equal? (person-name p2) "B")
+         (check-equal? (person-name p3) "C")
+         ; Check against DB:
+         (check-equal? (find-person #:name "A") p1)
+         (check-false (find-person #:name "B"))
+         (check-false (find-person #:name "C"))
+         ; Check repeat transaction:
+         (check-exn exn:fail:snooze:revision? (cut save! p3))
+         (check-exn exn:fail:snooze:revision? (cut save! p2))
+         (check-not-exn (cut save! p1)))))
     
-    (test-case "call-with-transaction: inner nested transaction aborted (SQLite will fail this test)"
-      (check-not-false (find-course-by-value 54321) "Precondition failed.")
-      (call-with-transaction
-       (lambda ()
-         (set-course-value! course 12345)
-         (save! course)
-         (with-handlers ([exn:snooze? void])
-           (call-with-transaction
-            (lambda ()
-              (set-course-value! course 13579)
-              (save! course)
-              (raise-exn exn:snooze "Aborting transaction."))))))
-      (check-not-false (find-course-by-value 12345) 
-                       (format "Postcondition failed (~a)."
-                               (if (find-course-by-value 13579)
-                                   "both nested transactions were aborted: this is the expected behaviour for SQLite"
-                                   (format "final course value was: ~a"
-                                           (course-value (find-by-id entity:course (course-id course))))))))
+    (test-case "inner nested transaction"
+      (before
+       (recreate-test-tables)
+       (let ([p1 (save! (make-person/defaults #:name "A"))]
+             [p2 #f]
+             [p3 #f])
+         (call-with-transaction
+          (lambda ()
+            (set! p2 (save! (person-set p1 #:name "B")))
+            (with-handlers ([exn? void])
+              (call-with-transaction
+               (lambda ()
+                 (set! p3 (save! (person-set p2 #:name "C")))
+                 (error "aborting transaction"))))))
+         (check-pred snooze-struct-saved? p1)
+         (check snooze-guid=? p2 p1)
+         (check snooze-guid=? p3 p1)
+         (check-equal? (person-name p1) "A")
+         (check-equal? (person-name p2) "B")
+         (check-equal? (person-name p3) "C")
+         ; Check against DB:
+         (if (send (send (current-snooze) get-database) supports-nested-transactions?)
+             (begin (check-false (find-person #:name "A"))
+                    (check-equal? (find-person #:name "B") p2)
+                    (check-false (find-person #:name "C")))
+             (begin (check-false (find-person #:name "A"))
+                    (check-false (find-person #:name "B"))
+                    (check-equal? (find-person #:name "C") p3)))
+         ; Check repeat transaction:
+         (if (send (send (current-snooze) get-database) supports-nested-transactions?)
+             (begin (check-exn exn:fail:snooze:revision? (cut save! p1))
+                    (check-exn exn:fail:snooze:revision? (cut save! p3))
+                    (check-not-exn (cut save! p2)))
+             (begin (check-exn exn:fail:snooze:revision? (cut save! p1))
+                    (check-exn exn:fail:snooze:revision? (cut save! p2))
+                    (check-not-exn (cut save! p3))))))))
     
-    ; Persistent struct roll back -----------
     
-    (test-case "call-with-transaction: attributes rolled back"
-      (let ([course (make-course 'code "Name" 10000 1234.5 #t time-tai1)])
-        (set-course-value! course 12345)
-        (save! course)
-        (set-course-value! course 23456)
-        (check-equal? (struct-revision course) 0 "check 1")
-        (check-equal? (course-value course) 23456 "check 2")
-        (with-handlers ([exn:snooze? void]) ; Should roll back to here, where value is 23456
-          (call-with-transaction
-           (lambda ()
-             (set-course-value! course 54321)
-             (save! course)
-             (check-equal? (struct-revision course) 1 "check 3")
-             (check-equal? (course-value course) 54321 "check 4")
-             (raise-exn exn:snooze "Aborting transaction."))))
-        (check-equal? (struct-revision (find-by-id entity:course (struct-id course))) 0 "check 5a")
-        (check-equal? (struct-revision course) 0 "check 5b")
-        (check-equal? (course-value course) 23456 "check 6")
-        (check-not-exn (cut save! course) "check 7")
-        (check-not-exn (cut delete! course) "check 8")))
-    
-    (test-case "call-with-transaction: repeated assignments rolled back"
-      (let ([course (make-course 'code "Name" 10000 1234.5 #t time-tai1)])
-        (save! course)
-        (set-course-value! course 12345)
-        (set-course-value! course 23456)
-        (with-handlers ([exn:snooze? void])
-          (call-with-transaction
-           (lambda ()
-             (set-course-value! course 54321)
-             (set-course-value! course 65432)
-             (save! course)
-             (check-equal? (course-value course) 65432 "check 1")
-             (raise-exn exn:snooze "Aborting transaction."))))
-        (check-equal? (course-value course) 23456 "check 2")
-        (check-not-exn (cut save! course) "check 3")
-        (check-not-exn (cut delete! course) "check 4")))
-    
-    (test-case "call-with-transaction: set enable-transaction-backups? to #f"
-      (parameterize ([enable-transaction-backups? #f])
-        (let ([course (make-course 'code "Name" 10000 1234.5 #t time-tai1)])
-          (save! course)
-          (set-course-value! course 12345)
-          (set-course-value! course 23456)
-          (with-handlers ([exn:snooze? void])
-            (call-with-transaction
-             (lambda ()
-               (set-course-value! course 54321)
-               (set-course-value! course 65432)
-               (save! course)
-               (check-equal? (course-value course) 65432 "check 1")
-               ; Changes shouldn't be undone:
-               (raise-exn exn:snooze "Aborting transaction."))))
-          (check-equal? (course-value course) 65432)
-          ; Can't delete or save because revision numbers are out of sync:
-          (check-exn exn:fail:snooze:revision? (cut save! course) "check 2")
-          (check-exn exn:fail:snooze:revision? (cut delete! course) "check 3")
-          ; Have to delete the test record by loading/deleting it:
-          (check-not-exn (cut delete! (find-by-id entity:course (struct-id course))) "check 4"))))
-    
-    (test-case "cannot make full continuation jumps into or out of transactions"
-      (begin-with-definitions
-        
-        ; General continuation jump out:
+    (test-case "continuation jumps"
+      ; General continuation jump out:
+      (define _
         (let/cc escape
           (call-with-transaction
            (lambda ()
              (check-exn exn:fail:contract:continuation?
                (lambda ()
-                 (escape #f))
-               "check 1"))))
-        
-        ; Escape continuation jump out:
-        (define resume
-          (check-not-exn
-            (lambda ()
-              (let/ec escape
-                (call-with-transaction
-                 (lambda ()
-                   (let/cc resume
-                     (escape resume))))))
-            "check 2"))
-        
-        ; General continuation jump in:
-        (check-exn exn:fail:contract:continuation?
-          (lambda ()
-            (resume #f))
-          "check 3")))
-    
-    (test-case "transaction-pipeline called"
-      (begin-with-definitions
-        
-        ; (U string #f)
-        (define num-transactions 0)
-        
-        ; stage
-        (define (log-stage continue conn . args)
-          (set! num-transactions (add1 num-transactions))
-          (apply continue conn args))
-        
-        (send snooze set-transaction-pipeline! (list log-stage))
-        
-        (delete! (save! (make-person "Dave")))
-        
-        (check-equal? num-transactions 2)))
-    
-    (test-case "transaction-pipeline aborts transaction before body"
-      (begin-with-definitions
-        
-        ; stage
-        (define (log-stage continue conn . args)
-          (raise-exn exn:snooze "Escaping")
-          (apply continue conn args))
-        
-        (send snooze set-transaction-pipeline! (list log-stage))
-          
-        (with-handlers ([exn:snooze? void])
-          (save! (make-person "Dave")))
-        
-        (check-equal? (length (find-all (sql:select #:from per))) 0 "check 1")))
-    
-    (test-case "transaction-pipeline aborts transaction after body"
-      (begin-with-definitions
-        
-        ; stage
-        (define (log-stage continue conn . args)
-          (begin0 (apply continue conn args)
-                  (raise-exn exn:snooze "Escaping")))
-        
-        (send snooze set-transaction-pipeline! (list log-stage))
-
-        (with-handlers ([exn:snooze? void])
-          (save! (make-person "Dave")))
-        
-        (check-equal? (length (find-all (sql:select #:from per))) 0 "check 1")))
-    
-    (test-case "structs rolled back when transaction aborted"
-      (begin-with-definitions
-        
-        (define person (make-person "Dave"))
-        
-        (send snooze set-transaction-pipeline! null)
-        
+                 (escape #f)))))))
+      ; Escape continuation jump out:
+      (define resume
         (check-not-exn
           (lambda ()
             (let/ec escape
               (call-with-transaction
                (lambda ()
-                 (set-person-name! person "Noel")
-                 (save! person)
-                 (escape #f)))))
-          "check 0")
-        
-        (check-equal? (person-name person) "Dave" "check 1")
-        
-        (check-not-exn
+                 (let/cc resume
+                   (escape resume))))))))
+      ; General continuation jump in:
+      (check-exn exn:fail:contract:continuation?
+        (lambda ()
+          (resume #f))))
+    
+    (test-suite "hooks"
+      
+      (test-case "called"
+        (before
+         (recreate-test-tables)
+         (let ([num-transactions 0])
+           (call-with-transaction-hook
+            (lambda (continue conn . args)
+              (set! num-transactions (add1 num-transactions))
+              (apply continue conn args))
+            (lambda ()
+              (delete! (save! (make-person/defaults #:name "Dave")))))
+           (check-equal? num-transactions 2))))
+      
+      (test-case "abort before body"
+        (before
+         (recreate-test-tables)
+         (call-with-transaction-hook
+          (lambda (continue conn . args)
+            (error "escaping")
+            (apply continue conn args))
           (lambda ()
-            (let/ec escape
-              (set-person-name! person "Matt")
-              (save! person)
-              (escape #f)))
-          "check 1.5")
-        
-        (check-equal? (person-name person) "Matt" "check 2")
-        
-        (delete! person)))))
-
-; Provide statements -----------------------------
-
-(provide make-snooze-transaction-tests)
-
+            (with-handlers ([exn? void])
+              (save! (make-person/defaults #:name "Dave")))))
+         (check-pred null? (find-people))))
+      
+      (test-case "abort after body"
+        (before
+         (recreate-test-tables)
+         (call-with-transaction-hook
+          (lambda (continue conn . args)
+            (begin0 (apply continue conn args)
+                    (error "escaping")))
+          (lambda ()
+            (with-handlers ([exn? void])
+              (save! (make-person/defaults #:name "Dave")))))
+         (check-pred null? (find-people))))))
+  

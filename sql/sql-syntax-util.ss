@@ -1,7 +1,7 @@
 #lang scheme/base
 
 (require (planet untyped/unlib:3/symbol)
-         "../persistent-struct-info.ss"
+         "../core/syntax-info.ss"
          (for-template scheme/base))
 
 ; symbol
@@ -62,7 +62,7 @@
 ; syntax -> boolean
 (define (entity-identifier? stx)
   (and (identifier? stx)
-       (persistent-struct-info-set? stx)))
+       (entity-info-set? stx)))
 
 ; Provide statements -----------------------------
 

@@ -1,18 +1,42 @@
 #lang scheme/base
-  
-(require srfi/19/time)
-  
-; Procedures -----------------------------------
 
-; string -> time-tai
-(define (string->time-tai str)
-  (date->time-tai (string->date (string-append str "+0000") "~Y-~m-~d ~H:~M:~S~z")))
+(require "base.ss")
 
-; string -> time-utc
-(define (string->time-utc str)
-  (date->time-utc (string->date (string-append str "+0000") "~Y-~m-~d ~H:~M:~S~z")))
+(require scheme/dict
+         (schemeunit-in test)
+         (unlib-in hash)
+         "snooze-api.ss"
+         "test-data.ss"
+         "core/core.ss")
 
-; Provide statements ---------------------------
+; (parameter (string -> (listof (listof any))))
+(define direct-query-proc
+  (make-parameter (lambda (sql) (error "direct queries not initialised"))))
 
-(provide string->time-tai
-         string->time-utc)
+; string -> (listof (listof any))
+(define (direct-query sql)
+  ((direct-query-proc) sql))
+
+; (_ guid guid boolean boolean boolean)
+;
+; Shorthand syntax for checking eq?, guid=? and equal? equality on guids/structs.
+(define-syntax-rule (check-equality a b eq guid= equal)
+  (begin
+    (with-check-info (['actual a] ['expected b] ['comparison 'eq?])
+      (if eq
+          (check-true (eq? a b))
+          (check-false (eq? a b))))
+    
+    (with-check-info (['actual a] ['expected b] ['comparison 'guid=?])
+      (if guid=
+          (check-true (guid=? a b))
+          (check-false (guid=? a b))))
+    
+    (with-check-info (['actual a] ['expected b] ['comparison 'equal?])
+      (if equal
+          (check-true (equal? a b))
+          (check-false (equal? a b))))))
+
+; Provide statements -----------------------------
+
+(provide (all-defined-out))

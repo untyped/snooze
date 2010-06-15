@@ -11,8 +11,8 @@
          srfi/26/cut
          (planet untyped/unlib:3/hash)
          (planet untyped/unlib:3/parameter)
-         (planet untyped/unlib:3/pipeline)
          "../snooze.ss"
+         "../snooze-syntax.ss"
          "attribute.ss"
          "delta.ss"
          "entity.ss"
@@ -133,7 +133,7 @@
                                                         (send frame get-transaction)
                                                         metadata-args)))))))))))
       
-      ; (stage (connection persistent-struct -> persistent-struct))
+      ; (stage (connection snooze-struct -> snooze-struct))
       ;
       ; Audit after the insert to make sure we have an ID.
       (set! insert-stage
@@ -144,7 +144,7 @@
                  (parameterize ([in-audit? #t])
                    (send (current-audit-frame) audit-insert! struct))))))
       
-      ; (stage (connection persistent-struct -> persistent-struct))
+      ; (stage (connection snooze-struct -> snooze-struct))
       ;
       ; Audit before the update to make sure the original information is in the database.
       (set! update-stage
@@ -154,7 +154,7 @@
                  (send (current-audit-frame) audit-update! struct))
                (continue conn struct))))
       
-      ; (stage (connection persistent-struct -> persistent-struct))
+      ; (stage (connection snooze-struct -> snooze-struct))
       ;
       ; Audit before the delete to make sure the original information is in the database.
       (set! delete-stage
@@ -164,7 +164,7 @@
                  (send (current-audit-frame) audit-delete! struct))
                (continue conn struct))))
       
-      ; Initialize the database and pipelines:
+      ; Initialize the database and transaction hooks:
       (parameterize ([in-audit? #t])
         
         ; Ensure the delta table exists:
@@ -198,7 +198,7 @@
       (and (current-audit-frame)
            (send (current-audit-frame) get-transaction)))
     
-    ; audit-transaction any ... -> (U persistent-struct #f)
+    ; audit-transaction any ... -> (U snooze-struct #f)
     (define/public (make-metadata txn . metadata-args)
       #f)
     
@@ -284,7 +284,7 @@
                                                (sql:greater? TXN-id (struct-id txn)))
                               #:order (list (sql:asc DELTA-id))))))
     
-    ; guid audit-transaction -> persistent-struct
+    ; guid audit-transaction -> snooze-struct
     (define/public (audit-struct-snapshot guid history)
       (define struct (find-by-guid guid))
       (foldl (cut revert-delta! guid <> <>)
@@ -395,7 +395,7 @@
                           (equal? (audit-delta-guid next) (audit-delta-guid (car k-group))))
                      (loop (cons next k-group) k-all)]
                     [else (loop (list next) (cons k-group k-all))])))))
-      ; (hashof guid (U persistent-struct #f))
+      ; (hashof guid (U snooze-struct #f))
       ;
       ; A hash table of guids to current working versions of structs.
       (define working 

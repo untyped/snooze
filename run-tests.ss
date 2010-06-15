@@ -5,10 +5,10 @@
          scheme/match
          srfi/13/string
          srfi/26/cut
-         (prefix-in sqlite3: "sqlite3/all-sqlite3-tests.ss")
-         (prefix-in sqlite3: "sqlite3/sqlite3.ss")
-         (prefix-in postgresql8: "postgresql8/all-postgresql8-tests.ss")
-         (prefix-in postgresql8: "postgresql8/postgresql8.ss")
+         "sqlite3/all-sqlite3-tests.ss"
+         "sqlite3/sqlite3.ss"
+         "postgresql8/all-postgresql8-tests.ss"
+         "postgresql8/postgresql8.ss"
          "all-snooze-tests.ss"
          "snooze.ss"
          "snooze-class.ss"
@@ -17,35 +17,6 @@
 (print-struct #t)
 (print-hash-table #t)
 (error-print-width 1024)
-
-; snooze<%> test-suite -> void
-(define (run-snooze-tests snooze back-end-tests)
-  (run-tests (make-snooze-tests snooze back-end-tests))
-  (void))
-
-; string -> void
-(define (run-sqlite3-tests filename)
-  (define pre-existing-file?
-    (file-exists? filename))
-  (when pre-existing-file?
-    (delete-file filename))
-  (run-snooze-tests
-   (make-snooze (sqlite3:make-database (string->path filename)))
-   sqlite3:all-sqlite3-tests)
-  (unless pre-existing-file?
-    (delete-file filename)))
-
-; string integer string string [string] -> void
-(define (run-postgresql8-tests server port database username [password #f])
-  (let ([snooze (make-snooze (postgresql8:make-database #:server                 server
-                                                        #:port                   port
-                                                        #:database               database
-                                                        #:username               username
-                                                        #:password               password
-                                                        #:keepalive-milliseconds 1000))])
-    (run-snooze-tests
-     snooze
-     (postgresql8:make-all-postgresql8-tests snooze))))
 
 ; [(U exn #f)] -> void
 (define (print-usage [exn #f])
@@ -63,22 +34,30 @@ ENDOUTPUT
 
 ; Main program body ------------------------------
 
+; We don't need the logging output but we do want to know that the hooks don't exn:
+(query-logger (lambda (query time) (void)))
+(direct-find-logger (lambda (guid time) (void)))
+
 (with-handlers ([exn? print-usage]) 
   (match (vector->list (current-command-line-arguments))
     [(list) (print-usage)]
-    [(list "sqlite3")
-     (run-sqlite3-tests "snooze-sqlite3-test.db")]
-    [(list "sqlite3" filename)
-     (run-sqlite3-tests filename)]
-    [(list-rest "sqlite3" _)
-     (raise-exn exn:fail:snooze "Bad options for sqlite3.")]
-    [(list "postgresql8")
-     (run-postgresql8-tests "localhost" 5432 "snoozetest" "dave" #f)]
-    [(list "postgresql8" host (app string->number (? integer? port)) database username)
-     (run-postgresql8-tests host port database username #f)]
-    [(list "postgresql8" host (app string->number (? integer? port)) database username password)
-     (run-postgresql8-tests host port database username password)]
-    [(list-rest "postgresql8" _)
-     (raise-exn exn:fail:snooze "Bad options for postgresql8.")]
-    [(list-rest back-end _)
-     (raise-exn exn:fail:snooze (format "Unrecognised back-end: ~a" back-end))]))
+    [(list-rest "sqlite3" rest)
+     (let ([tests (make-snooze-tests all-sqlite3-tests)])
+       (match rest
+         [(list)
+          (run-tests/sqlite3 ':memory: tests)]
+         [(list location)
+          (run-tests/sqlite3 (string->path location) tests)]
+         [_ (error "bad sqlite3 options")]))]
+    [(list-rest "postgresql8" rest)
+     (let ([tests (make-snooze-tests all-postgresql8-tests)])
+       (match rest
+         [(list)
+          (run-tests/postgresql8 tests)]
+         [(list server (app string->number (? integer? port)) database username)
+          (run-tests/postgresql8 #:server server #:port port #:database database #:username username tests)]
+         [(list server (app string->number (? integer? port)) database username password)
+          (run-tests/postgresql8 #:server server #:port port #:database database #:username username #:password password tests)]
+         [_ (error "bad postgresql8 options")]))]
+    [(list-rest dbms _)
+     (error "bad dbms" dbms)]))

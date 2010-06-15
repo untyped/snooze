@@ -15,6 +15,4 @@
     
     (test-equal? "escape-name"
       (escape-name 'my-id)
-      "[my-id]")
-    
-    ))
+      "[my-id]")))

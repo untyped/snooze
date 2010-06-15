@@ -5,29 +5,21 @@
                      scheme/pretty
                      srfi/26/cut
                      (planet untyped/unlib:3/syntax)
-                     "../persistent-struct-info.ss"
+                     "../core/syntax-info.ss"
                      "sql-syntax-util.ss")
          (prefix-in sql: "sql-lang.ss")
+         "../core/struct.ss"
          "sql-struct.ss")
-
-; syntax struct-info-list -> syntax syntax
-(define-for-syntax (expand-entity-alias id-stx info)
-  (match info
-    [(list entity-stx attr-stxs attr-names)
-     (with-syntax ([entity-id     id-stx]
-                   [entity        entity-stx]
-                   [(attr-id ...) (map (cut make-id id-stx id-stx '- <>) attr-names)]
-                   [(attr ...)    attr-stxs])
-       (values #`(entity-id attr-id ...)
-               #`(let ([entity-alias (make-entity-alias 'entity-id entity)])
-                   (values entity-alias (make-attribute-alias entity-alias attr) ...))))]))
 
 ; (_ id expr)
 (define-syntax (define-sql stx)
   (syntax-case stx ()
     [(_ id val)
-     (with-syntax ([secret-binding (make-private-sql-identifier)])
-       #`(begin (define secret-binding val)
+     (with-syntax ([secret-binding (make-private-sql-identifier (syntax->datum #'id))])
+       #`(begin (define secret-binding
+                  (if (entity? val)
+                      (entity-default-alias val)
+                      val))
                 (define-syntax id #,(make-sql-transformer #'secret-binding))))]))
 
 ; (_ id expr)
@@ -35,16 +27,14 @@
   (syntax-case stx ()
     [(_ id val)
      (entity-identifier? #'val)
-     (match (persistent-struct-info-ref #'val)
-       [(and (app persistent-struct-info-entity-id entity-stx)
-             (app persistent-struct-info-attribute-ids attr-stxs)
-             (app persistent-struct-info-attribute-names attr-names))
+     (match (entity-info-ref #'val)
+       [(and (app entity-info-id entity-stx)
+             (app entity-info-attribute-info attrs))
         (with-syntax ([entity        entity-stx]
-                      [(attr-id ...) (map (cut make-id #'id #'id '- <>) attr-names)]
-                      [(attr ...)    attr-stxs])
-          #'(begin
-              (define-sql id (sql:entity 'id entity))
-              (define-sql attr-id (sql:attr id attr)) ...))])]
+                      [(attr-id ...) (map (cut make-id #'id #'id '- <>)
+                                          (map attribute-info-id attrs))]
+                      [(attr ...)    (map attribute-info-id attrs)])
+          #'(define-sql id (sql:alias 'id entity)))])]
     [(_ id val)
      #'(define-sql id (sql:alias 'id val))]))
 

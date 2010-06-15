@@ -4,9 +4,7 @@
          scheme/contract
          srfi/26/cut)
 
-(require "../base.ss"
-         "../snooze.ss"
-         "../snooze-interface.ss"
+(require "../snooze.ss"
          "cache.ss")
 
 ; audit-entities map entities to globally unique integers,
@@ -18,7 +16,7 @@
 
 ; Persistent struct types ------------------------
 
-(define-persistent-struct audit-entity
+(define-snooze-struct audit-entity
   ([name (make-symbol-type #f #f 32)])
   #:table-name 'auditentities)
 
@@ -117,6 +115,6 @@
 
 ; Provide statements ---------------------------
 
-(provide (persistent-struct-out audit-entity)
+(provide (snooze-struct-out audit-entity)
          entity-cache<%>
          entity-cache%)

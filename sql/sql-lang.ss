@@ -9,7 +9,7 @@
          (planet untyped/unlib:3/list)
          (planet untyped/unlib:3/symbol)
          "../base.ss"
-         "../era/era.ss"
+         "../core/struct.ss"
          "sql-struct.ss"
          "sql-util.ss")
 
@@ -22,30 +22,24 @@
 (define sql:alias
   (match-lambda*
     [(list (? symbol? id) (? entity? item))
-     (make-entity-alias id item)]
+     (make-entity-alias id (entity-name item))]
     [(list (? symbol? id) (? query? item))
      (make-query-alias id item)]
     [(list (? symbol? id) (? non-alias-expression? item))
      (make-expression-alias id item)]
-    [(list (and alias (struct entity-alias (name entity))) (? attribute? attr))
-     (define entity (source-alias-value alias))
-     (if (memq (attribute-entity attr) (list entity entity:persistent-struct))
-         (make-attribute-alias alias attr)
-         (raise-exn exn:fail:contract
-           (format "Entity does not contain that attribute: ~a ~a" entity attr)))]
-    [other (raise-exn exn:fail:contract (format "Bad arguments to sql:alias: ~s" other))]))
-
-; symbol entity -> entity-alias
-(define sql:entity
-  (case-lambda 
-    [(entity)    (sql:entity (gensym (entity-name entity)) entity)]
-    [(id entity) (make-entity-alias id entity)]))
+    [(list (? entity-alias? alias) (? attribute? attr))
+     (let ([entity (entity-alias-entity alias)])
+       (if (eq? (attribute-entity attr) entity)
+           (make-attribute-alias alias attr)
+           (raise-exn exn:fail:contract
+             (format "attribute not found: ~a ~a" entity attr))))]
+    [other (raise-exn exn:fail:contract (format "bad arguments to sql:alias: ~s" other))]))
 
 ; entity-alias (U symbol attribute) -> attribute-alias
 ;
 ; Provides backwards compatibility with the q:attr form in a previous Snooze query language.
 (define (sql:attr alias attr+name)
-  (make-attribute-alias alias (entity-attribute (source-alias-value alias) attr+name)))
+  (make-attribute-alias alias (entity-attribute (entity-alias-entity alias) attr+name)))
 
 ; any -> boolean
 (define (non-alias-expression? item)
@@ -78,6 +72,7 @@
   (sql:select/internal what distinct from where group order having limit offset))
 
 ;  (U (opt-listof (U column source-alias)) #f)
+;  (U (opt-listof (U expression source-alias)) #t #f)
 ;  source
 ;  (U expression #f)
 ;  (listof (U source-alias column))
@@ -100,10 +95,7 @@
   
   ; (U (listof expression) #f)
   (define distinct
-    (cond [(expression? distinct*) (list distinct*)]
-          [(eq? distinct* #t) (list)]
-          [(eq? distinct* #f) #f]
-          [else (raise-select-exn #:distinct "(U expression (listof expression) #t #f)" distinct*)]))
+    (expand-distinct-argument distinct*))
   
   ; (listof expression-alias)
   (define group
@@ -111,30 +103,30 @@
   
   ; Check #:from:
   (unless (source? from)
-    (raise-select-exn #:from "source" from))
+    (raise-select-exn '#:from "source" from))
   
   ; Check #:where:
   (unless (or (expression? where) (not where))
-    (raise-select-exn #:where "(U expression #f)" where))
+    (raise-select-exn '#:where "(U expression #f)" where))
   
   ; Check #:group:
   (unless (and (list? group) (andmap expression? group))
-    (raise-select-exn #:group "(listof expression)" group))
+    (raise-select-exn '#:group "(listof expression)" group))
   
   ; Check #:order:
   (unless (and (list? order) (andmap order? order))
-    (raise-select-exn #:order "(listof order)" order))
+    (raise-select-exn '#:order "(listof order)" order))
   
   (unless (or (expression? having) (not having))
-    (raise-select-exn #:having "(U expression #f)" having))
+    (raise-select-exn '#:having "(U expression #f)" having))
   
   ; Check #:limit:
   (unless (or (integer? limit) (not limit))
-    (raise-select-exn #:limit "(U integer #f)" limit))
+    (raise-select-exn '#:limit "(U integer #f)" limit))
   
   ; Check #:offset:
   (unless (or (integer? offset) (not offset))
-    (raise-select-exn #:offset "(U integer #f)" offset))
+    (raise-select-exn '#:offset "(U integer #f)" offset))
   
   (let*-values (; (listof source-alias)
                 [(sources) (source->sources from)]
@@ -151,7 +143,7 @@
     (check-group-clause group sources columns*)
     (check-order-clause order sources columns*)
     (check-having-clause having sources columns*)
-  
+    
     ; Make and return the structure:
     (make-query what distinct from where group order having limit offset local-columns imported-columns expand-info)))
 
@@ -217,7 +209,7 @@
   (let ([arg (quote-argument alias)])
     (if (numeric-expression? arg)
         (make-aggregate type:real 'average (list arg))
-        (raise-type-error 'average (list arg)))))
+        (raise-type-error 'average "numeric-expression" arg))))
 
 ; expression+quotable ... -> function
 (define-function (sql:and . args)
@@ -388,10 +380,10 @@
                                            (format "sql:in: list elements must all be of the same type: ~a" arg2)))
                                        type2)]
                       [(query? arg2) (let ([columns (query-what arg2)])
-                                             (unless (= (length columns) 1)
-                                               (raise-exn exn:fail:contract
-                                                 (format "sql:in: subquery must have exactly one column: ~a" arg2)))
-                                             (expression-type (car columns)))])])
+                                       (unless (= (length columns) 1)
+                                         (raise-exn exn:fail:contract
+                                           (format "sql:in: subquery must have exactly one column: ~a" arg2)))
+                                       (expression-type (car columns)))])])
     (unless (type-compatible? type1 type2)
       (raise-exn exn:fail:contract
         (format "sql:in: type mismatch: argument types do not match: ~a ~a" (type-name type1) (type-name type2))))
@@ -436,7 +428,7 @@
 (define (sql:null type)
   (make-null type))
 
-; Order ----------------------------------------
+; Order ------------------------------------------
 
 ; expression+quotable (U 'asc 'desc) -> order
 (define (sql:order expr dir)
@@ -446,22 +438,43 @@
 (define sql:asc  (cut sql:order <> 'asc))
 (define sql:desc (cut sql:order <> 'desc))
 
+; Contracts --------------------------------------
+
+(define select-distinct/c (or/c expression? (listof expression?) boolean?))
+(define select-what/c     (or/c expression? source-alias? (listof (or/c expression? source-alias?)) false/c))
+(define select-from/c     (or/c source? query?))
+(define select-where/c    (or/c expression? false/c))
+(define select-group/c    (listof (or/c column? source-alias?)))
+(define select-order/c    (listof order?))
+(define select-having/c   (or/c expression? false/c))
+(define select-limit/c    (or/c natural-number/c #f))
+(define select-offset/c   (or/c natural-number/c #f))
+
 ; Provide statements -----------------------------
 
 (provide (rename-out [sql:alias alias]
-                     [sql:cond  cond]))
+                     [sql:cond  cond])
+         select-distinct/c
+         select-what/c    
+         select-from/c    
+         select-where/c   
+         select-group/c   
+         select-order/c   
+         select-having/c  
+         select-limit/c   
+         select-offset/c)
 
 (provide/contract
- [rename sql:select          select          (->* (#:from     (or/c source? query?))
-                                                  (#:what     (or/c expression? source-alias? (listof (or/c expression? source-alias?)) false/c)
-                                                   #:distinct (or/c expression? (listof expression?) boolean?)
-                                                   #:where    (or/c expression? false/c)
-                                                   #:group    (listof (or/c column? source-alias?))
-                                                   #:order    (listof order?)
-                                                   #:having   (or/c expression? false/c)
-                                                   #:limit    (or/c integer? false/c)
-                                                   #:offset   (or/c integer? false/c))
-                                                 query?)]
+ [rename sql:select          select          (->* (#:from     select-from/c)
+                                                  (#:what     select-what/c
+                                                              #:distinct select-distinct/c
+                                                              #:where    select-where/c
+                                                              #:group    select-group/c
+                                                              #:order    select-order/c
+                                                              #:having   select-having/c
+                                                              #:limit    select-limit/c
+                                                              #:offset   select-offset/c)
+                                                  query?)]
  [rename sql:select/internal select/internal (-> (or/c expression? source-alias? (listof (or/c expression? source-alias?)) false/c)
                                                  (or/c expression? (listof expression?) boolean?)
                                                  (or/c source? query?)
@@ -472,8 +485,6 @@
                                                  (or/c integer? false/c)
                                                  (or/c integer? false/c)
                                                  query?)]
- [rename sql:entity          entity          (case-> (-> entity? entity-alias?)
-                                                     (-> symbol? entity? entity-alias?))]
  [rename sql:attr            attr            (-> entity-alias? (or/c attribute? symbol?) attribute-alias?)]
  [rename sql:count-distinct  count-distinct  (-> attribute-alias? aggregate?)]
  [rename sql:count           count           (-> attribute-alias? aggregate?)]
