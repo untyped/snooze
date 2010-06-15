@@ -113,7 +113,7 @@
     (let ([a (current-inexact-milliseconds)])
       (for ([i (in-range 1 1000)])
         (send (current-snooze) disconnect))
-      (printf "time ~a" (- (current-inexact-milliseconds) a)))))
+      (printf "time ~a~n" (- (current-inexact-milliseconds) a)))))
 
 ; Helpers ----------------------------------------
 
