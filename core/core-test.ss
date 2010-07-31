@@ -14,8 +14,7 @@
 
 ; Guid tests -----------------------------------
 
-(define guid-tests
-  (test-suite "guid"
+(define-test-suite guid-tests
     
     #:before
     recreate-test-tables
@@ -32,20 +31,17 @@
         (check-not-eq? temp1 temp2)
         (check-not-eq? data1 data2)
         (check-pred symbol? (guid-id temp1))
-        (check-pred number? (guid-id data1))))))
+        (check-pred number? (guid-id data1)))))
 
 ; Type tests -----------------------------------
 
-(define type-tests
-  (test-suite "type"
-    
-    (test-case "type-name"
-      (check-equal? (type-name (entity-make-guid-type person #f)) 'person))))
+(define-test-suite type-tests
+  (test-case "type-name"
+    (check-equal? (type-name (entity-make-guid-type person #f)) 'person)))
 
 ; Entity tests ---------------------------------
 
-#;(define entity-tests
-    (test-suite "entity"
+(define-test-suite entity-tests
       
       (test-case "entity-name"
         (check-equal? (entity-name person) 'person))
@@ -159,21 +155,30 @@
           (check-attribute (attr pet name) expected))
         
         (check-exn exn:fail:contract?
-          (cut entity-attribute #f 'name)))))
+          (cut entity-attribute #f 'name)))
+      
+      (test-case "entity-guid-attribute"
+        (check-equal? (entity-guid-attribute person)
+                      (attr person guid)))
+      
+      (test-case "entity-revision-attribute"
+        (check-equal? (entity-revision-attribute person)
+                      (attr person revision)))
+      
+      (test-case "entity-data-attribute"
+        (check-equal? (entity-data-attributes person)
+                      (attr-list person name))))
 
 ; Relationship tests ---------------------------
 
-(define relationship-tests
-  (test-suite "relationship"))
+(define-test-suite relationship-tests)
 
 ; Attribute tests ------------------------------
 
-(define attribute-tests
-  (test-suite "attribute"
-    
-    (test-case "attribute-entity"
-      (check-equal? (attribute-entity (attr person guid)) person)
-      (check-equal? (attribute-entity (attr pet guid)) pet))))
+(define-test-suite attribute-tests
+  (test-case "attribute-entity"
+    (check-equal? (attribute-entity (attr person guid)) person)
+    (check-equal? (attribute-entity (attr pet guid)) pet)))
 
 ; Tests ----------------------------------------
 
@@ -181,9 +186,9 @@
   (test-suite "struct.ss"
     guid-tests
     type-tests
-    ;entity-tests
-    relationship-tests
-    attribute-tests))
+    entity-tests
+    attribute-tests
+    relationship-tests))
 
 ; Provide statements -----------------------------
 

@@ -9,13 +9,12 @@
 
 ; Tests ----------------------------------------
 
-(define-snooze-struct audit-metadata
-  ([transaction-id (make-integer-type #f #f)]
-   [message        (make-string-type #t #f 256)]))
+(define-entity audit-metadata
+  ([transaction audit-transaction]
+   [message     string #:max-length 1024]))
 
-; snooze% -> test-suite
-(define (make-audit-tests snooze)
-  (define-snooze-interface snooze)
+; [snooze] -> test-suite
+(define (make-audit-tests [snooze (current-snooze)])
   
   ; audit-trail<%>
   (define trail 
@@ -24,10 +23,8 @@
            (define/override (make-metadata txn message)
              (make-audit-metadata (struct-id txn) message))
            (super-new))
-         [snooze   snooze]
+         [snooze   (current-snooze)]
          [entities (list course person pet)]))
-  
-  (define-audit-interface trail)
   
   (define-alias ENTITY audit-entity)
   (define-alias ATTR   audit-attribute)
@@ -86,7 +83,7 @@
       (check-true (table-exists? audit-attribute))
       (check-true (table-exists? audit-transaction))
       (check-true (table-exists? audit-delta))
-      (check-true (procedure? (send snooze get-transaction-hook)))
+      (check-true (procedure? (send (current-snooze) get-transaction-hook)))
       (check-true (procedure? (entity-delete-hook person)))
       (check-true (procedure? (entity-delete-hook pet))))
     
@@ -590,12 +587,12 @@
         (clear-trail!)
         
         (match-define 
-            (list noel dave)
-          (call-with-transaction
-           (lambda ()
-             (list (save! (make-person "Noel"))
-                   (save! (make-person "Dave"))))
-           "0"))
+         (list noel dave)
+         (call-with-transaction
+          (lambda ()
+            (list (save! (make-person "Noel"))
+                  (save! (make-person "Dave"))))
+          "0"))
         
         (define matt
           (call-with-transaction 
@@ -639,12 +636,12 @@
         (clear-trail!)
         
         (match-define 
-            (list noel dave)
-          (call-with-transaction
-           (lambda ()
-             (list (save! (make-person "Noel"))
-                   (save! (make-person "Dave"))))
-           "0"))
+         (list noel dave)
+         (call-with-transaction
+          (lambda ()
+            (list (save! (make-person "Noel"))
+                  (save! (make-person "Dave"))))
+          "0"))
         
         (define matt
           (call-with-transaction 
@@ -690,6 +687,8 @@
         (check-equal? (find-by-id person (struct-id bree)) bree)
         (check-false  (find-by-id pet (struct-id william)))))))
 
-; Provide statements -----------------------------
+; Provides ---------------------------------------
 
-(provide make-audit-tests)
+(provide/contract
+ [make-audit-tests (->* () ((is-a?/c snooze%)) any)])
+

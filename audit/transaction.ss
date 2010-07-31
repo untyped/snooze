@@ -11,4 +11,5 @@
 
 ; Provide statements -----------------------------
 
-(provide (entity-out audit-transaction))
+(provide/contract/entities
+ [entity audit-transaction])

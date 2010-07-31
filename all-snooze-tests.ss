@@ -31,31 +31,30 @@
     (lambda ()
       (connect)
       (drop-all-tables))
-    #|
+    
     ; Tests that can be run without a database connection:
-    all-core-tests
-    all-sql-tests
+    #;all-core-tests
+    #;all-sql-tests
     
     ; Tests for the back end:
-    all-common-tests
-    all-back-end-tests
+    #;all-common-tests
+    #;all-back-end-tests
     
     ; Tests the front end:
-    snooze-make-tests
-    snooze-save-tests
-    snooze-delete-tests
-    snooze-modify-tests
-    snooze-foreign-key-tests
-    snooze-check-tests
-    snooze-hook-tests
-    snooze-transaction-tests
+    #;snooze-make-tests
+    #;snooze-save-tests
+    #;snooze-delete-tests
+    #;snooze-modify-tests
+    #;snooze-foreign-key-tests
+    #;snooze-check-tests
+    #;snooze-hook-tests
+    #;snooze-transaction-tests
     ;snooze-concurrency-tests
-    snooze-find-tests
-    snooze-quick-find-tests
-    |#
+    #;snooze-find-tests
+    #;snooze-quick-find-tests
     ; Tests for the audit trails:
     all-audit-tests))
 
-; Provide statements -----------------------------
+; Provides ---------------------------------------
 
 (provide make-snooze-tests)
