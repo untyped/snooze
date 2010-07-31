@@ -1,16 +1,13 @@
 #lang scheme/base
 
-(require mzlib/etc
-         scheme/class
-         scheme/contract
-         scheme/match
-         srfi/19/time
+(require "../base.ss")
+
+(require srfi/19
          (planet untyped/unlib:3/list)
-         "../snooze.ss"
+         "../core/core.ss"
          "attribute.ss"
          "cache.ss"
          "delta.ss"
-         "entity.ss"
          "transaction.ss")
 
 ; Parameters -----------------------------------

@@ -1,9 +1,10 @@
 #lang scheme/base
 
+(require "../base.ss")
+
 (require (for-syntax scheme/base
                      scheme/class
                      scheme/provide-transform
-                     srfi/26/cut
                      (planet untyped/unlib:3/syntax)
                      "audit-class.ss")
          scheme/class)

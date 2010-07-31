@@ -16,7 +16,7 @@
          "snooze-save-test.ss"
          "snooze-transaction-test.ss"
          "test-base.ss"
-         ;"audit/all-audit-tests.ss"
+         "audit/all-audit-tests.ss"
          "core/all-core-tests.ss"
          "common/all-common-tests.ss"
          "sql/all-sql-tests.ss")
@@ -31,7 +31,7 @@
     (lambda ()
       (connect)
       (drop-all-tables))
-    
+    #|
     ; Tests that can be run without a database connection:
     all-core-tests
     all-sql-tests
@@ -52,9 +52,9 @@
     ;snooze-concurrency-tests
     snooze-find-tests
     snooze-quick-find-tests
-    
+    |#
     ; Tests for the audit trails:
-    #;(make-audit-tests snooze)))
+    all-audit-tests))
 
 ; Provide statements -----------------------------
 

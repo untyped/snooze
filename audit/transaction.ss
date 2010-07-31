@@ -1,11 +1,14 @@
 #lang scheme/base
   
-(require "../snooze.ss")
+(require "../base.ss")
 
-(define-snooze-struct audit-transaction
-  ([timestamp (make-time-utc-type #f #f)])
-  #:table-name 'audittransactions)
+(require "../core/core.ss")
+
+; Entities ---------------------------------------
+
+(define-entity audit-transaction
+  ([timestamp time-utc #:allow-null? #f]))
 
 ; Provide statements -----------------------------
 
-(provide (snooze-struct-out audit-transaction))
+(provide (entity-out audit-transaction))

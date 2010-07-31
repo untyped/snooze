@@ -1,14 +1,10 @@
 #lang scheme/base
 
-(require mzlib/etc
-         scheme/class
-         scheme/match
-         srfi/19/time
-         srfi/26/cut
+(require "../test-base.ss")
+
+(require srfi/19
          (planet untyped/unlib:3/time)
-         "../snooze.ss"
-         "../snooze-syntax.ss"
-         "../test-base.ss"
+         "../main.ss"
          "audit.ss")
 
 ; Tests ----------------------------------------

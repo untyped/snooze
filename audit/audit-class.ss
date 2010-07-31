@@ -1,18 +1,11 @@
 #lang scheme/base
 
-(require mzlib/etc
-         scheme/class
-         scheme/contract
-         scheme/match
-         (only-in srfi/1/list 
-                  delete-duplicates
-                  unzip2)
-         srfi/19/time
-         srfi/26/cut
+(require "../base.ss")
+
+(require (only-in srfi/1 delete-duplicates unzip2)
+         srfi/19
          (planet untyped/unlib:3/hash)
          (planet untyped/unlib:3/parameter)
-         "../snooze.ss"
-         "../snooze-syntax.ss"
          "attribute.ss"
          "delta.ss"
          "entity.ss"
