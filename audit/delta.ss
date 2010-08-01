@@ -31,17 +31,18 @@
 
 ; audit-transaction snooze-struct -> audit-delta
 (define (make-insert-delta txn struct)
-  (make-audit-delta
-   txn                       ; transaction
-   (delta-types insert)      ; type
-   (snooze-struct-id struct) ; struct-id
-   #f                        ; attribute-id
-   #f                        ; boolean-value
-   #f                        ; integer-value
-   #f                        ; real-value
-   #f                        ; string-value
-   #f                        ; time-utc-value
-   #f))                      ; binary-value
+  (let ([attr-id (attribute->id (entity-guid-attribute (snooze-struct-entity struct)))])
+    (make-audit-delta
+     txn                       ; transaction
+     (delta-types insert)      ; type
+     (snooze-struct-id struct) ; struct-id
+     attr-id                   ; attribute-id
+     #f                        ; boolean-value
+     #f                        ; integer-value
+     #f                        ; real-value
+     #f                        ; string-value
+     #f                        ; time-utc-value
+     #f)))                     ; binary-value
 
 ; audit-transaction snooze-struct attribute -> audit-delta
 (define (make-update-delta txn struct attr)
@@ -57,19 +58,20 @@
            attr-id              ; attribute-id
            rest)))              ; etc...
 
-; audit-transaction guid integer attribute any -> audit-delta
-(define (make-delete-delta txn struct attr)
-  (make-audit-delta
-   txn                       ; transaction
-   (delta-types delete)      ; type
-   (snooze-struct-id struct) ; struct-id
-   #f                        ; attribute-id
-   #f                        ; boolean-value
-   #f                        ; integer-value
-   #f                        ; real-value
-   #f                        ; string-value
-   #f                        ; time-utc-value
-   #f))                      ; binary-value
+; audit-transaction snooze-struct -> audit-delta
+(define (make-delete-delta txn struct)
+  (let ([attr-id (attribute->id (entity-guid-attribute (snooze-struct-entity struct)))])
+    (make-audit-delta
+     txn                       ; transaction
+     (delta-types delete)      ; type
+     (snooze-struct-id struct) ; struct-id
+     attr-id                   ; attribute-id
+     #f                        ; boolean-value
+     #f                        ; integer-value
+     #f                        ; real-value
+     #f                        ; string-value
+     #f                        ; time-utc-value
+     #f)))                     ; binary-value
 
 ; audit-delta -> entity
 (define (audit-delta-entity delta)
@@ -99,28 +101,28 @@
 ; 
 ; audit-delta (U snooze-struct #f) -> (U snooze-struct #f)
 #;(define (revert-delta delta struct)
-  (enum-case delta-types (audit-delta-type delta)
-    [(insert)        (if (equal? (snooze-struct-id struct)
-                                 (audit-delta-struct-id delta))
-                         ; Put a temporary ID in to the guid:
-                         (begin (set-guid-id! (snooze-struct-guid struct) (entity-make-temporary-id (snooze-struct-entity struct)))
-                                #f)
-                         (error "delta does not apply to the correct struct" (list delta struct)))]
-    [(update)
-     (if (equal? (snooze-struct-id struct) (audit-delta-struct-id delta))
-         (snooze-struct-set struct (audit-delta-attribute delta) (audit-delta-value delta))
-         (error "delta does not apply to the correct guid" (list delta struct)))]
-    [(delete)
-     (if struct
-         (let* ([entity (audit-delta-entity delta)]
-                [guid   (entity-make-guid entity (audit-delta-struct-id struct))]
-                [struct (apply (entity-private-constructor entity)
-                               guid
-                               1000000000
-                               (map attribute-default (entity-data-attributes entity)))])
-           ; Put a dummy database ID into the guid - should be set to a meaningful value by the next accompanying update delta:
-           (set-guid-id! guid (audit-delta-struct-id delta))
-           struct))]))
+    (enum-case delta-types (audit-delta-type delta)
+      [(insert)        (if (equal? (snooze-struct-id struct)
+                                   (audit-delta-struct-id delta))
+                           ; Put a temporary ID in to the guid:
+                           (begin (set-guid-id! (snooze-struct-guid struct) (entity-make-temporary-id (snooze-struct-entity struct)))
+                                  #f)
+                           (error "delta does not apply to the correct struct" (list delta struct)))]
+      [(update)
+       (if (equal? (snooze-struct-id struct) (audit-delta-struct-id delta))
+           (snooze-struct-set struct (audit-delta-attribute delta) (audit-delta-value delta))
+           (error "delta does not apply to the correct guid" (list delta struct)))]
+      [(delete)
+       (if struct
+           (let* ([entity (audit-delta-entity delta)]
+                  [guid   (entity-make-guid entity (audit-delta-struct-id struct))]
+                  [struct (apply (entity-private-constructor entity)
+                                 guid
+                                 1000000000
+                                 (map attribute-default (entity-data-attributes entity)))])
+             ; Put a dummy database ID into the guid - should be set to a meaningful value by the next accompanying update delta:
+             (set-guid-id! guid (audit-delta-struct-id delta))
+             struct))]))
 
 ; Helpers --------------------------------------
 
@@ -152,4 +154,3 @@
  [audit-delta-attribute (-> audit-delta? attribute?)]
  [audit-delta-value     (-> audit-delta? any)]
  #;[revert-delta          (-> audit-delta? (or/c snooze-struct? #f) (or/c snooze-struct? #f))])
-                    

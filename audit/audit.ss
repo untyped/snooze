@@ -14,8 +14,19 @@
 
 (define-struct audit-hook (original procedure) #:property prop:procedure 1)
 
+(define audit-trail<%>
+  (interface ()
+    current-audit-transaction
+    #;audit-transaction-deltas
+    #;audit-deltas->guids
+    #;audit-struct-history
+    #;audit-struct-transaction-history
+    #;audit-struct-snapshot
+    #;audit-transaction-affected
+    #;audit-roll-back!))
+
 (define audit-trail%
-  (class object%
+  (class* object% (audit-trail<%>)
     
     ; Fields ---------------------------------------
     
@@ -33,6 +44,10 @@
     (init-field metadata-entity)
     
     (init-field entities)
+    
+    (super-new)
+    
+    ; Methods --------------------------------------
     
     ; Check that the metadata entity has an audit-transaction attribute:
     (match (entity-data-attributes metadata-entity)
@@ -82,17 +97,14 @@
       (let ([old-hook (send snooze get-transaction-hook)])
         (make-audit-hook
          old-hook
-         (lambda (continue conn #:metadata metadata-values)
+         (lambda (continue conn metadata-values)
            (if (in-audit?)
-               (old-hook continue conn #:metadata metadata-values)
+               (old-hook continue conn metadata-values)
                (parameterize ([in-audit? #t])
                  (let ([frame (start-transaction)])
                    (parameterize ([current-frame frame])
-                     (begin0 (old-hook continue conn #:metadata metadata-values)
-                             (let ([metadata-struct (apply (entity-constructor metadata-entity)
-                                                           (audit-frame-transaction frame)
-                                                           metadata-values)])
-                               (end-transaction frame metadata-struct)))))))))))
+                     (begin0 (old-hook continue conn metadata-values)
+                             (end-transaction frame (make-metadata metadata-values)))))))))))
     
     ; entity -> save-hook
     (define/public (make-save-hook entity)
@@ -131,46 +143,46 @@
         (drop-table audit-delta)))
     
     ; audit-transaction -> (listof audit-delta)
-    (define/public (audit-transaction-deltas txn)
-      (select-all #:from  audit-delta
-                  #:where (= audit-delta.transaction ,txn)
-                  #:order ((asc audit-delta.guid))))
+    #;(define/public (audit-transaction-deltas txn)
+        (select-all #:from  audit-delta
+                    #:where (= audit-delta.transaction ,txn)
+                    #:order ((asc audit-delta.guid))))
     
     ; (listof audit-delta) -> (listof guid)
-    (define/public (audit-deltas->guids deltas)
-      (for/list ([delta (in-list deltas)])
-        (entity-make-guid (audit-delta-entity delta)
-                          (audit-delta-struct-id delta))))
+    #;(define/public (audit-deltas->guids deltas)
+        (for/list ([delta (in-list deltas)])
+          (entity-make-guid (audit-delta-entity delta)
+                            (audit-delta-struct-id delta))))
     
     ; guid txn -> (listof delta)
     ;
     ; Find all deltas involving this guid, from the supplied transaction to the present (inclusive).
     ; Deltas are returned in reverse chronological order, from the present back to txn.
-    (define/public (audit-struct-history guid txn [inclusive? #t])
-      (let ([entity (guid-entity guid)])
-        (select-all #:from  audit-delta
-                    #:where (and (= audit-delta.struct-id ,(guid-id guid))
-                                 (in audit-delta.attribute ,(map attribute->id (entity-attributes entity)))
-                                 ,(if inclusive?
-                                      (sql (>= audit-delta.transaction ,txn))
-                                      (sql (>  audit-delta.transaction ,txn))))
-                    #:order ((desc audit-delta.guid)))))
+    #;(define/public (audit-struct-history guid txn [inclusive? #t])
+        (let ([entity (guid-entity guid)])
+          (select-all #:from  audit-delta
+                      #:where (and (= audit-delta.struct-id ,(guid-id guid))
+                                   (in audit-delta.attribute ,(map attribute->id (entity-attributes entity)))
+                                   ,(if inclusive?
+                                        (sql (>= audit-delta.transaction ,txn))
+                                        (sql (>  audit-delta.transaction ,txn))))
+                      #:order ((desc audit-delta.guid)))))
     
     ; guid txn -> (listof transaction)
     ;
     ; Returns the list of transactions that affect guid, from txn to the present.
     ; Transactions are returned in chronological order. The optional third argument
     ; determines whether txn itself should be included in the list (#t by default).
-    (define/public (audit-struct-transaction-history guid txn [inclusive? #t])
-      (let ([entity (guid-entity guid)])
-        (select-all #:what  audit-transaction
-                    #:from  (inner audit-transaction audit-delta (= audit-transaction.guid audit-delta.transaction))
-                    #:where (and (=  audit-delta.struct-id ,(guid-id guid))
-                                 (in audit-delta.attribute ,(map attribute->id (entity-attributes entity)))
-                                 ,(if inclusive?
-                                      (sql (>= audit-transaction.guid ,txn))
-                                      (sql (>  audit-transaction.guid ,txn))))
-                    #:order ((asc audit-delta.guid)))))
+    #;(define/public (audit-struct-transaction-history guid txn [inclusive? #t])
+        (let ([entity (guid-entity guid)])
+          (select-all #:what  audit-transaction
+                      #:from  (inner audit-transaction audit-delta (= audit-transaction.guid audit-delta.transaction))
+                      #:where (and (=  audit-delta.struct-id ,(guid-id guid))
+                                   (in audit-delta.attribute ,(map attribute->id (entity-attributes entity)))
+                                   ,(if inclusive?
+                                        (sql (>= audit-transaction.guid ,txn))
+                                        (sql (>  audit-transaction.guid ,txn))))
+                      #:order ((asc audit-delta.guid)))))
     
     ; (listof audit-delta) (U snooze-struct #f) -> (U snooze-struct #f)
     #;(define/public (audit-struct-snapshot history start)
@@ -218,40 +230,40 @@
     ;                           (cons guid3 txn0)
     ;                           (cons guid4 txn1)
     ;                           (cons guid5 txn3)))
-    (define/public (audit-transaction-affected txn0)
-      ; (hashof txn txn)
-      (define closed-txns (make-hash))
-      ; (hashof guid guid)
-      (define closed-guids (make-hash))
-      ; txn -> void
-      (define (close-txn! txn)
-        (hash-set! closed-txns txn txn))
-      ; guid txn -> void
-      (define (close-guid! guid txn)
-        (define old-txn (hash-ref closed-guids guid #f))
-        (cond [(not old-txn)
-               (hash-set! closed-guids guid txn)]
-              [(< (snooze-struct-id txn) (snooze-struct-id old-txn))
-               (hash-set! closed-guids guid txn)]
-              [else (void)]))
-      ; (listof a) (hashof a a) -> (listof a)
-      (define (filter-open elts closed)
-        (filter (lambda (elt) 
-                  (not (hash-ref closed elt #f)))
-                elts))
-      ; (listof txn)
-      (let loop ([open (list txn0)])
-        (match open
-          [(list-rest (? audit-transaction? txn) tail)
-           (define deltas (audit-transaction-deltas txn))
-           (define guids (audit-deltas->guids deltas))
-           (close-txn! txn)
-           (loop (append tail (filter-open guids closed-guids)))]
-          [(list-rest (? guid? guid) tail)
-           (define txns (audit-struct-transaction-history guid txn0 #t))
-           (close-guid! guid (car txns))
-           (loop (append tail (filter-open txns closed-txns)))]
-          [(list) closed-guids])))
+    #;(define/public (audit-transaction-affected txn0)
+        ; (hashof txn txn)
+        (define closed-txns (make-hash))
+        ; (hashof guid guid)
+        (define closed-guids (make-hash))
+        ; txn -> void
+        (define (close-txn! txn)
+          (hash-set! closed-txns txn txn))
+        ; guid txn -> void
+        (define (close-guid! guid txn)
+          (define old-txn (hash-ref closed-guids guid #f))
+          (cond [(not old-txn)
+                 (hash-set! closed-guids guid txn)]
+                [(< (snooze-struct-id txn) (snooze-struct-id old-txn))
+                 (hash-set! closed-guids guid txn)]
+                [else (void)]))
+        ; (listof a) (hashof a a) -> (listof a)
+        (define (filter-open elts closed)
+          (filter (lambda (elt) 
+                    (not (hash-ref closed elt #f)))
+                  elts))
+        ; (listof txn)
+        (let loop ([open (list txn0)])
+          (match open
+            [(list-rest (? audit-transaction? txn) tail)
+             (define deltas (audit-transaction-deltas txn))
+             (define guids (audit-deltas->guids deltas))
+             (close-txn! txn)
+             (loop (append tail (filter-open guids closed-guids)))]
+            [(list-rest (? guid? guid) tail)
+             (define txns (audit-struct-transaction-history guid txn0 #t))
+             (close-guid! guid (car txns))
+             (loop (append tail (filter-open txns closed-txns)))]
+            [(list) closed-guids])))
     
     ; audit-transaction (hashof guid transaction) any ... -> void
     #;(define/public (audit-roll-back! affected . log-values)

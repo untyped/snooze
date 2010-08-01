@@ -33,7 +33,7 @@
       (drop-all-tables))
     
     ; Tests that can be run without a database connection:
-    #;all-core-tests
+    all-core-tests
     #;all-sql-tests
     
     ; Tests for the back end:
