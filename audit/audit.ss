@@ -2,7 +2,7 @@
 
 (require "../base.ss")
 
-(require (only-in srfi/1 delete-duplicates unzip2)
+(require (only-in srfi/1 drop delete-duplicates unzip2)
          srfi/19
          (planet untyped/unlib:3/hash)
          (planet untyped/unlib:3/parameter)
@@ -47,8 +47,6 @@
     
     (super-new)
     
-    ; Methods --------------------------------------
-    
     ; Check that the metadata entity has an audit-transaction attribute:
     (match (entity-data-attributes metadata-entity)
       [(list-rest (app attribute-type type) _)
@@ -80,17 +78,32 @@
         (set-entity-on-save!   entity (make-save-hook entity))
         (set-entity-on-delete! entity (make-delete-hook entity))))
     
+    ; Cache the attributes we're going to be auditing:
+    (for ([entity (in-list entities)])
+      (for ([attr (in-list (entity-attributes entity))])
+        ; This adds the attribute to the in-memory and in-database caches:
+        (attribute->id attr)))
+    
+    ; Methods --------------------------------------
+    
     ; -> (U audit-transaction #f)
     (define/public (current-audit-transaction)
       (and (current-frame)
            (send (current-frame) get-transaction)))
     
-    ; audit-transaction any ... -> (U snooze-struct #f)
-    (define/public (make-metadata txn . args)
+    ; audit-frame (listof any) -> (U snooze-struct #f)
+    (define/public (make-metadata frame metadata-values)
       (parameterize ([current-snooze snooze])
-        (apply (entity-constructor metadata-entity)
-               txn
-               args)))
+        (let* ([txn   (audit-frame-transaction frame)]
+               [attrs (entity-attributes metadata-entity)]
+               [args0 (list* (entity-make-temporary-guid metadata-entity)
+                              #f
+                              txn
+                              metadata-values)]
+               [args1 (if (= (length args0) (length attrs))
+                          args0
+                          (append args0 (map attribute-default (drop attrs (length args0)))))])
+          (apply (entity-constructor metadata-entity) args1))))
     
     ; snooze -> transaction-hook
     (define/public (make-transaction-hook snooze)
@@ -104,7 +117,7 @@
                  (let ([frame (start-transaction)])
                    (parameterize ([current-frame frame])
                      (begin0 (old-hook continue conn metadata-values)
-                             (end-transaction frame (make-metadata metadata-values)))))))))))
+                             (end-transaction frame (make-metadata frame metadata-values)))))))))))
     
     ; entity -> save-hook
     (define/public (make-save-hook entity)
@@ -114,7 +127,7 @@
          (lambda (continue conn struct)
            (parameterize ([in-audit? #t])
              (if (snooze-struct-saved? struct)
-                 (old-hook continue conn (audit-update! (current-frame) audit-update! struct #:snooze snooze))
+                 (old-hook continue conn (audit-update! (current-frame) struct #:snooze snooze))
                  (audit-insert! (current-frame) (old-hook continue conn struct) #:snooze snooze)))))))
     
     ; entity -> delete-hook

@@ -52,11 +52,11 @@
 
 ; snooze attribute -> (U natural #f)
 (define (database-forward-lookup snooze attr)
-  (snooze-struct-id
-   (find-audit-attribute
-    #:snooze snooze
-    #:table  (entity-table-name (attribute-entity attr))
-    #:column (attribute-column-name attr))))
+  (let ([ans (find-audit-attribute
+              #:snooze snooze
+              #:table  (entity-table-name (attribute-entity attr))
+              #:column (attribute-column-name attr))])
+    (and ans (snooze-struct-id ans))))
 
 ; snooze audit-attribute -> (U attribute #f)
 (define (memory-reverse-lookup snooze aattr)

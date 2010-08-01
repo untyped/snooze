@@ -32,17 +32,11 @@
 ; audit-transaction snooze-struct -> audit-delta
 (define (make-insert-delta txn struct)
   (let ([attr-id (attribute->id (entity-guid-attribute (snooze-struct-entity struct)))])
-    (make-audit-delta
-     txn                       ; transaction
-     (delta-types insert)      ; type
-     (snooze-struct-id struct) ; struct-id
-     attr-id                   ; attribute-id
-     #f                        ; boolean-value
-     #f                        ; integer-value
-     #f                        ; real-value
-     #f                        ; string-value
-     #f                        ; time-utc-value
-     #f)))                     ; binary-value
+    (make-audit-delta/defaults
+     #:transaction  txn
+     #:type         (delta-types insert)
+     #:struct-id    (snooze-struct-id struct)
+     #:attribute-id attr-id)))
 
 ; audit-transaction snooze-struct attribute -> audit-delta
 (define (make-update-delta txn struct attr)
@@ -61,17 +55,11 @@
 ; audit-transaction snooze-struct -> audit-delta
 (define (make-delete-delta txn struct)
   (let ([attr-id (attribute->id (entity-guid-attribute (snooze-struct-entity struct)))])
-    (make-audit-delta
-     txn                       ; transaction
-     (delta-types delete)      ; type
-     (snooze-struct-id struct) ; struct-id
-     attr-id                   ; attribute-id
-     #f                        ; boolean-value
-     #f                        ; integer-value
-     #f                        ; real-value
-     #f                        ; string-value
-     #f                        ; time-utc-value
-     #f)))                     ; binary-value
+    (make-audit-delta/defaults
+     #:transaction  txn
+     #:type         (delta-types delete)
+     #:struct-id    (snooze-struct-id struct)
+     #:attribute-id attr-id)))
 
 ; audit-delta -> entity
 (define (audit-delta-entity delta)
@@ -116,7 +104,7 @@
        (if struct
            (let* ([entity (audit-delta-entity delta)]
                   [guid   (entity-make-guid entity (audit-delta-struct-id struct))]
-                  [struct (apply (entity-private-constructor entity)
+                  [struct (apply (entity-constructor entity)
                                  guid
                                  1000000000
                                  (map attribute-default (entity-data-attributes entity)))])
@@ -131,15 +119,16 @@
 ; ->
 ;  (list boolean (U integer #f) (U real #f) (U string #f) (U time-utc #f))
 (define (expand-value type value)
-  (list (if (boolean-type? type) value #f)
-        (if (integer-type? type) value #f)
-        (if (real-type? type) value #f)
+  (list (and (boolean-type? type) value)
+        (and (integer-type? type) value)
+        (and (real-type? type) value)
         (cond [(string-type? type) value]
               [(symbol-type? type) (if value (symbol->string value) value)]
               [else #f])
         (cond [(time-tai-type? type) (if value (time-tai->time-utc value) value)]
               [(time-utc-type? type) value]
-              [else #f])))
+              [else #f])
+        (and (binary-type? type) value)))
 
 ; Provides ---------------------------------------
 

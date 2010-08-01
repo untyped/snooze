@@ -11,7 +11,7 @@
 
 (define-entity audit-metadata
   ([transaction audit-transaction]
-   [message     string #:max-length 1024])
+   [message     string #:max-length 1024 #:default "No message"])
   #:plural audit-metadata)
 
 ; Initialised in #:before stage of tests:
