@@ -84,7 +84,7 @@
         [(binary-type? type)   (audit-delta-binary-value delta)]))
 
 ; guid audit-delta (U snooze-struct #f) -> (U snooze-struct #f)
-(define/public (revert-delta! guid delta struct)
+(define (revert-delta! guid delta struct)
   (unless (equal? guid (audit-delta-guid delta))
     (error "delta does not apply to the correct guid" (list guid delta)))
   (enum-case delta-types (audit-delta-type delta)
