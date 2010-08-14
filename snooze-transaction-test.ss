@@ -28,6 +28,15 @@
      (lambda ()
        (send (current-snooze) set-transaction-hook! old-hook)))))
 
+(define-check (check-rev-exn thunk struct)
+  (let ([exn (with-handlers ([exn:fail:snooze:revision?
+                              (lambda (exn) exn)]
+                             [(lambda _ #t) 
+                              (lambda (exn) (fail (format "wrong exn raised: ~s" exn)))])
+               (thunk)
+               (fail "no exn raised"))])
+    (check-equal? (exn:fail:snooze:revision-struct exn) struct)))
+
 ; Tests ----------------------------------------
 
 ; test-suite
@@ -154,8 +163,8 @@
          (check-false (find-person #:name "B"))
          (check-false (find-person #:name "C"))
          ; Check repeat transaction:
-         (check-exn exn:fail:snooze:revision? (cut save! p3))
-         (check-exn exn:fail:snooze:revision? (cut save! p2))
+         (check-rev-exn (cut save! p3) p3)
+         (check-rev-exn (cut save! p2) p2)
          (check-not-exn (cut save! p1)))))
     
     (test-case "inner nested transaction"
@@ -188,11 +197,11 @@
                     (check-equal? (find-person #:name "C") p3)))
          ; Check repeat transaction:
          (if (send (send (current-snooze) get-database) supports-nested-transactions?)
-             (begin (check-exn exn:fail:snooze:revision? (cut save! p1))
-                    (check-exn exn:fail:snooze:revision? (cut save! p3))
+             (begin (check-rev-exn (cut save! p1) p1)
+                    (check-rev-exn (cut save! p3) p3)
                     (check-not-exn (cut save! p2)))
-             (begin (check-exn exn:fail:snooze:revision? (cut save! p1))
-                    (check-exn exn:fail:snooze:revision? (cut save! p2))
+             (begin (check-rev-exn (cut save! p1) p1)
+                    (check-rev-exn (cut save! p2) p2)
                     (check-not-exn (cut save! p3))))))))
     
     

@@ -39,7 +39,7 @@
          #:password                [password #f]
          #:ssl                     [ssl 'optional]
          #:ssl-encrypt             [ssl-encrypt 'sslv2-or-v3]
-         #:pool-connections?       [pool-connections? #t]
+         #:pool-connections?       [pool-connections? #f]
          #:keepalive-milliseconds  [keepalive-milliseconds 5000])
   (if pool-connections?
       (new (connection-pool-mixin postgresql8-database%)
@@ -161,7 +161,7 @@
         (let ([entity   (snooze-struct-entity   old-struct)]
               [guid     (snooze-struct-guid     old-struct)]
               [revision (snooze-struct-revision old-struct)])
-          (when check-revision? (check-revision conn entity guid revision))
+          (when check-revision? (check-revision conn entity old-struct revision))
           (let ([ans (apply (entity-private-constructor entity)
                             guid
                             (add1 revision)
@@ -176,8 +176,7 @@
         (let ([entity   (snooze-struct-entity old-struct)]
               [guid     (snooze-struct-guid old-struct)]
               [revision (snooze-struct-revision old-struct)])
-          (when check-revision?
-            (check-revision conn entity guid revision))
+          (when check-revision? (check-revision conn entity old-struct revision))
           (send (connection-back-end conn) exec (debug-sql* delete-sql (snooze-struct-guid old-struct)))
           (set-guid-temporary-id! guid)
           (apply (entity-private-constructor entity)
@@ -192,21 +191,22 @@
         (send (connection-back-end conn) exec (debug-sql* delete-sql guid))
         (void)))
     
-    ; connection entity database-guid natural -> void
-    (define (check-revision conn entity guid expected)
-      (let ([actual (send (connection-back-end conn) query-value
-                          (debug-sql* format "SELECT revision FROM ~a WHERE guid = ~a;"
-                                      (escape-sql-name (entity-table-name entity))
-                                      (guid-id guid)))])
+    ; connection entity snooze-struct natural -> void
+    (define (check-revision conn entity struct expected)
+      (let* ([guid   (snooze-struct-guid struct)]
+             [actual (send (connection-back-end conn) query-value
+                           (debug-sql* format "SELECT revision FROM ~a WHERE guid = ~a;"
+                                       (escape-sql-name (entity-table-name entity))
+                                       (guid-id guid)))])
         (unless (equal? actual expected)
           (raise-exn exn:fail:snooze:revision
-            (format "revision mismatch: database ~a, struct ~a" actual expected)
-            guid))))
+            (format "revision mismatch saving ~a: database ~a, struct ~a" struct actual expected)
+            struct))))
     
     ; connection (listof database-guid) transaction-frame -> (gen-> snooze-struct)
     (define/public (direct-find conn guids frame)
       (if (null? guids)
-          null
+          (g:list null)
           (let* ([sql     (debug-sql* direct-find-sql guids)]
                  [entity  (guid-entity (car guids))]
                  [extract (make-single-item-extractor entity)])

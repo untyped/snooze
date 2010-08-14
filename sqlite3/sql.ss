@@ -163,7 +163,7 @@
       (lambda (vals)
         (and vals (map private-parse-value types vals))))))
 
-; Modifications to default query SQL -------------
+; Modifications to default query SQL ------------- XXX
 
 ; SQLite has an irritating feature where it rewrites parenthesised FROM statements as "SELECT * FROM ...".
 ; This means it loses aliases on the joined tables. We get around this using two strategies:
@@ -285,16 +285,21 @@
     ; (see the comments at the top of the file).
     (define (display-from/entity alias out parenthesise?)
       (match alias
-        [(struct entity-alias (id entity))
+        [(struct entity-alias (name entity-name))
          (when parenthesise?
-           (display "(SELECT " out)
-           (display-what (map (cut make-attribute-alias alias <>)
-                              (entity-attributes entity))
-                         null out)
-           (display " FROM " out))
-         (display (escape-sql-name (entity-table-name entity)) out)
+           ; TODO : This DOESN'T WORK. The entity-alias struct used to contain a direct reference to the entity,
+           ; but I removed it to make entity-aliases serializable. We probably need to add column aliases to entity-alias 
+           ; to make this work properly. We can't simply put "SELECT *" here because of SQLite's weird aliasing behaviour 
+           ; described in the comment marked "XXX" above.
+           ;(display "(SELECT " out)
+           ;(display-what (map (cut make-attribute-alias alias <>)
+           ;                   (entity-attributes entity-name))
+           ;              null out)
+           ;(display " FROM " out)
+           (display "SELECT * FROM " out))
+         (display (escape-sql-name entity-name) out)
          (display " AS " out)
-         (display (escape-sql-name id) out)
+         (display (escape-sql-name name) out)
          (when parenthesise?
            (display ")" out))]))
     

@@ -35,8 +35,11 @@
 
 ; Mixins -----------------------------------------
 
+(define connection-pooled-database<%>
+  (interface ()))
+
 (define connection-pool-mixin
-  (mixin (database<%>) ()
+  (mixin (database<%>) (connection-pooled-database<%>)
     
     ; natural
     (init-field [max-connections 100])
@@ -166,4 +169,5 @@
 
 ; Provides ---------------------------------------
 
-(provide connection-pool-mixin)
+(provide connection-pooled-database<%>
+         connection-pool-mixin)

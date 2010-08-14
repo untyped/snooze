@@ -2,11 +2,12 @@
   
 (require "../test-base.ss")
 
-(require "extract-test.ss"
+(require "../core/struct.ss"
+         "extract-test.ss"
          "connection-pool-test.ss"
          "cross-reference-test.ss")
 
 (define/provide-test-suite all-common-tests
   extract-tests
-  connection-pool-tests
+  (make-connection-pool-tests (current-snooze))
   cross-reference-tests)

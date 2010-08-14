@@ -7,13 +7,21 @@
          "../core/struct.ss"
          "../core/snooze-struct.ss"
          "../common/common.ss"
+         "../common/connection-pool.ss"
          "../sql/sql-struct.ss"
          "sql.ss")
 
 ; (U path ':memory: ':temp:) -> database%
-(define (make-sqlite3-database path)
-  (new sqlite3-database%
-       [path   path]))
+(define (make-sqlite3-database
+         path
+         #:pool-connections?      [pool-connections? #f]
+         #:keepalive-milliseconds [keepalive-milliseconds 5000])
+  (if pool-connections?
+      (new (connection-pool-mixin sqlite3-database%)
+           [path   path]
+           [keepalive-milliseconds keepalive-milliseconds])
+      (new sqlite3-database%
+           [path   path])))
 
 (define-syntax-rule (debug-sql* fn arg ...)
   (let ([sql (fn arg ...)])
@@ -99,7 +107,7 @@
                                   guid
                                   (add1 revision)
                                   (cddr (snooze-struct-raw-ref* old-struct)))])
-          (when check-revision? (check-revision conn entity guid revision))
+          (when check-revision? (check-revision conn entity old-struct revision))
           (sqlite:exec/ignore (connection-back-end conn) (debug-sql* update-sql new-struct))
           new-struct)))
     
@@ -110,7 +118,7 @@
         (let ([entity   (snooze-struct-entity old-struct)]
               [guid     (snooze-struct-guid old-struct)]
               [revision (snooze-struct-revision old-struct)])
-          (when check-revision? (check-revision conn entity guid revision))
+          (when check-revision? (check-revision conn entity old-struct revision))
           (sqlite:exec/ignore (connection-back-end conn) (debug-sql* delete-sql (snooze-struct-guid old-struct)))
           (set-guid-temporary-id! guid)
           (apply (entity-private-constructor entity)
@@ -125,9 +133,10 @@
         (sqlite:exec/ignore (connection-back-end conn) (debug-sql* delete-sql guid))
         (void)))
     
-    ; connection entity database-guid natural -> void
-    (define (check-revision conn entity guid expected)
-      (let* ([result (sqlite:select (connection-back-end conn)
+    ; connection entity snooze-struct natural -> void
+    (define (check-revision conn entity struct expected)
+      (let* ([guid   (snooze-struct-guid struct)]
+             [result (sqlite:select (connection-back-end conn)
                                     (format "SELECT revision FROM ~a WHERE guid = ~a;"
                                             (escape-sql-name (entity-table-name entity))
                                             (guid-id guid)))]
@@ -135,8 +144,8 @@
                           (vector-ref (cadr result) 0))])
         (unless (equal? actual expected)
           (raise-exn exn:fail:snooze:revision
-            (format "revision mismatch: database ~a, struct ~a" actual expected)
-            guid))))
+            (format "revision mismatch saving ~a: database ~a, struct ~a" struct actual expected)
+            struct))))
     
     ; connection (listof database-guid) frame -> (listof snooze-struct)
     (define/public (direct-find conn guids frame)
@@ -146,7 +155,7 @@
                  [entity  (guid-entity (car guids))]
                  [results (sqlite:select (connection-back-end conn) sql)])
             (if (null? results)
-                null
+                (g:list null)
                 (let ([extract (make-single-item-extractor entity)])
                   (with-snooze-reraise (exn:fail? (format "could not execute SELECT query:~n~a" sql))
                     (g:map (cut extract <> frame)

@@ -24,15 +24,18 @@
 (define-struct (exn:fail:snooze exn:fail) () #:transparent)
 
 ; Raised when Snooze could not parse a query.
+; (struct ... ???)
 (define-struct (exn:fail:snooze:query exn:fail:snooze) (backtrace) #:transparent)
 
 ; Raised when Snooze tries to save out-of-date data to the database.
+; (struct ... snooze-struct)
 (define-struct (exn:fail:snooze:revision exn:fail:snooze) (struct) #:transparent)
 
 ; Raised when Snooze tries to roll back a non-existant transaction.
 (define-struct (exn:fail:snooze:transaction exn:fail:snooze) () #:transparent)
 
 ; Raised when a struct cannot be saved/deleted because of failed checks.
+; (struct ... snooze-struct (listof check-result))
 (define-struct (exn:fail:snooze:check exn:fail:snooze) (struct results) #:transparent)
 (define-struct (exn:fail:snooze:check:save exn:fail:snooze:check) () #:transparent)
 (define-struct (exn:fail:snooze:check:delete exn:fail:snooze:check) () #:transparent)

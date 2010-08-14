@@ -444,6 +444,9 @@ ENDSQL
     (lambda ()
       (set! database (send (current-snooze) get-database)))
     
+    (test-case "reason for the tests failing below"
+      (fail "the failing SQL test cases are due to a problem described in a TODO in display-from/entity in sql.ss"))
+    
     sql-escape-tests
     sql-query-tests
     parse-tests))

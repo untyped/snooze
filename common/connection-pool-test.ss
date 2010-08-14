@@ -3,7 +3,8 @@
 (require "../test-base.ss")
 
 (require scheme/dict
-         "../snooze-api.ss")
+         "../snooze-api.ss"
+         "connection-pool.ss")
 
 ; Helpers ----------------------------------------
 
@@ -43,7 +44,7 @@
 
 ; Tests ------------------------------------------
 
-(define/provide-test-suite connection-pool-tests
+(define-test-suite connection-pool-tests
   
   #:before
   (lambda ()
@@ -115,6 +116,13 @@
         (send (current-snooze) disconnect))
       (printf "time ~a~n" (- (current-inexact-milliseconds) a)))))
 
+(define (make-connection-pool-tests snooze)
+  (if (is-a? (send snooze get-database) connection-pooled-database<%>)
+      connection-pool-tests
+      (test-suite "connection pool tests"
+        (test-case "connection pool tests disabled"
+          (fail "test database doesn't have a connection pool mixin (this failure is expected)")))))
+
 ; Helpers ----------------------------------------
 
 ; -> natural
@@ -141,3 +149,7 @@
 (define (quick-sleep [millis (quotient (current-keepalive) 2)])
   (sync (alarm-evt (+ (current-inexact-milliseconds) millis)))
   (void))
+
+; Provides ---------------------------------------
+
+(provide make-connection-pool-tests)
