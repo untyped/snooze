@@ -6,113 +6,77 @@
          (planet untyped/unlib:3/list)
          "../core/core.ss"
          "attribute.ss"
-         "cache.ss"
          "delta.ss"
          "transaction.ss")
 
 ; Parameters -----------------------------------
 
-(define audit-frame%
-  (class delta-api%
-    
-    (inherit id->entity
-             entity->id
-             id->attribute
-             attribute->id
-             make-insert-delta
-             make-update-delta
-             make-delete-delta)
-    
-    (inherit-field snooze)
-    
-    ; Fields -------------------------------------
-    
-    ; audit-trail%
-    (init-field trail)
-    
-    ; audit-transaction
-    (field [transaction #f])
-    
-    ; boolean
-    (field [changes-made? #f])
-    
-    ; Constructor --------------------------------
-    
-    (super-new)
-    
-    ; Accessors ----------------------------------
-    
-    ; -> (U audit-transaction #f)
-    (define/public (get-transaction)
-      transaction)
-    
-    ; Caching changes ----------------------------
-    
-    ; -> void
-    (define/public (on-transaction-start)
-      (set! transaction (send snooze save! (make-audit-transaction (current-time time-utc)))))
-    
-    ; (U snooze-struct #f) -> void
-    (define/public (on-transaction-end metadata-struct)
-      (cond [(and metadata-struct changes-made?)
-             (send snooze save! metadata-struct)]
-            [(not changes-made?)
-             (send snooze delete! transaction)]))
+; (struct audit-transaction boolean)
+(define-struct audit-frame
+  (transaction [changes-made? #:mutable])
+  #:transparent)
 
-    ; snooze-struct -> void
-    (define/public (audit-insert! struct)
-      (define delta (make-insert-delta transaction (struct-guid struct)))
-      (send snooze save! delta)
-      (set! changes-made? #t))
-    
-    ; snooze-struct -> void
-    (define/public (audit-update! new)
-      ; integer
-      (define id (struct-id new))
-      ; entity
-      (define entity (struct-entity new))
-      ; snooze-struct
-      (define old (send snooze find-by-id entity id))
-      ; integer
-      (define revision (struct-revision old))
-      ; void
-      (for-each (lambda (attr old-value new-value)
-                  (unless (equal? old-value new-value)
-                    (let* (; integer
-                           [attr-id (attribute->id attr)]
-                           ; (U type #f)
-                           [attr-type (attribute-type attr)]
-                           ; transaction-id gets patched in later 
-                           [delta (make-update-delta transaction (struct-guid new) revision attr old-value)])
-                      (send snooze save! delta)
-                      (set! changes-made? #t))))
-                (cddr (entity-attributes entity))
-                (cddr (struct-attributes old))
-                (cddr (struct-attributes new))))
-    
-    ; snooze-struct -> void
-    (define/public (audit-delete! struct)
-      ; integer
-      (define id (struct-id struct))
-      ; integer
-      (define revision (struct-revision struct))
-      ; entity
-      (define entity (struct-entity struct))
-      ; void
-      (for-each (lambda (attr value)
-                  ; integer
-                  (define attr-id (attribute->id attr))
-                  ; (U type #f)
-                  (define attr-type (attribute-type attr))
-                  ; audit-delta ; transaction-id gets patched in later 
-                  (define delta (make-delete-delta transaction (struct-guid struct) revision attr value))
-                  (send snooze save! delta)
-                  (set! changes-made? #t))
-                (cddr (entity-attributes entity))
-                (cddr (struct-attributes struct))))
-    
-    (inspect #f)))
+; [#:snooze snooze] -> audit-frame
+(define (start-transaction #:snooze [snooze (current-snooze)])
+  (make-audit-frame (send snooze save! (make-audit-transaction (current-time time-utc))) #f))
 
-; Provide statements -----------------------------
+; audit-frame snooze-struct [#:snooze snooze] -> void
+(define (end-transaction frame metadata #:snooze [snooze (current-snooze)])
+  (if (audit-frame-changes-made? frame)
+      (send snooze save! metadata)
+      (send snooze delete! (audit-frame-transaction frame)))
+  (void))
 
-(provide audit-frame%)
+; audit-frame snooze-struct [#:snooze snooze] -> snooze-struct
+(define (audit-insert! frame new-struct #:snooze [snooze (current-snooze)])
+  (send snooze save! (make-insert-delta (audit-frame-transaction frame) new-struct))
+  (set-audit-frame-changes-made?! frame #t)
+  new-struct)
+
+; audit-frame snooze-struct [#:snooze snooze] -> snooze-struct
+(define (audit-update! frame new-struct #:snooze [snooze (current-snooze)])
+  (let* ([txn        (audit-frame-transaction frame)]
+         [entity     (snooze-struct-entity new-struct)]
+         [old-struct (send snooze find-by-guid (snooze-struct-guid new-struct))])
+    ; Save update deltas for each attribute that has changed:
+    (for ([attr      (in-list (cons (entity-revision-attribute entity)
+                                    (entity-data-attributes entity)))]
+          [old-value (in-list (cons (snooze-struct-revision old-struct)
+                                    (snooze-struct-data-ref* old-struct)))]
+          [new-value (in-list (cons (snooze-struct-revision new-struct)
+                                    (snooze-struct-data-ref* new-struct)))])
+      (unless (equal? old-value new-value)
+        (let* ([attr-id   (attribute->id attr)]
+               [attr-type (attribute-type attr)])
+          (send snooze save! (make-update-delta txn old-struct attr)))))
+    (set-audit-frame-changes-made?! frame #t)
+    new-struct))
+
+; audit-frame snooze-struct [#:snooze snooze] -> snooze-struct
+(define (audit-delete! frame new-struct #:snooze [snooze (current-snooze)])
+  (let* ([txn        (audit-frame-transaction frame)]
+         [entity     (snooze-struct-entity new-struct)]
+         [old-struct (send snooze find-by-guid (snooze-struct-guid new-struct))])
+    ; Save update deltas for each attribute:
+    (for ([attr      (in-list (cons (entity-revision-attribute entity)
+                                    (entity-data-attributes entity)))]
+          [old-value (in-list (cons (snooze-struct-revision old-struct)
+                                    (snooze-struct-data-ref* old-struct)))])
+      (let* ([attr-id   (attribute->id attr)]
+             [attr-type (attribute-type attr)])
+        (send snooze save! (make-update-delta txn old-struct attr))))
+    ; Save a delete delta:
+    (send snooze save! (make-delete-delta txn old-struct))
+    (set-audit-frame-changes-made?! frame #t)
+    new-struct))
+
+; Provides ---------------------------------------
+
+(provide/contract
+ [struct audit-frame ([transaction   (and/c audit-transaction? snooze-struct-saved?)]
+                      [changes-made? boolean?])]
+ [start-transaction (->* () (#:snooze (is-a?/c snooze<%>)) audit-frame?)]
+ [end-transaction   (->* (audit-frame? (and/c snooze-struct? (not/c snooze-struct-saved?))) (#:snooze (is-a?/c snooze<%>)) void?)]
+ [audit-insert!     (->* (audit-frame? snooze-struct?) (#:snooze (is-a?/c snooze<%>)) snooze-struct?)]
+ [audit-update!     (->* (audit-frame? snooze-struct?) (#:snooze (is-a?/c snooze<%>)) snooze-struct?)]
+ [audit-delete!     (->* (audit-frame? snooze-struct?) (#:snooze (is-a?/c snooze<%>)) snooze-struct?)])

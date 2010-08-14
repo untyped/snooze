@@ -346,9 +346,13 @@
 (define (entity-make-guid entity id)
   ((entity-guid-constructor entity) id))
 
+; entity -> (U natural symbol)
+(define (entity-make-temporary-id entity)
+  (gensym/interned (entity-name entity)))
+
 ; entity -> temporary-guid
 (define (entity-make-temporary-guid entity)
-  (entity-make-guid entity (gensym/interned (entity-name entity))))
+  (entity-make-guid entity (entity-make-temporary-id entity)))
 
 ; entity any -> boolean
 (define (entity-guid? entity guid)
@@ -386,6 +390,14 @@
                  (entity-attributes entity)))
       (raise-exn exn:fail:contract
         (format "Attribute not found: ~s ~s" entity name+attr))))
+
+; entity -> attribute
+(define (entity-guid-attribute entity)
+  (car (entity-attributes entity)))
+
+; entity -> attribute
+(define (entity-revision-attribute entity)
+  (cadr (entity-attributes entity)))
 
 ; entity -> (listof attribute)
 (define (entity-data-attributes entity)
@@ -606,6 +618,7 @@
                                            procedure?
                                            entity?)]
  [entity-make-guid                     (-> entity? (or/c natural-number/c symbol?) guid?)]
+ [entity-make-temporary-id             (-> entity? (or/c natural-number/c symbol?))]
  [entity-make-temporary-guid           (-> entity? temporary-guid?)]
  [entity-guid?                         (-> entity? any/c boolean?)]
  [entity-make-guid-type                (->* (entity?) (boolean?) guid-type?)]
@@ -613,6 +626,8 @@
  [entity-has-attribute?                (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-guid-attribute?               (-> entity? (or/c symbol? attribute?) boolean?)]
  [entity-attribute                     (-> entity? (or/c symbol? attribute?) attribute?)]
+ [entity-guid-attribute                (-> entity? attribute?)]
+ [entity-revision-attribute            (-> entity? attribute?)]
  [entity-data-attributes               (-> entity? (listof attribute?))]
  [wrap-entity-on-save!                 (-> entity?
                                            (-> (-> connection? snooze-struct? snooze-struct?)

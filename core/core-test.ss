@@ -14,13 +14,12 @@
 
 ; Guid tests -----------------------------------
 
-(define guid-tests
-  (test-suite "guid"
+(define-test-suite guid-tests
     
     #:before
     recreate-test-tables
     
-    (test-case "entity-make-guid, guid-id, guid-serial"
+    (test-case "entity-make-guid, guid-id"
       (let* ([temp1 (entity-make-guid person 'unsaved)]
              [temp2 (entity-make-guid person 'unsaved)]
              [data1 (entity-make-guid person 123)]
@@ -32,20 +31,17 @@
         (check-not-eq? temp1 temp2)
         (check-not-eq? data1 data2)
         (check-pred symbol? (guid-id temp1))
-        (check-pred number? (guid-id data1))))))
+        (check-pred number? (guid-id data1)))))
 
 ; Type tests -----------------------------------
 
-(define type-tests
-  (test-suite "type"
-    
-    (test-case "type-name"
-      (check-equal? (type-name (entity-make-guid-type person #f)) 'person))))
+(define-test-suite type-tests
+  (test-case "type-name"
+    (check-equal? (type-name (entity-make-guid-type person #f)) 'person)))
 
 ; Entity tests ---------------------------------
 
-#;(define entity-tests
-    (test-suite "entity"
+(define-test-suite entity-tests
       
       (test-case "entity-name"
         (check-equal? (entity-name person) 'person))
@@ -84,25 +80,21 @@
         (check-pred procedure? (entity-guid-predicate person)))
       
       (test-case "entity-make-guid"
-        (let ([guid (entity-make-guid person #f)])
-          (check-pred (entity-guid-predicate person) guid)
-          (check-equal? (guid-id guid) #f))
         (let ([guid (entity-make-guid person 123)])
           (check-pred (entity-guid-predicate person) guid)
           (check-equal? (guid-id guid) 123))
-        (let ([guid (entity-make-guid person 123 'guid456)])
+        (let ([guid (entity-make-guid person 'guid456)])
           (check-pred (entity-guid-predicate person) guid)
-          (check-equal? (guid-id guid) 123)
-          (check-equal? (guid-serial guid) 'guid456)))
+          (check-equal? (guid-id guid) 'guid456)))
       
       (test-case "entity-guid?"
-        (check-true  (entity-guid? person (entity-make-guid person #f)))
-        (check-false (entity-guid? person (entity-make-guid pet #f))))
+        (check-true  (entity-guid? person (entity-make-temporary-guid person)))
+        (check-false (entity-guid? person (entity-make-temporary-guid pet))))
       
       (test-case "entity-attributes"
         (let ([attrs (entity-attributes pet)])
           (check-equal? (map attribute-name        attrs) '(guid revision owner name))
-          (check-equal? (map attribute-column-name attrs) '(id revision owner name))
+          (check-equal? (map attribute-column-name attrs) '(guid revision owner name))
           (check-equal? (map attribute-index       attrs) '(0 1 2 3))
           (check-equal? (cddr (map attribute-type attrs))
                         (list (entity-make-guid-type person #t)
@@ -138,15 +130,16 @@
                 (attribute-type attr)))
         
         (define-check (check-attribute attr+name expected)
-          (check-equal? (take (testable-attribute-bits (entity-attribute pet attr+name))
-                              (length expected))
-                        expected))
+          (for ([actual   (in-list (testable-attribute-bits (entity-attribute pet attr+name)))]
+                [expected (in-list expected)]
+                [index    (in-naturals)])
+            (check-equal? actual expected (format "index ~a" index))))
         
-        (let ([expected (list 'guid 'id 0 #t #t (entity-make-guid-type pet #f))])
+        (let ([expected (list 'guid 'guid 0 #t #t (entity-make-guid-type pet #f))])
           (check-attribute 'guid expected)
           (check-attribute (attr pet guid) expected))
         
-        (let ([expected (list 'revision 'revision 1 #t #t (make-integer-type #f #f #f))])
+        (let ([expected (list 'revision 'revision 1 #t #t (make-integer-type #f 0 #f))])
           (check-attribute 'revision expected)
           (check-attribute (attr pet revision) expected))
         
@@ -159,21 +152,30 @@
           (check-attribute (attr pet name) expected))
         
         (check-exn exn:fail:contract?
-          (cut entity-attribute #f 'name)))))
+          (cut entity-attribute #f 'name)))
+      
+      (test-case "entity-guid-attribute"
+        (check-equal? (entity-guid-attribute person)
+                      (attr person guid)))
+      
+      (test-case "entity-revision-attribute"
+        (check-equal? (entity-revision-attribute person)
+                      (attr person revision)))
+      
+      (test-case "entity-data-attribute"
+        (check-equal? (entity-data-attributes person)
+                      (list (attr person name)))))
 
 ; Relationship tests ---------------------------
 
-(define relationship-tests
-  (test-suite "relationship"))
+(define-test-suite relationship-tests)
 
 ; Attribute tests ------------------------------
 
-(define attribute-tests
-  (test-suite "attribute"
-    
-    (test-case "attribute-entity"
-      (check-equal? (attribute-entity (attr person guid)) person)
-      (check-equal? (attribute-entity (attr pet guid)) pet))))
+(define-test-suite attribute-tests
+  (test-case "attribute-entity"
+    (check-equal? (attribute-entity (attr person guid)) person)
+    (check-equal? (attribute-entity (attr pet guid)) pet)))
 
 ; Tests ----------------------------------------
 
@@ -181,9 +183,9 @@
   (test-suite "struct.ss"
     guid-tests
     type-tests
-    ;entity-tests
-    relationship-tests
-    attribute-tests))
+    entity-tests
+    attribute-tests
+    relationship-tests))
 
 ; Provide statements -----------------------------
 
