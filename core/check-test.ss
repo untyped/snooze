@@ -146,7 +146,13 @@
                        (lambda ()
                          (raise exn)))
                       (list (make-check-fatal "Exception raised" exn))
-                      "exn")))
+                      "exn")
+        (check-equal? (check-with-handlers
+                       #:exn-messages? #t
+                       (lambda ()
+                         (raise exn)))
+                      (list (make-check-fatal "Exception raised: Oops!" exn))
+                      "exn-messages? #t")))
     
     (test-case "check-with-annotations"
       (let* ([results1 (check-all 

@@ -104,10 +104,12 @@
              [(check-failure? result) (loop other warnings (cons result failures) fatals)]
              [(check-fatal?   result) (loop other warnings failures (cons result fatals))])])))
 
-; (-> (listof check-result)) -> (listof check-result)
-(define (check-with-handlers thunk)
+; (-> (listof check-result)) [#:exn-messages boolean] -> (listof check-result)
+(define (check-with-handlers thunk #:exn-messages? [exn-messages? #f])
   (with-handlers ([exn? (lambda (exn)
-                          (list (make-check-fatal "Exception raised" exn)))])
+                          (if exn-messages?
+                              (list (make-check-fatal (format "Exception raised: ~a" (exn-message exn)) exn))
+                              (list (make-check-fatal "Exception raised" exn))))])
     (thunk)))
 
 ; (listof annotation any) (-> (listof check-result)) -> (listof check-result)
@@ -149,11 +151,13 @@
  [check-errors                   (->* () () #:rest (listof (listof check-result?)) (listof check-result?))]
  [check-failures                 (->* () () #:rest (listof (listof check-result?)) (listof check-failure?))]
  [check-fatals                   (->* () () #:rest (listof (listof check-result?)) (listof check-fatal?))]
- [check-warnings+failures+fatals   (->* () () #:rest (listof (listof check-result?))
-                                        (values (listof check-warning?)
-                                                (listof check-failure?)
-                                                (listof check-fatal?)))]
- [check-with-handlers            (-> (-> (listof check-result?)) (listof check-result?))]
+ [check-warnings+failures+fatals (->* () () #:rest (listof (listof check-result?))
+                                      (values (listof check-warning?)
+                                              (listof check-failure?)
+                                              (listof check-fatal?)))]
+ [check-with-handlers            (->* ((-> (listof check-result?)))
+                                      (#:exn-messages? boolean?)
+                                      (listof check-result?))]
  [check-with-annotations         (-> (listof (cons/c annotation? any/c)) (-> (listof check-result?)) (listof check-result?))]
  [check-until-problems           (->* () () #:rest (listof procedure?) (listof check-problem?))]
  [check-successes?               (->* () () #:rest (listof (listof check-result?)) boolean?)]
