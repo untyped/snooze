@@ -7,7 +7,7 @@
 ; Configuration ----------------------------------
 
 ; string
-(define plt-version "4.2.1.5")
+(define plt-version "4.2.2")
 
 ; path
 (define-runtime-path planet-path "planet")

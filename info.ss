@@ -18,7 +18,7 @@
 
 ;(define scribblings '(("scribblings/snooze.scrbl" (multi-page))))
 
-(define required-core-version "4.1.5.5")
+(define required-core-version "4.2.2")
 
 (define repositories '("4.x"))
 
