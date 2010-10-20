@@ -312,32 +312,74 @@
     
     (test-case "load-related!"
       (recreate-test-tables)
-      (match-let* ([per1 (save! (make-person/defaults #:name "Christian"))]
-                   [per2 (save! (make-person/defaults #:name "Dave"))]
-                   [per3 (save! (make-person/defaults #:name "David"))]
-                   [per4 (save! (make-person/defaults #:name "Matt"))]
-                   [per5 (make-person/defaults #:name "Noel")]
-                   [pet1 ((entity-private-constructor pet)
-                          (entity-make-temporary-guid pet)
-                          #f
-                          (snooze-struct-guid per1)
-                          "Christian's budgie")]
-                   [pet2 ((entity-private-constructor pet)
-                          (entity-make-temporary-guid pet)
-                          #f
-                          (snooze-struct-guid per2)
-                          "Dave's dog")]
-                   [pet3 (make-pet/defaults #:owner per3                      #:name "David's kitten")]
-                   [pet4 (make-pet/defaults #:owner #f                        #:name "Stray goat")]
-                   [pet5 (make-pet/defaults #:owner per5                      #:name "Noel's cat")]
-                   [pets (list pet1 pet1 pet2 pet3 pet3 pet4 pet5 pet5 pet1)])
+      (match-let* ([per1       (save! (make-person/defaults #:name "Christian"))]
+                   [per2       (save! (make-person/defaults #:name "Dave"))]
+                   [per3       (save! (make-person/defaults #:name "David"))]
+                   [per4       (save! (make-person/defaults #:name "Matt"))]
+                   [per5       (make-person/defaults #:name "Noel")]
+                   [pet1       ((entity-private-constructor pet)
+                                (entity-make-temporary-guid pet)
+                                #f
+                                (snooze-struct-guid per1)
+                                "Christian's budgie")]
+                   [pet2       ((entity-private-constructor pet)
+                                (entity-make-temporary-guid pet)
+                                #f
+                                (snooze-struct-guid per2)
+                                "Dave's dog")]
+                   [pet3       (make-pet/defaults #:owner per3                      #:name "David's kitten")]
+                   [pet4       (make-pet/defaults #:owner #f                        #:name "Stray goat")]
+                   [pet5       (make-pet/defaults #:owner per5                      #:name "Noel's cat")]
+                   [pets       (list pet1 pet1 pet2 pet3 pet3 pet4 pet5 pet5 pet1)]
+                   [pet-owner* (lambda (struct)
+                                 (vector-ref (struct->vector struct) 3))])
+        (check-equal? (pet-owner* pet1) (snooze-struct-guid per1))
+        (check-equal? (pet-owner* pet2) (snooze-struct-guid per2))
+        (check-equal? (pet-owner* pet3) per3)
+        (check-equal? (pet-owner* pet4) #f)
+        (check-equal? (pet-owner* pet5) per5)
         (check-eq? (load-related! pets (attr pet owner)) pets)
-        (check-equal? (pet-owner pet1) per1)
-        (check-equal? (pet-owner pet2) per2)
-        (check-equal? (pet-owner pet3) per3)
-        (check-equal? (pet-owner pet4) #f)
-        (check-equal? (pet-owner pet5) per5))))
+        (check-equal? (pet-owner* pet1) per1)
+        (check-equal? (pet-owner* pet2) per2)
+        (check-equal? (pet-owner* pet3) per3)
+        (check-equal? (pet-owner* pet4) #f)
+        (check-equal? (pet-owner* pet5) per5))))
 
+    (test-case "cross-reference-related!"
+      (recreate-test-tables)
+      (match-let* ([per1       (save! (make-person/defaults #:name "Christian"))]
+                   [per2       (save! (make-person/defaults #:name "Dave"))]
+                   [per3       (save! (make-person/defaults #:name "David"))]
+                   [per4       (save! (make-person/defaults #:name "Matt"))]
+                   [per5       (make-person/defaults #:name "Noel")]
+                   [pet1       ((entity-private-constructor pet)
+                                (entity-make-temporary-guid pet)
+                                #f
+                                (snooze-struct-guid per1)
+                                "Christian's budgie")]
+                   [pet2       ((entity-private-constructor pet)
+                                (entity-make-temporary-guid pet)
+                                #f
+                                (snooze-struct-guid per2)
+                                "Dave's dog")]
+                   [pet3       (make-pet/defaults #:owner per3                      #:name "David's kitten")]
+                   [pet4       (make-pet/defaults #:owner #f                        #:name "Stray goat")]
+                   [pet5       (make-pet/defaults #:owner per5                      #:name "Noel's cat")]
+                   [pets       (list pet1 pet1 pet2 pet3 pet3 pet4 pet5 pet5 pet1)]
+                   [pet-owner* (lambda (struct)
+                                 (vector-ref (struct->vector struct) 3))])
+        (check-equal? (pet-owner* pet1) (snooze-struct-guid per1))
+        (check-equal? (pet-owner* pet2) (snooze-struct-guid per2))
+        (check-equal? (pet-owner* pet3) per3)
+        (check-equal? (pet-owner* pet4) #f)
+        (check-equal? (pet-owner* pet5) per5)
+        (check-eq? (cross-reference-related! pets (attr pet owner) (list per1 per3)) pets)
+        (check-equal? (pet-owner* pet1) per1)
+        (check-equal? (pet-owner* pet2) (snooze-struct-guid per2))
+        (check-equal? (pet-owner* pet3) per3)
+        (check-equal? (pet-owner* pet4) #f)
+        (check-equal? (pet-owner* pet5) per5)))
+  
   (test-suite "serializing / deserializing data"
     
     (test-case "backslashes and quotes in strings"

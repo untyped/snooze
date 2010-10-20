@@ -69,6 +69,10 @@
 (define (load-related! #:snooze [snooze (current-snooze)] structs attr)
   (send snooze load-related! structs attr))
 
+; (listof snooze-struct) attribute -> (listof snooze-struct)
+(define (cross-reference-related! #:snooze [snooze (current-snooze)] structs attr other-structs)
+  (send snooze cross-reference-related! structs attr other-structs))
+
 ; (-> ans) any ... -> ans
 (define (call-with-transaction #:snooze [snooze (current-snooze)] #:metadata [metadata null] thunk)
   (send snooze call-with-transaction #:metadata metadata thunk))
@@ -130,27 +134,32 @@
          with-transaction)
 
 (provide/contract
- [call-with-connection  (->* (procedure?) (#:snooze (is-a?/c snooze<%>)) any)]
- [connect               (->* () (#:snooze (is-a?/c snooze<%>)) void?)]
- [disconnect            (->* () (#:snooze (is-a?/c snooze<%>)) void?)]
- [current-connection    (->* () (#:snooze (is-a?/c snooze<%>)) connection?)]
- [create-table          (->* (entity?) (#:snooze (is-a?/c snooze<%>)) void?)]
- [drop-table            (->* ((or/c entity? symbol?)) (#:snooze (is-a?/c snooze<%>)) void?)]
- [save!                 (->* (snooze-struct?)
-                             (#:snooze (is-a?/c snooze<%>))
-                             (and/c snooze-struct? snooze-struct-has-revision?))]
- [delete!               (->* (snooze-struct?)
-                             (#:snooze (is-a?/c snooze<%>))
-                             (and/c snooze-struct? (not/c snooze-struct-has-revision?)))]
- [find-one              (->* (query?) (#:snooze (is-a?/c snooze<%>)) any)]
- [find-all              (->* (query?) (#:snooze (is-a?/c snooze<%>)) (or/c null? pair?))]
- [g:find                (->* (query?) (#:snooze (is-a?/c snooze<%>)) procedure?)]
- [find-by-id            (->* (entity? natural-number/c) (#:snooze (is-a?/c snooze<%>)) (or/c snooze-struct? #f))]
- [find-by-guid          (->* (database-guid?) (#:snooze (is-a?/c snooze<%>)) (or/c snooze-struct? #f))]
- [find-by-guids         (->* ((listof database-guid?)) (#:snooze (is-a?/c snooze<%>)) (listof snooze-struct?))]
- [load-related!         (->* ((listof snooze-struct?) attribute?) (#:snooze (is-a?/c snooze<%>)) (listof snooze-struct?))]
- [call-with-transaction (->* (procedure?) (#:snooze (is-a?/c snooze<%>) #:metadata list?) any)]
- [query->string         (->* (query?) (#:snooze (is-a?/c snooze<%>)) string?)]
- [debug-sql             (->* (query?) (#:snooze (is-a?/c snooze<%>) #:output-port output-port? #:format string?) query?)]
- [table-names           (->* () (#:snooze (is-a?/c snooze<%>)) (listof symbol?))]
- [table-exists?         (->* ((or/c entity? symbol?)) (#:snooze (is-a?/c snooze<%>)) boolean?)])
+ [call-with-connection     (->* (procedure?) (#:snooze (is-a?/c snooze<%>)) any)]
+ [connect                  (->* () (#:snooze (is-a?/c snooze<%>)) void?)]
+ [disconnect               (->* () (#:snooze (is-a?/c snooze<%>)) void?)]
+ [current-connection       (->* () (#:snooze (is-a?/c snooze<%>)) connection?)]
+ [create-table             (->* (entity?) (#:snooze (is-a?/c snooze<%>)) void?)]
+ [drop-table               (->* ((or/c entity? symbol?)) (#:snooze (is-a?/c snooze<%>)) void?)]
+ [save!                    (->* (snooze-struct?)
+                                (#:snooze (is-a?/c snooze<%>))
+                                (and/c snooze-struct? snooze-struct-has-revision?))]
+ [delete!                  (->* (snooze-struct?)
+                                (#:snooze (is-a?/c snooze<%>))
+                                (and/c snooze-struct? (not/c snooze-struct-has-revision?)))]
+ [find-one                 (->* (query?) (#:snooze (is-a?/c snooze<%>)) any)]
+ [find-all                 (->* (query?) (#:snooze (is-a?/c snooze<%>)) (or/c null? pair?))]
+ [g:find                   (->* (query?) (#:snooze (is-a?/c snooze<%>)) procedure?)]
+ [find-by-id               (->* (entity? natural-number/c) (#:snooze (is-a?/c snooze<%>)) (or/c snooze-struct? #f))]
+ [find-by-guid             (->* (database-guid?) (#:snooze (is-a?/c snooze<%>)) (or/c snooze-struct? #f))]
+ [find-by-guids            (->* ((listof database-guid?)) (#:snooze (is-a?/c snooze<%>)) (listof snooze-struct?))]
+ [load-related!            (->* ((listof snooze-struct?) attribute?)
+                                (#:snooze (is-a?/c snooze<%>))
+                                (listof snooze-struct?))]
+ [cross-reference-related! (->* ((listof snooze-struct?) attribute? (listof snooze-struct?))
+                                (#:snooze (is-a?/c snooze<%>))
+                                (listof snooze-struct?))]
+ [call-with-transaction    (->* (procedure?) (#:snooze (is-a?/c snooze<%>) #:metadata list?) any)]
+ [query->string            (->* (query?) (#:snooze (is-a?/c snooze<%>)) string?)]
+ [debug-sql                (->* (query?) (#:snooze (is-a?/c snooze<%>) #:output-port output-port? #:format string?) query?)]
+ [table-names              (->* () (#:snooze (is-a?/c snooze<%>)) (listof symbol?))]
+ [table-exists?            (->* ((or/c entity? symbol?)) (#:snooze (is-a?/c snooze<%>)) boolean?)])

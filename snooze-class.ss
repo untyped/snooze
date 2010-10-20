@@ -261,6 +261,47 @@
           ; Return the original argument:
           structs)))
     
+    ; Takes:
+    ;   - a list of structs of the same entity;
+    ;   - a foreign key attribute from that entity;
+    ;   - a list of structs of the foreign key type.
+    ;
+    ; Iterates through the structs finding any unloaded database-guids in the foreign key attribute.
+    ; Loads the related structs and cross references the foreign keys.
+    ; Returns the original (listof struct) argument, mutated with the cross references in place.
+    ;
+    ; (listof snooze-struct) attribute -> (listof snooze-struct)
+    (define/public (cross-reference-related! structs attr other-structs)
+      (let ([entity       (attribute-entity attr)]
+            [accessor     (attribute-private-accessor attr)]
+            [mutator      (attribute-private-mutator  attr)]
+            [lookup-table (make-hash)])
+        
+        ; database-guid -> (U database-guid snooze-struct)
+        (define (lookup guid)
+          (hash-ref lookup-table guid guid))
+        
+        ; Quick type check:
+        (unless (and (guid-type? (attribute-type attr))
+                     (memq attr (entity-data-attributes entity)))
+          (raise-type-error 'find-related! "foreign-key-attribute" attr))
+        
+        ; Populate the lookup table:
+        (for ([struct (in-list other-structs)])
+          (hash-set! lookup-table (snooze-struct-guid struct) struct))
+        
+        ; Work out which foreign keys need loading, and which structs need mutating:
+        (for ([struct (in-list structs)])
+          (let ([val (accessor struct)])
+            (when (database-guid? val)
+              ; Lookup returns:
+              ;   - the new struct if it's in lookup-table;
+              ;   - the original guid if the struct isn't in the lookup-table;
+              (mutator struct (lookup val)))))
+        
+        ; Return the original argument:
+        structs))
+    
     ; thunk [#:metadata list] -> any
     ;
     ; If the database allows it, a transaction is started and the thunk argument
