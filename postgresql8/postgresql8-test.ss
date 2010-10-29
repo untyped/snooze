@@ -18,4 +18,4 @@
                    (with-handlers ([(lambda _ #t) (lambda (exn) (set! thread-exn exn))])
                      (or thread-exn (call-with-connection (cut sleep 1))))))))
       (sleep 1)
-      (check-pred exn:fail:snooze:connection-count? thread-exn))))
+      (check-false thread-exn))))

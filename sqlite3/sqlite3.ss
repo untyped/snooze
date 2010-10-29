@@ -14,12 +14,12 @@
 ; (U path ':memory: ':temp:) -> database%
 (define (make-sqlite3-database
          path
-         #:pool-connections?      [pool-connections? #f]
-         #:keepalive-milliseconds [keepalive-milliseconds 5000])
+         #:pool-connections? [pool-connections? #f]
+         #:max-connections   [max-connections 20])
   (if pool-connections?
       (new (connection-pool-mixin sqlite3-database%)
-           [path   path]
-           [keepalive-milliseconds keepalive-milliseconds])
+           [path            path]
+           [max-connections max-connections])
       (new sqlite3-database%
            [path   path])))
 

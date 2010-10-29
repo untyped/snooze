@@ -58,12 +58,12 @@
     (printf "Connection pool tests complete.~n"))
   
   (test-case "sanity check"
-    ; Mustn't have a connection already open when we run these tests:
-    (check-counts (list 0 0 0 0) void))
+    ; Mustn't have a connection already claimed when we run these tests:
+    (check-counts (list 0 0 20 20) void))
   
   (test-case "one connection"
     (check-counts
-     (list 0 1 0 1) 
+     (list 0 1 19 20) 
      (lambda ()
        (call-with-connection
         (lambda ()
@@ -72,7 +72,7 @@
   
   (test-case "parallel connections"
     (check-counts
-     (list 0 5 0 5) 
+     (list 0 5 15 20) 
      (lambda ()
        (apply
         sync
@@ -84,18 +84,12 @@
        (quick-sleep (* (current-keepalive) 2)))))
   
   (test-case "sequential connections (connection reuse)"
-    (let ([conn #f])
-      (check-counts
-       (list 0 1 0 1) 
-       (lambda ()
-         (for/list ([i (in-range 3)])
+    (let ([conns null])
+      (for/list ([i (in-range 20)])
            (call-with-connection
-            (lambda ()
-              (if conn
-                  (check-eq? conn (current-connection))
-                  (set! conn (current-connection)))
-              (quick-sleep (* (current-keepalive) 2)))))
-         (quick-sleep (* (current-keepalive) 2))))))
+            (lambda () (set! conns (cons (current-connection) conns)))))
+      (call-with-connection
+       (lambda () (check-not-false (member (current-connection) conns))))))
   
   (test-case "threads killed"
     (for/list ([i (in-range 3)])
@@ -106,7 +100,7 @@
             (kill-thread (current-thread)))))))
     (quick-sleep)
     (check-counts
-     (list 0 0 0 3) 
+     (list 0 0 20 20) 
      (lambda ()
        (quick-sleep (current-keepalive)))))
   
@@ -127,15 +121,14 @@
 
 ; -> natural
 (define (claimed-count)
-  (dict-count (get-field claimed-connections (send (current-snooze) get-database))))
+  (get-field claimed-count (send (current-snooze) get-database)))
 
 ; -> natural
 (define (unclaimed-count)
-  (dict-count (get-field unclaimed-connections (send (current-snooze) get-database))))
+  (get-field unclaimed-count (send (current-snooze) get-database)))
 
 ; -> natural
-(define (current-keepalive)
-  (get-field keepalive-milliseconds (send (current-snooze) get-database)))
+(define (current-keepalive) 500)
 
 ; (listof numbers) -> (listof numbers)
 (define (simplify numbers)

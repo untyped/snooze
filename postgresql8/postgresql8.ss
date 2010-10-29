@@ -28,7 +28,6 @@
 ;  [#:ssl                    (U 'yes 'no 'optional)]
 ;  [#:ssl-encrypt            (U 'sslv2-or-v3 'sslv2 'sslv3 'tls)]
 ;  [#:pool-connections?      boolean]
-;  [#:keepalive-milliseconds natural]
 ; ->
 ;  database%
 (define (make-postgresql8-database 
@@ -40,7 +39,7 @@
          #:ssl                     [ssl 'optional]
          #:ssl-encrypt             [ssl-encrypt 'sslv2-or-v3]
          #:pool-connections?       [pool-connections? #f]
-         #:keepalive-milliseconds  [keepalive-milliseconds 5000])
+         #:max-connections         [max-connections 20])
   (if pool-connections?
       (new (connection-pool-mixin postgresql8-database%)
            [server                 server]
@@ -50,7 +49,7 @@
            [password               password]
            [ssl                    ssl]
            [ssl-encrypt            ssl-encrypt]
-           [keepalive-milliseconds keepalive-milliseconds])
+           [max-connections        max-connections])
       (new postgresql8-database%
            [server                 server]
            [port                   port]
@@ -356,5 +355,5 @@
                  #:ssl                    ssl/c
                  #:ssl-encrypt            ssl-encrypt/c
                  #:pool-connections?      boolean?
-                 #:keepalive-milliseconds natural-number/c)
+                 #:max-connections        integer?)
        (is-a?/c database<%>))])

@@ -26,6 +26,9 @@
                                #:username [username "snooze"]
                                #:password [password #f]
                                tests)
+  ; To setup the default database for testing, the following command line functions will work
+  ;  createuser snooze  (Make them a superuser)
+  ;  createdb snoozetest
   (parameterize ([current-snooze    (make-snooze #:connect-on-demand? #f
                                                  (make-postgresql8-database
                                                   #:server   server
@@ -33,7 +36,7 @@
                                                   #:database database
                                                   #:username username
                                                   #:password password
-                                                  #:keepalive-milliseconds 500))]
+                                                  #:pool-connections? #t))]
                  [direct-query-proc (lambda (sql)
                                       (let ([conn (send (current-snooze) current-connection)])
                                         (send (connection-back-end conn) map sql list)))])
