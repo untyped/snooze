@@ -28,12 +28,11 @@
 
 ; Helpers ----------------------------------------
 
-; Send a value to tx-channel and wait for a response on a newly created rx-channel.
-; (_ async-channel any) -> any
-(define-syntax-rule (async-send tx-channel msg arg ...)
-  (let ([rx-channel (make-async-channel)])
-    (async-channel-put tx-channel (list msg rx-channel arg ...))
-    (async-channel-get rx-channel)))
+(define-syntax-rule (add1! id)
+  (set! id (add1 id)))
+
+(define-syntax-rule (sub1! id)
+  (set! id (sub1 id)))
 
 ; Mixins -----------------------------------------
 
@@ -41,10 +40,7 @@
   (mixin (database<%>) ()
     
     ; natural
-    (init-field [max-connections 100])
-    
-    ; natural
-    (init-field [keepalive-milliseconds 5000])
+    (init-field [max-connections 20])
     
     ; A channel to send requests from the application thread to the manager thread.
     ; Only one request can be processed at a time.
@@ -61,13 +57,25 @@
     (field [claimed-connections null])
     
     ; Connections that are not claimed by a thread.
-    ; The connections are "hashed" against alarm-evts that will trigger when they
-    ; are to be cleaned up.
     ; 
-    ; (alistof alarm-evt connection)
-    (field [unclaimed-connections null])
+    ; (async-channel-of connection)
+    (field [unclaimed-connections (make-async-channel max-connections)])
+    
+    ; The number of claimed connections
+    ;
+    ; natural
+    (field [claimed-count 0])
+    
+    ; The number of unclaimed connections
+    ;
+    ; natural
+    (field [unclaimed-count 0])
     
     (super-new)
+    ; Initialise unclaimed-connections with max-connections connections
+    (for ([_ (in-range max-connections)])
+      (async-channel-put unclaimed-connections (super connect)))
+    (set! unclaimed-count max-connections)
     
     ; thread
     (field [manager-thread (thread (cut manage-connections))])
@@ -76,95 +84,49 @@
     
     ; -> void
     (define/private (manage-connections)
-      (let loop ()
-        
+      (let loop ([claimed-connections null])
         (match (sync tx-channel
-                     (wrap-evt (apply choice-evt (map car claimed-connections))
-                               (lambda (evt)
-                                 (list 'unclaim evt)))
-                     (wrap-evt (apply choice-evt (map car unclaimed-connections))
-                               (lambda (evt)
-                                 (list 'release evt))))
+                     (wrap-evt
+                      (apply choice-evt (map car claimed-connections))
+                      (lambda (evt)
+                        (list 'unclaim evt))))
           
-          ; Application connect request:
-          [(list 'connect rx-channel thread)
-           (async-channel-put
-            rx-channel
-            (with-handlers ([exn? (lambda (exn) exn)])
-              (new-connection! (thread-dead-evt thread))))]
+          [(list 'connect evt conn)
+           (sub1! unclaimed-count)
+           (add1! claimed-count)
+           (loop (dict-set claimed-connections evt conn))]
           
-          ; Application disconnect request:
-          [(list 'disconnect rx-channel thread conn)
-           (async-channel-put
-            rx-channel
-            (with-handlers ([exn? (lambda (exn) exn)])
-              (unclaim-connection! (thread-dead-evt thread))))]
+          [(list 'disconnect evt conn)
+           (let ([conn (dict-ref claimed-connections evt #f)])
+             (if conn
+                 (begin
+                   (async-channel-put unclaimed-connections conn)
+                   (add1! unclaimed-count)
+                   (sub1! claimed-count)
+                   (loop (dict-remove claimed-connections evt)))
+                 (begin
+                   (loop claimed-connections))))]
           
-          ; Thread death:
           [(list 'unclaim evt)
-           (unclaim-connection! evt)]
-          
-          ; Unclaimed connection timeout:
-          [(list 'release evt)
-           (release-connection! evt)])
-        
-        (loop)))
+           (let ([conn (dict-ref claimed-connections evt)])
+             (async-channel-put unclaimed-connections conn)
+             (add1! unclaimed-count)
+             (sub1! claimed-count)
+             (loop (dict-remove claimed-connections evt)))])))
     
-    ; thread-dead-evt -> connection
-    (define (new-connection! evt)
-      
-      ; -> (U connection #f)
-      (define (reclaim-connection!)
-        (let* ([pos  (dict-iterate-first unclaimed-connections)]
-               [evt  (and pos (dict-iterate-key   unclaimed-connections pos))]
-               [conn (and pos (dict-iterate-value unclaimed-connections pos))])
-          (and pos
-               (set! unclaimed-connections (dict-remove unclaimed-connections evt))
-               conn)))
-      
-      (let ([conn (or (reclaim-connection!)
-                      (super connect))])
-        (set! claimed-connections (dict-set claimed-connections evt conn))
-        conn))
-    
-    ; thead-dead-evt -> boolean
-    (define (claimed-connection? evt)
-      (and (dict-ref claimed-connections evt #f) #t))
-    
-    ; thread-dead-evt -> void
-    (define (unclaim-connection! evt)
-      (let ([conn (dict-ref claimed-connections evt)])
-        (set! claimed-connections   (dict-remove claimed-connections evt))
-        (set! unclaimed-connections (dict-set unclaimed-connections (release-evt) conn))
-        (void)))
-    
-    ; alarm-evt -> void
-    (define (release-connection! evt)
-      (let ([conn (dict-ref unclaimed-connections evt)])
-        (set! unclaimed-connections (dict-remove unclaimed-connections evt))
-        (super disconnect conn)))
-    
-    ; -> alarm-evt
-    (define (release-evt)
-      (alarm-evt (+ (current-inexact-milliseconds)
-                    keepalive-milliseconds)))
-        
     ; Application thread -------------------------
     
     ; -> connection
     (define/override (connect)
-      (let ([ans (async-send tx-channel 'connect (current-thread))])
-        (if (exn? ans)
-            (raise ans)
-            ans)))
+      ; The application thread must be the one that blocks waiting for a free connection.
+      (let ([conn (async-channel-get unclaimed-connections)])
+        (async-channel-put tx-channel (list 'connect (thread-dead-evt (current-thread)) conn))
+        conn))
     
     ; connection -> void
     (define/override (disconnect conn)
-      (when (claimed-connection? (thread-dead-evt (current-thread)))
-        (let ([ans (async-send tx-channel 'disconnect (current-thread) conn)])
-          (if (exn? ans)
-              (raise ans)
-              ans))))))
+      (let ([evt (thread-dead-evt (current-thread))])
+        (async-channel-put tx-channel (list 'disconnect evt conn))))))
 
 ; Provides ---------------------------------------
 

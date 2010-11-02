@@ -42,7 +42,7 @@
                                                         #:database               database
                                                         #:username               username
                                                         #:password               password
-                                                        #:keepalive-milliseconds 1000))])
+                                                        #:pool-connections?      #t))])
     (run-snooze-tests
      snooze
      (postgresql8:make-all-postgresql8-tests snooze))))

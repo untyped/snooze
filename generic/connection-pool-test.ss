@@ -13,15 +13,14 @@
   
   ; -> natural
   (define (claimed-count)
-    (dict-count (get-field claimed-connections (send snooze get-database))))
+    (get-field claimed-count (send snooze get-database)))
   
   ; -> natural
   (define (unclaimed-count)
-    (dict-count (get-field unclaimed-connections (send snooze get-database))))
+    (get-field unclaimed-count (send snooze get-database)))
   
   ; -> natural
-  (define (current-keepalive)
-    (get-field keepalive-milliseconds (send snooze get-database)))
+  (define (current-keepalive) 500)
   
   ; (listof numbers) -> (listof numbers)
   (define (simplify numbers)
@@ -57,40 +56,45 @@
   ; (list natural natural natural natural) thunk -> void
   (define-check (check-counts counts thunk)
     (match counts
-      [(list claimed-min
-             claimed-max
-             unclaimed-min
-             unclaimed-max)
+      [(and counts (list claimed-min
+                         claimed-max
+                         unclaimed-min
+                         unclaimed-max))
        (let-values ([(claimed-profile unclaimed-profile)
                      (sample-connections thunk)])
          (with-check-info (['claimed-profile   claimed-profile]
                            ['unclaimed-profile unclaimed-profile])
-           (check-equal? (apply min claimed-profile)   claimed-min)
-           (check-equal? (apply max claimed-profile)   claimed-max)
-           (check-equal? (apply min unclaimed-profile) unclaimed-min)
-           (check-equal? (apply max unclaimed-profile) unclaimed-max)))]))
+           (check-equal? (list (apply min claimed-profile)
+                               (apply max claimed-profile)
+                               (apply min unclaimed-profile)
+                               (apply max unclaimed-profile))
+                         counts)))]))
   
   (test-suite "connection-pool.ss"
     
     #:before
     (lambda ()
+      (printf "Connection pool tests starting.~n")
       (send snooze disconnect)
       (quick-sleep (current-keepalive)))
     
     #:after
     (lambda ()
-      (send snooze connect))
+      (send snooze connect)
+      (printf "Connection pool tests complete.~n"))
     
     (test-case "sanity check"
-      ; Mustn't have a connection already open when we run these tests:
-      (check-counts (list 0 0 0 0) void))
+      (printf "begin sanity check~n")
+      ; Mustn't have a connection already claimed when we run these tests:
+      (check-counts (list 0 0 20 20) void)
+      (printf "end sanity check~n"))
     
+    #|
     (test-case "one connection"
       (check-counts
-       (list 0 1 0 1) 
+       (list 0 1 19 20) 
        (lambda ()
-         (send snooze
-               call-with-connection
+         (send snooze call-with-connection
                (lambda ()
                  (quick-sleep (* (current-keepalive) 2)))
                #f)
@@ -98,49 +102,50 @@
     
     (test-case "parallel connections"
       (check-counts
-       (list 0 5 0 5) 
+       (list 0 5 15 20) 
        (lambda ()
          (apply
           sync
           (for/list ([i (in-range 5)])
             (thread (lambda ()
-                      (send snooze
-                            call-with-connection
+                      (send snooze call-with-connection
                             (lambda ()
                               (quick-sleep (* (current-keepalive) 2)))
                             #f)))))
          (quick-sleep (* (current-keepalive) 2)))))
     
     (test-case "sequential connections (connection reuse)"
-      (let ([conn #f])
-        (check-counts
-         (list 0 1 0 1) 
-         (lambda ()
-           (for/list ([i (in-range 3)])
-             (send snooze
-                   call-with-connection
-                   (lambda ()
-                     (if conn
-                         (check-eq? conn (send snooze current-connection))
-                         (set! conn (send snooze current-connection)))
-                     (quick-sleep (* (current-keepalive) 2)))
-                   #f))
-           (quick-sleep (* (current-keepalive) 2))))))
+      (let ([conns null])
+        (for/list ([i (in-range 20)])
+          (send snooze call-with-connection
+                (lambda ()
+                  (set! conns (cons (send snooze current-connection) conns)))
+                #f))
+        (send snooze call-with-connection
+              (lambda ()
+                (check-not-false (member (send snooze current-connection) conns)))
+              #f)))
     
     (test-case "threads killed"
       (for/list ([i (in-range 3)])
         (thread
          (lambda ()
-           (send snooze
-                 call-with-connection
+           (send snooze call-with-connection
                  (lambda ()
                    (kill-thread (current-thread)))
                  #f))))
       (quick-sleep)
       (check-counts
-       (list 0 0 0 3) 
+       (list 0 0 20 20) 
        (lambda ()
-         (quick-sleep (current-keepalive)))))))
+         (quick-sleep (current-keepalive)))))
+    
+    (test-case "disconnections without connections"
+      (let ([a (current-inexact-milliseconds)])
+        (for ([i (in-range 1 1000)])
+          (send snooze disconnect))
+        (printf "time ~a~n" (- (current-inexact-milliseconds) a))))
+    |#))
 
 ; Provides ---------------------------------------
 

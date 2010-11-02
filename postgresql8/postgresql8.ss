@@ -26,7 +26,7 @@
          #:ssl                     [ssl 'optional]
          #:ssl-encrypt             [ssl-encrypt 'sslv2-or-v3]
          #:pool-connections?       [pool-connections? #t]
-         #:keepalive-milliseconds  [keepalive-milliseconds 5000])
+         #:max-connections         [max-connections 20])
   (if pool-connections?
       (new (connection-pool-mixin database%)
            [server                 server]
@@ -36,7 +36,7 @@
            [password               password]
            [ssl                    ssl]
            [ssl-encrypt            ssl-encrypt]
-           [keepalive-milliseconds keepalive-milliseconds])
+           [max-connections        max-connections])
       (new database%
            [server                 server]
            [port                   port]
@@ -67,5 +67,5 @@
                                #:ssl                    ssl/c
                                #:ssl-encrypt            ssl-encrypt/c
                                #:pool-connections?      boolean?
-                               #:keepalive-milliseconds natural-number/c)
+                               #:max-connections        natural-number/c)
                      (is-a?/c database<%>))])
