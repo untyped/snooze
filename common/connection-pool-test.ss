@@ -29,18 +29,19 @@
 ; (list natural natural natural natural) thunk -> void
 (define-check (check-counts counts thunk)
   (match counts
-    [(list claimed-min
-           claimed-max
-           unclaimed-min
-           unclaimed-max)
-     (let-values ([(claimed-profile unclaimed-profile)
-                   (sample-connections thunk)])
-       (with-check-info (['claimed-profile   claimed-profile]
-                         ['unclaimed-profile unclaimed-profile])
-         (check-equal? (apply min claimed-profile) claimed-min)
-         (check-equal? (apply max claimed-profile) claimed-max)
-         (check-equal? (apply min unclaimed-profile) unclaimed-min)
-         (check-equal? (apply max unclaimed-profile) unclaimed-max)))]))
+    [(and counts (list claimed-min
+                         claimed-max
+                         unclaimed-min
+                         unclaimed-max))
+       (let-values ([(claimed-profile unclaimed-profile)
+                     (sample-connections thunk)])
+         (with-check-info (['claimed-profile   claimed-profile]
+                           ['unclaimed-profile unclaimed-profile])
+           (check-equal? (list (apply min claimed-profile)
+                               (apply max claimed-profile)
+                               (apply min unclaimed-profile)
+                               (apply max unclaimed-profile))
+                         counts)))]))
 
 ; Tests ------------------------------------------
 
@@ -58,8 +59,10 @@
     (printf "Connection pool tests complete.~n"))
   
   (test-case "sanity check"
+    (printf "begin sanity check~n")
     ; Mustn't have a connection already claimed when we run these tests:
-    (check-counts (list 0 0 20 20) void))
+    (check-counts (list 0 0 20 20) void)
+    (printf "end sanity check~n"))
   
   (test-case "one connection"
     (check-counts
@@ -86,8 +89,8 @@
   (test-case "sequential connections (connection reuse)"
     (let ([conns null])
       (for/list ([i (in-range 20)])
-           (call-with-connection
-            (lambda () (set! conns (cons (current-connection) conns)))))
+        (call-with-connection
+         (lambda () (set! conns (cons (current-connection) conns)))))
       (call-with-connection
        (lambda () (check-not-false (member (current-connection) conns))))))
   
