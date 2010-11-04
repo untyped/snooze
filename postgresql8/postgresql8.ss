@@ -18,15 +18,15 @@
 ; ->
 ;  database%
 (define (make-database 
-         #:server                  [server "localhost"]
-         #:port                    [port 5432]
+         #:server                  [server            "localhost"]
+         #:port                    [port              5432]
          #:database                database
          #:username                username
-         #:password                [password #f]
-         #:ssl                     [ssl 'optional]
-         #:ssl-encrypt             [ssl-encrypt 'sslv2-or-v3]
+         #:password                [password          #f]
+         #:ssl                     [ssl               'optional]
+         #:ssl-encrypt             [ssl-encrypt       'sslv2-or-v3]
          #:pool-connections?       [pool-connections? #t]
-         #:max-connections         [max-connections 20])
+         #:max-connections         [max-connections   10])
   (if pool-connections?
       (new (connection-pool-mixin database%)
            [server                 server]

@@ -84,15 +84,12 @@
       (printf "Connection pool tests complete.~n"))
     
     (test-case "sanity check"
-      (printf "begin sanity check~n")
       ; Mustn't have a connection already claimed when we run these tests:
-      (check-counts (list 0 0 20 20) void)
-      (printf "end sanity check~n"))
+      (check-counts (list 0 0 10 10) void))
     
-    #|
     (test-case "one connection"
       (check-counts
-       (list 0 1 19 20) 
+       (list 0 1 9 10) 
        (lambda ()
          (send snooze call-with-connection
                (lambda ()
@@ -102,11 +99,11 @@
     
     (test-case "parallel connections"
       (check-counts
-       (list 0 5 15 20) 
+       (list 0 4 6 10) 
        (lambda ()
          (apply
           sync
-          (for/list ([i (in-range 5)])
+          (for/list ([i (in-range 4)])
             (thread (lambda ()
                       (send snooze call-with-connection
                             (lambda ()
@@ -136,16 +133,13 @@
                  #f))))
       (quick-sleep)
       (check-counts
-       (list 0 0 20 20) 
+       (list 0 0 10 10) 
        (lambda ()
          (quick-sleep (current-keepalive)))))
     
     (test-case "disconnections without connections"
-      (let ([a (current-inexact-milliseconds)])
-        (for ([i (in-range 1 1000)])
-          (send snooze disconnect))
-        (printf "time ~a~n" (- (current-inexact-milliseconds) a))))
-    |#))
+      (for ([i (in-range 1 1000)])
+        (send snooze disconnect)))))
 
 ; Provides ---------------------------------------
 
