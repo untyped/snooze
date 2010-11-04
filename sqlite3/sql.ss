@@ -288,7 +288,7 @@
         [(struct entity-alias (name entity-name))
          (when parenthesise?
            ; TODO : This DOESN'T WORK. The entity-alias struct used to contain a direct reference to the entity,
-           ; but I removed it to make entity-aliases serializable. We probably need to add column aliases to entity-alias 
+           ; but it was removed to make entity-aliases serializable. We probably need to add column aliases to entity-alias 
            ; to make this work properly. We can't simply put "SELECT *" here because of SQLite's weird aliasing behaviour 
            ; described in the comment marked "XXX" above.
            ;(display "(SELECT " out)
