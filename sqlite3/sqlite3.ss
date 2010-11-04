@@ -15,7 +15,7 @@
 (define (make-sqlite3-database
          path
          #:pool-connections? [pool-connections? #f]
-         #:max-connections   [max-connections 20])
+         #:max-connections   [max-connections   10])
   (if pool-connections?
       (new (connection-pool-mixin sqlite3-database%)
            [path            path]
