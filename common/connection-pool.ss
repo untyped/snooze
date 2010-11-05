@@ -61,23 +61,19 @@
     ; 
     ; (async-channel-of connection)
     (field [unclaimed-connections (make-async-channel max-connections)])
-
+    
     ; The number of claimed connections
     ;
     ; natural
     (field [claimed-count 0])
-
+    
     ; The number of unclaimed connections
     ;
     ; natural
     (field [unclaimed-count 0])
-
+    
     (super-new)
-    ; Initialise unclaimed-connections with max-connections connections
-    (for ([_ (in-range max-connections)])
-         (async-channel-put unclaimed-connections (super connect)))
-    (set! unclaimed-count max-connections)
-     
+    
     ; thread
     (field [manager-thread (thread (cut manage-connections))])
     
@@ -85,18 +81,29 @@
     
     ; -> void
     (define/private (manage-connections)
+      
+      ; boolean
+      (define initialized? #f)
+      
+      ; -> void
+      (define (initialize!)
+        (for ([index (in-range max-connections)])
+          (async-channel-put unclaimed-connections (super connect))
+          (add1! unclaimed-count)))
+      
       (let loop ([claimed-connections null])
         (match (sync tx-channel
                      (wrap-evt
                       (apply choice-evt (map car claimed-connections))
                       (lambda (evt)
                         (list 'unclaim evt))))
-
+          
           [(list 'connect evt conn)
+           (unless initialized? (initialize!))
            (sub1! unclaimed-count)
            (add1! claimed-count)
            (loop (dict-set claimed-connections evt conn))]
-
+          
           [(list 'disconnect evt conn)
            (let ([conn (dict-ref claimed-connections evt #f)])
              (if conn
@@ -106,7 +113,7 @@
                    (sub1! claimed-count)
                    (loop (dict-remove claimed-connections evt)))
                  (loop claimed-connections)))]
-
+          
           [(list 'unclaim evt)
            (let ([conn (dict-ref claimed-connections evt)])
              (async-channel-put unclaimed-connections conn)
@@ -114,7 +121,7 @@
              (sub1! claimed-count)
              (loop (dict-remove claimed-connections evt)))])))
     
-
+    
     ; thread-dead-evt -> void
     (define (unclaim-connection! evt)
       (let ([conn (dict-ref claimed-connections evt)])
