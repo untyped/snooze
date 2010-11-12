@@ -36,11 +36,14 @@
 
 ; Mixins -----------------------------------------
 
+(define connection-pooled-database<%>
+  (interface ()))
+
 (define connection-pool-mixin
-  (mixin (database<%>) ()
+  (mixin (database<%>) (connection-pooled-database<%>)
     
     ; natural
-    (init-field [max-connections 20])
+    (init-field max-connections)
     
     ; A channel to send requests from the application thread to the manager thread.
     ; Only one request can be processed at a time.
@@ -72,10 +75,6 @@
     (field [unclaimed-count 0])
     
     (super-new)
-    ; Initialise unclaimed-connections with max-connections connections
-    (for ([_ (in-range max-connections)])
-      (async-channel-put unclaimed-connections (super connect)))
-    (set! unclaimed-count max-connections)
     
     ; thread
     (field [manager-thread (thread (cut manage-connections))])
@@ -84,6 +83,16 @@
     
     ; -> void
     (define/private (manage-connections)
+      
+      ; boolean
+      (define initialized? #f)
+      
+      ; -> void
+      (define (initialize!)
+        (for ([index (in-range max-connections)])
+          (async-channel-put unclaimed-connections (super connect))
+          (add1! unclaimed-count)))
+      
       (let loop ([claimed-connections null])
         (match (sync tx-channel
                      (wrap-evt
@@ -92,6 +101,7 @@
                         (list 'unclaim evt))))
           
           [(list 'connect evt conn)
+           (unless initialized? (initialize!))
            (sub1! unclaimed-count)
            (add1! claimed-count)
            (loop (dict-set claimed-connections evt conn))]
@@ -130,4 +140,5 @@
 
 ; Provides ---------------------------------------
 
-(provide connection-pool-mixin)
+(provide connection-pooled-database<%>
+         connection-pool-mixin)
