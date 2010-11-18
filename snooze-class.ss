@@ -15,19 +15,32 @@
          "generic/database.ss"
          "sql/sql.ss")
 
+; Constructor ------------------------------------
+
 ; database<%> -> snooze<%>
 (define (make-snooze database)
   (new snooze% [database database]))
 
+; Class ------------------------------------------
+
 (define snooze%
   (class* object% (snooze<%>)
+    
+    ; (parameter (U (query real -> void) #f))
+    (field [query-logger (make-parameter #f)])
     
     ; Constructor --------------------------------
     
     ; database<%>
     (init-field [database #f])
     
+    ; (U (query real -> void) #f)
+    (init [(init-query-logger query-logger) #f])
+    
     (super-new)
+    
+    (when init-query-logger
+      (query-logger init-query-logger))
     
     ; Fields -------------------------------------
     
@@ -218,8 +231,12 @@
     
     ; select -> result-generator
     (define/public (g:find select)
-      (connect)
-      (send database g:find (current-connection) select))
+      (call-with-log
+       (query-logger)
+       select
+       (lambda ()
+         (connect)
+         (send database g:find (current-connection) select))))
     
     ; thunk any ... -> any
     ;
@@ -296,6 +313,19 @@
     (define/public (dump-sql query [format "~a~n"] [output-port (current-output-port)])
       (send database dump-sql query output-port format))
     
+    ; -> (query real -> void) 
+    (define/public (get-query-logger)
+      (query-logger))
+    
+    ; (query real -> void) -> void
+    (define/public (set-query-logger! logger)
+      (query-logger logger))
+    
+    ; (query real -> void) (-> any) -> any
+    (define/public (call-with-query-logger logger thunk)
+      (parameterize ([query-logger logger])
+        (thunk)))
+    
     ; Helpers ------------------------------------
     
     ; entity integer integer -> boolean
@@ -316,7 +346,27 @@
     
     (inspect #f)))
 
-; Provide statements -----------------------------
+; Helpers ----------------------------------------
+
+; Log a message and the time taken to perform a thunk.
+; The message can be any type (query and guid are two examples used above).
+;
+;  (message real -> any)
+;  message
+;  (-> any)
+; -> any
+(define (call-with-log logger msg thunk)
+  (if logger
+      (let ([start #f])
+        (dynamic-wind
+         (lambda ()
+           (set! start (current-inexact-milliseconds)))
+         thunk
+         (lambda ()
+           (logger msg (- (current-inexact-milliseconds) start)))))
+      (thunk)))
+
+; Provides ---------------------------------------
 
 ; contract
 (define snooze%/c
@@ -367,6 +417,6 @@
     [dump-sql                  (->* (query?) (string? output-port?) query?)]))
 
 (provide/contract
- [snooze%     class?]
- [snooze%/c   contract?]
- [make-snooze (-> (is-a?/c database<%>) snooze%/c)])
+ [snooze%      class?]
+ [snooze%/c    contract?]
+ [make-snooze  (-> (is-a?/c database<%>) snooze%/c)])

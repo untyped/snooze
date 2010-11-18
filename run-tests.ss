@@ -37,15 +37,22 @@
 
 ; string integer string string [string] -> void
 (define (run-postgresql8-tests server port database username [password #f])
+  (printf "a~n")
   (let ([snooze (make-snooze (postgresql8:make-database #:server                 server
                                                         #:port                   port
                                                         #:database               database
                                                         #:username               username
                                                         #:password               password
                                                         #:pool-connections?      #t))])
-    (run-snooze-tests
-     snooze
-     (postgresql8:make-all-postgresql8-tests snooze))))
+  (printf "b~n")
+    (send snooze call-with-query-logger
+          (lambda (query time)
+            (pretty-print (list "PROFILE" "QUERY" time (send snooze query->string query))))
+          (lambda ()
+  (printf "c~n")
+            (run-snooze-tests
+             snooze
+             (postgresql8:make-all-postgresql8-tests snooze))))))
 
 ; [(U exn #f)] -> void
 (define (print-usage [exn #f])
