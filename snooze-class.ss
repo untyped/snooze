@@ -11,25 +11,6 @@
          "common/common.ss"
          "sql/sql.ss")
 
-; Logging ----------------------------------------
-
-; (parameter (U (query natural -> void) #f))
-(define query-logger (make-parameter #f))
-
-; (parameter (U (guid natural -> void) #f))
-(define direct-find-logger (make-parameter #f))
-
-(define (call-with-log logger msg thunk)
-  (if logger
-      (let ([start #f])
-        (dynamic-wind
-         (lambda ()
-           (set! start (current-inexact-milliseconds)))
-         thunk
-         (lambda ()
-           (logger msg (- (current-inexact-milliseconds) start)))))
-      (thunk)))
-
 ; Constructor ------------------------------------
 
 ; database<%> [#:connect-on-demand? boolean] -> snooze<%>
@@ -61,6 +42,12 @@
     ; as the transaction body.
     (field [transaction-hook (lambda (continue conn struct) (continue conn struct))])
     
+    ; (parameter (U (query real -> void) #f))
+    (field [query-logger (make-parameter #f)])
+    
+    ; (parameter (U ((listof guid) real -> void) #f))
+    (field [direct-find-logger (make-parameter #f)])
+    
     ; Constructor --------------------------------
     
     ; database<%>
@@ -69,7 +56,19 @@
     ; boolean
     (init-field [connect-on-demand? #f])
     
+    ; (U (query real -> void) #f)
+    (init [(init-query-logger query-logger) #f])
+    
+    ; (U ((listof guid) real -> void) #f)
+    (init [(init-direct-find-logger direct-find-logger) #f])
+    
     (super-new)
+    
+    (when init-query-logger
+      (query-logger init-query-logger))
+    
+    (when init-direct-find-logger
+      (direct-find-logger init-direct-find-logger))
     
     (send database set-snooze! this)
     
@@ -382,12 +381,56 @@
     ;
     ; Prints an SQL string to stdout as a side effect.
     (define/public (debug-sql query #:format [format "~a~n"] #:output-port [output-port (current-output-port)])
-      (send database debug-sql query output-port format))))
+      (send database debug-sql query output-port format))
+    
+    ; -> (query real -> void) 
+    (define/public (get-query-logger)
+      (query-logger))
+    
+    ; (query real -> void) -> void
+    (define/public (set-query-logger! logger)
+      (query-logger logger))
+    
+    ; (query real -> void) (-> any) -> any
+    (define/public (call-with-query-logger logger thunk)
+      (parameterize ([query-logger logger])
+        (thunk)))
+    
+    ; -> (query real -> void) 
+    (define/public (get-direct-find-logger)
+      (direct-find-logger))
+    
+    ; (query real -> void) -> void
+    (define/public (set-direct-find-logger! logger)
+      (direct-find-logger logger))
+    
+    ; (query real -> void) (-> any) -> any
+    (define/public (call-with-direct-find-logger logger thunk)
+      (parameterize ([direct-find-logger logger])
+        (thunk)))))
+
+; Helpers ----------------------------------------
+
+; Log a message and the time taken to perform a thunk.
+; The message can be any type.
+;
+;  (message real -> any)
+;  message
+;  (-> any)
+; -> any
+(define (call-with-log logger msg thunk)
+  (if logger
+      (let ([start #f])
+        (dynamic-wind
+         (lambda ()
+           (set! start (current-inexact-milliseconds)))
+         thunk
+         (lambda ()
+           (logger msg (- (current-inexact-milliseconds) start)))))
+      (thunk)))
 
 ; Provide statements -----------------------------
 
 (provide/contract
- [query-logger       (parameter/c (-> query? number? any))]
- [direct-find-logger (parameter/c (-> (listof database-guid?) number? any))]
  [snooze%            class?]
  [make-snooze        (->* ((is-a?/c database<%>)) (#:connect-on-demand? boolean?) any)])
