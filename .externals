@@ -1,0 +1,7 @@
+[.]
+scm = git
+
+[planetdev/unlib]
+path = planetdev/unlib
+repository = git://github.com/untyped/unlib.git
+scm = git
