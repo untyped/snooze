@@ -5,6 +5,7 @@
 (require srfi/19
          (schemeunit-in test text-ui)
          (prefix-in sqlite: (sqlite-in sqlite))
+         "snooze-api.ss"
          "snooze-class.ss"
          "test-data.ss"
          "test-util.ss"
@@ -40,6 +41,9 @@
                  [direct-query-proc (lambda (sql)
                                       (let ([conn (send (current-snooze) current-connection)])
                                         (send (connection-back-end conn) map sql list)))])
+    ; We don't need the logging output but we do want to know that the hooks don't exn:
+    (query-logger-set! void)
+    (direct-find-logger-set! void)
     (run-tests tests)))
 
 ; (U string path ':memory: ':temp:) test-suite -> any
@@ -50,6 +54,9 @@
                                       (let* ([conn (send (current-snooze) current-connection)]
                                              [ans  (sqlite:select (connection-back-end conn) sql)])
                                         (if (null? ans) null (map vector->list (cdr ans)))))])
+    ; We don't need the logging output but we do want to know that the hooks don't exn:
+    (query-logger-set! void)
+    (direct-find-logger-set! void)
     (run-tests tests)))
 
 ; string -> time-tai

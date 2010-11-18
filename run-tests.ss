@@ -34,10 +34,6 @@ ENDOUTPUT
 
 ; Main program body ------------------------------
 
-; We don't need the logging output but we do want to know that the hooks don't exn:
-(query-logger (lambda (query time) (void)))
-(direct-find-logger (lambda (guid time) (void)))
-
 (with-handlers ([exn? print-usage]) 
   (match (vector->list (current-command-line-arguments))
     [(list) (print-usage)]

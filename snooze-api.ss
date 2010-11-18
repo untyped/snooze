@@ -96,6 +96,23 @@
 (define (table-exists? #:snooze [snooze (current-snooze)] name)
   (send snooze table-exists? name))
 
+
+; [#:snooze snooze] -> (query real -> void)
+(define (query-logger-ref #:snooze [snooze (current-snooze)])
+  (send snooze get-query-logger))
+
+; [#:snooze snooze] (query real -> void) -> void
+(define (query-logger-set! #:snooze [snooze (current-snooze)] logger)
+  (send snooze set-query-logger! logger))
+
+; [#:snooze snooze] -> ((listof guid) real -> void)
+(define (direct-find-logger-ref #:snooze [snooze (current-snooze)])
+  (send snooze get-direct-find-logger))
+
+; [#:snooze snooze] ((listof guid) real -> void) -> void
+(define (direct-find-logger-set! #:snooze [snooze (current-snooze)] logger)
+  (send snooze set-direct-find-logger! logger))
+
 ; Convenience syntaxes ---------------------------
 
 ; (_ select-args ...)
@@ -124,6 +141,22 @@
     [(_ #:snooze snooze expr ...)                     (syntax/loc stx (call-with-transaction #:snooze snooze (lambda () expr ...)))]
     [(_ expr ...)                                     (syntax/loc stx (call-with-transaction (lambda () expr ...)))]))
 
+; (_ [#:snooze snooze] (query real -> void) expr ...)
+(define-syntax with-query-logger
+  (syntax-rules ()
+    [(_ #:snooze snooze logger expr ...)
+     (send snooze call-with-query-logger logger (lambda () expr ...))]
+    [(_ logger expr ...)
+     (with-query-logger #:snooze (current-snooze) snooze expr ...)]))
+
+; (_ [#:snooze snooze] ((listof guid) real -> void) expr ...)
+(define-syntax with-direct-find-logger
+  (syntax-rules ()
+    [(_ #:snooze snooze logger expr ...)
+     (send snooze call-with-direct-find-logger logger (lambda () expr ...))]
+    [(_ logger expr ...)
+     (with-direct-find-logger #:snooze (current-snooze) snooze expr ...)]))
+
 ; Provide statements -----------------------------
 
 (provide current-snooze
@@ -131,7 +164,9 @@
          select-all
          g:select
          with-connection
-         with-transaction)
+         with-transaction
+         with-query-logger
+         with-direct-find-logger)
 
 (provide/contract
  [call-with-connection     (->* (procedure?) (#:snooze (is-a?/c snooze<%>)) any)]
@@ -162,4 +197,8 @@
  [query->string            (->* (query?) (#:snooze (is-a?/c snooze<%>)) string?)]
  [debug-sql                (->* (query?) (#:snooze (is-a?/c snooze<%>) #:output-port output-port? #:format string?) query?)]
  [table-names              (->* () (#:snooze (is-a?/c snooze<%>)) (listof symbol?))]
- [table-exists?            (->* ((or/c entity? symbol?)) (#:snooze (is-a?/c snooze<%>)) boolean?)])
+ [table-exists?            (->* ((or/c entity? symbol?)) (#:snooze (is-a?/c snooze<%>)) boolean?)]
+ [query-logger-ref         (->* () (#:snooze (is-a?/c snooze<%>)) (-> query? number? any))]
+ [query-logger-set!        (->* ((-> query? number? any)) (#:snooze (is-a?/c snooze<%>)) void?)]
+ [direct-find-logger-ref   (->* () (#:snooze (is-a?/c snooze<%>)) (-> (listof guid?) number? any))]
+ [direct-find-logger-set!  (->* ((-> (listof guid?) number? any)) (#:snooze (is-a?/c snooze<%>)) void?)])
