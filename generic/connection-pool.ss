@@ -83,16 +83,6 @@
     
     ; -> void
     (define/private (manage-connections)
-      
-      ; boolean
-      (define initialized? #f)
-      
-      ; -> void
-      (define (initialize!)
-        (for ([index (in-range max-connections)])
-          (async-channel-put unclaimed-connections (super connect))
-          (add1! unclaimed-count)))
-      
       (let loop ([claimed-connections null])
         (match (sync tx-channel
                      (wrap-evt
@@ -100,8 +90,19 @@
                       (lambda (evt)
                         (list 'unclaim evt))))
           
+          [(list 'init rx-channel)
+           ; Connect method is sent #t if the connection pool was initialized correctly, #f otherwise:
+           (let ([ans (with-handlers ([exn? (lambda (exn)
+                                              ((error-display-handler) (exn-message exn) exn)
+                                              #f)])
+                        (for ([index (in-range max-connections)])
+                          (async-channel-put unclaimed-connections (super connect))
+                          (add1! unclaimed-count))
+                        #t)])
+             (async-channel-put rx-channel ans)
+             (loop claimed-connections))]
+          
           [(list 'connect evt conn)
-           (unless initialized? (initialize!))
            (sub1! unclaimed-count)
            (add1! claimed-count)
            (loop (dict-set claimed-connections evt conn))]
@@ -126,9 +127,23 @@
     
     ; Application thread -------------------------
     
+    ; To avoid needlessly hogging connections, we wait until 
+    ; the first call to connect before we initialize the connection pool.
+    ;
+    ; boolean
+    (define initialized? #f)
+    
     ; -> connection
     (define/override (connect)
-      ; The application thread must be the one that blocks waiting for a free connection.
+      ; Initialize the connection pool if required:
+      (unless initialized?
+        (let ([rx-channel (make-async-channel)])
+          (async-channel-put tx-channel (list 'init rx-channel))
+          (if (async-channel-get rx-channel)
+              (set! initialized? #t)
+              (error "failed to initialize connection pool"))))
+    
+      ; The application thread must be the one that blocks waiting for a free connection:
       (let ([conn (async-channel-get unclaimed-connections)])
         (async-channel-put tx-channel (list 'connect (thread-dead-evt (current-thread)) conn))
         conn))
