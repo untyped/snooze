@@ -5,6 +5,7 @@
 (require scheme/async-channel
          scheme/dict
          (planet untyped/unlib:3/match)
+         (planet untyped/unlib:3/log)
          "interface.ss")
 
 ; Operations:
@@ -101,11 +102,13 @@
                           (add1! unclaimed-count))
                         #t)])
              (async-channel-put rx-channel ans)
+             (log-info* "Snooze connection pool initialised")
              (loop claimed-connections))]
           
           [(list 'connect evt conn)
            (sub1! unclaimed-count)
            (add1! claimed-count)
+           (log-info* "Snooze connection pool accepted connect" unclaimed-count claimed-count)
            (loop (dict-set claimed-connections evt conn))]
           
           [(list 'disconnect evt conn)
@@ -115,14 +118,18 @@
                    (async-channel-put unclaimed-connections conn)
                    (add1! unclaimed-count)
                    (sub1! claimed-count)
+                   (log-info* "Snooze connection pool accepted disconnect" unclaimed-count claimed-count)
                    (loop (dict-remove claimed-connections evt)))
-                 (loop claimed-connections)))]
+                 (begin
+                   (log-info* "Snooze connection pool refused disconnect" unclaimed-count claimed-count)
+                   (loop claimed-connections))))]
           
           [(list 'unclaim evt)
            (let ([conn (dict-ref claimed-connections evt)])
              (async-channel-put unclaimed-connections conn)
              (add1! unclaimed-count)
              (sub1! claimed-count)
+             (log-info* "Snooze connection pool retrieved connection on thread death" unclaimed-count claimed-count)
              (loop (dict-remove claimed-connections evt)))])))
     
     
