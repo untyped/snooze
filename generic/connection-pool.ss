@@ -11,20 +11,27 @@
 
 ; Operations:
 ;
-;   - connect - manager:
-;     - looks for an unclaimed connection and recycles it if possible;
-;     - otherwise, opens a new connection;
-;     - marks the connection as claimed by the new thread;
+;   - connect
+;     - Application thread: Block till a connection becomes free
+;     - Manager thread: Mark the connection as claimed by the new thread;
 ;
 ;   - disconnect
-;     - marks the connection as unclaimed by a thread;
-;     - starts a death timer (N seconds);
+;     - Manager thread: Marks the connection as unclaimed by a thread;
+;     - Manager thread: Return the connection to the pool
 ;
-;   - claimed connection: thread death
-;     - marks relevant connection as unclaimed;
+;   - Claimed connection: thread death
+;     - Manager thread: Marks relevant connection as unclaimed;
+
+; Invariants
 ;
-;   - unclaimed connection: release alarm;
-;     - closes connection.
+; Only the manager thread should:
+;   - Place connections in the unclaimed-connections queue
+;   - Update the claimed-count and unclaimed-count counters
+;
+; Only application threads should:
+;   - Block retrieving connections from the unclaimed-connection queue
+;
+; If the manager thread attempts to retrieve connections it will deadlock itself.
 
 ; Helpers ----------------------------------------
 
@@ -51,12 +58,7 @@
     ; async-channel
     (field [tx-channel (make-async-channel 1)])
     
-    ; Connections that are claimed by a thread.
-    ; The connections are "hashed" against thread-dead events for their threads.
-    ; This (a) doesn't prevent the threads getting GC'd and (b) provides an easy
-    ; way to respond to the deaths of the threads.
-    ;
-    ; (alistof thread-dead-evt connection)
+
     (field [claimed-connections null])
     
     ; Connections that are not claimed by a thread.
@@ -83,6 +85,7 @@
     
     ; -> void
     (define/private (manage-connections)
+      ; claimed-connections : (alistof thread-dead-evt connection)
       (let loop ([claimed-connections null])
         (match (sync tx-channel
                      (wrap-evt
@@ -124,6 +127,7 @@
              (add1! unclaimed-count)
              (sub1! claimed-count)
              (loop (dict-remove claimed-connections evt)))])))
+
     
     ; Application thread -------------------------
     
