@@ -17,8 +17,7 @@
          "entity.ss"
          "pretty.ss"
          "snooze-struct.ss"
-         "syntax-info.ss"
-         (prefix-in sql: "../sql/sql-lang.ss"))
+         "syntax-info.ss")
 
 ; Syntax -----------------------------------------
 
