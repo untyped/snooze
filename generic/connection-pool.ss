@@ -141,7 +141,7 @@
           (async-channel-put tx-channel (list 'init rx-channel))
           (if (async-channel-get rx-channel)
               (set! initialized? #t)
-              (error "failed to initialize connection pool"))))
+              (raise-exn exn:fail:snooze "Could not initialise connection pool"))))
     
       ; The application thread must be the one that blocks waiting for a free connection:
       (let ([conn (async-channel-get unclaimed-connections)])
