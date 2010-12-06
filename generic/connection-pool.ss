@@ -154,8 +154,11 @@
               (raise-exn exn:fail:snooze "Could not initialise connection pool"))))
     
       ; The application thread must be the one that blocks waiting for a free connection:
-      (let ([conn (async-channel-get unclaimed-connections)])
+      (let ([now (current-inexact-milliseconds)]
+            [conn (async-channel-get unclaimed-connections)])
         (async-channel-put tx-channel (list 'connect (thread-dead-evt (current-thread)) conn))
+        (log-info* "Snooze connection pool time to serve connection (ms)"
+                   (- (current-inexact-milliseconds) now))
         conn))
     
     ; connection -> void
