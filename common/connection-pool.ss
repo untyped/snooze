@@ -81,6 +81,12 @@
     (field [manager-thread (thread (cut manage-connections))])
     
     ; Manager thread -----------------------------
+
+    ; To avoid needlessly hogging connections, we wait until 
+    ; the first call to connect before we initialize the connection pool.
+    ;
+    ; boolean
+    (define initialized? #f)
     
     ; -> void
     (define/private (manage-connections)
@@ -94,16 +100,19 @@
           
           [(list 'init rx-channel)
            ; Connect method is sent #t if the connection pool was initialized correctly, #f otherwise:
-           (let ([ans (with-handlers ([exn? (lambda (exn)
-                                              ((error-display-handler) (exn-message exn) exn)
-                                              #f)])
-                        (for ([index (in-range max-connections)])
-                          (async-channel-put unclaimed-connections (super connect))
-                          (add1! unclaimed-count))
-                        #t)])
-             (async-channel-put rx-channel ans)
-             (log-info* "Snooze connection pool initialised")
-             (loop claimed-connections))]
+           (if initialized?
+               (async-channel-put rx-channel #t)
+               (let ([ans (with-handlers ([exn? (lambda (exn)
+                                               ((error-display-handler) (exn-message exn) exn)
+                                               #f)])
+                         (for ([index (in-range max-connections)])
+                              (async-channel-put unclaimed-connections (super connect))
+                              (add1! unclaimed-count))
+                         #t)])
+                 (async-channel-put rx-channel ans)
+                 (log-info* "Snooze connection pool initialised")
+                 (set! initialized? #t)
+                 (loop claimed-connections)))]
           
           [(list 'connect evt conn)
            (sub1! unclaimed-count)
@@ -134,22 +143,14 @@
     
     
     ; Application thread -------------------------
-    
-    ; To avoid needlessly hogging connections, we wait until 
-    ; the first call to connect before we initialize the connection pool.
-    ;
-    ; boolean
-    (define initialized? #f)
-    
+        
     ; -> connection
     (define/override (connect)
-      ; Initialize the connection pool if required:
       (unless initialized?
         (let ([rx-channel (make-async-channel)])
           (async-channel-put tx-channel (list 'init rx-channel))
-          (if (async-channel-get rx-channel)
-              (set! initialized? #t)
-              (raise-exn exn:fail:snooze "Could not initialise connection pool"))))
+          (unless (async-channel-get rx-channel)
+            (raise-exn exn:fail:snooze "Could not initialise connection pool"))))
     
       ; The application thread must be the one that blocks waiting for a free connection:
       (let ([now (current-inexact-milliseconds)]
