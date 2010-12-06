@@ -156,14 +156,15 @@
       (let ([now (current-inexact-milliseconds)]
             [conn (async-channel-get unclaimed-connections)])
         (async-channel-put tx-channel (list 'connect (thread-dead-evt (current-thread)) conn))
-        (log-info* "Snooze connection pool time to serve connection (ms)"
-                   (- (current-inexact-milliseconds) now))
+        (log-info* "PROFILE" "Connection pool connect" (- (current-inexact-milliseconds) now))
         conn))
     
     ; connection -> void
     (define/override (disconnect conn)
-      (let ([evt (thread-dead-evt (current-thread))])
-        (async-channel-put tx-channel (list 'disconnect evt conn))))))
+      (let ([now (current-inexact-milliseconds)]
+            [evt (thread-dead-evt (current-thread))])
+        (async-channel-put tx-channel (list 'disconnect evt conn))
+        (log-info* "PROFILE" "Connection pool disconnect" (- (current-inexact-milliseconds) now))))))
 
 ; Provides ---------------------------------------
 
