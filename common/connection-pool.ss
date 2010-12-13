@@ -40,6 +40,24 @@
 (define-syntax-rule (sub1! id)
   (set! id (sub1 id)))
 
+
+; Set API ----------------------------------------
+; We represent a set as a list
+
+(define (set-member? set v)
+  (if (member v set)
+      #t
+      #f))
+
+(define (set-add set v)
+  (if (set-member? set v)
+      set
+      (cons v set)))
+
+(define (set-remove set v)
+  (remove v set))
+
+
 ; Mixins -----------------------------------------
 
 (define connection-pooled-database<%>
@@ -90,11 +108,11 @@
     
     ; -> void
     (define/private (manage-connections)
-      ; claimed-connections : (alistof thread-dead-evt connection)
+      ; claimed-connections : (alistof connection thread-dead-evt)
       (let loop ([claimed-connections null])
         (match (sync tx-channel
                      (wrap-evt
-                      (apply choice-evt (map car claimed-connections))
+                      (apply choice-evt (map cdr claimed-connections))
                       (lambda (evt)
                         (list 'unclaim evt))))
           
@@ -114,34 +132,42 @@
                  (set! initialized? #t)
                  (loop claimed-connections)))]
           
-          [(list 'connect evt conn)
+          [(list 'connect conn evt)
            (sub1! unclaimed-count)
            (add1! claimed-count)
            (log-info* "Snooze connection pool accepted connect" unclaimed-count claimed-count)
-           (loop (dict-set claimed-connections evt conn))]
+           (loop (dict-set claimed-connections conn evt))]
           
-          [(list 'disconnect evt conn)
-           (let ([conn (dict-ref claimed-connections evt #f)])
-             (if conn
+          [(list 'disconnect conn evt)
+           (let ([evt (dict-ref claimed-connections conn #f)])
+             (if evt
                  (begin
                    (async-channel-put unclaimed-connections conn)
                    (add1! unclaimed-count)
                    (sub1! claimed-count)
                    (log-info* "Snooze connection pool accepted disconnect" unclaimed-count claimed-count)
-                   (loop (dict-remove claimed-connections evt)))
+                   (loop (dict-remove claimed-connections conn)))
                  (begin
                    (log-info* "Snooze connection pool refused disconnect" unclaimed-count claimed-count)
                    (loop claimed-connections))))]
           
           [(list 'unclaim evt)
-           (let ([conn (dict-ref claimed-connections evt)])
-             (async-channel-put unclaimed-connections conn)
-             (add1! unclaimed-count)
-             (sub1! claimed-count)
-             (log-info* "Snooze connection pool retrieved connection on thread death" unclaimed-count claimed-count)
-             (loop (dict-remove claimed-connections evt)))])))
-    
-    
+           (let ([conn (for/fold ([conn #f])
+                           ([(the-conn the-evt) (in-dict claimed-connections)])
+                         (if (equal? evt the-evt)
+                             the-conn
+                             conn))])
+             (if conn
+                 (begin
+                   (async-channel-put unclaimed-connections conn)
+                   (add1! unclaimed-count)
+                   (sub1! claimed-count)
+                   (log-info* "Snooze connection pool retrieved connection on thread death" unclaimed-count claimed-count)
+                   (loop (dict-remove claimed-connections conn)))
+                 (begin
+                   (log-info* "Snooze connection pool read thread death event for thread we aren't monitoring" unclaimed-count claimed-count)
+                   (loop claimed-connections))))])))
+
     ; Application thread -------------------------
         
     ; -> connection
@@ -155,7 +181,7 @@
       ; The application thread must be the one that blocks waiting for a free connection:
       (let ([now (current-inexact-milliseconds)]
             [conn (async-channel-get unclaimed-connections)])
-        (async-channel-put tx-channel (list 'connect (thread-dead-evt (current-thread)) conn))
+        (async-channel-put tx-channel (list 'connect conn (thread-dead-evt (current-thread))))
         (log-info* "PROFILE" "Connection pool connect" (- (current-inexact-milliseconds) now))
         conn))
     
@@ -163,7 +189,7 @@
     (define/override (disconnect conn)
       (let ([now (current-inexact-milliseconds)]
             [evt (thread-dead-evt (current-thread))])
-        (async-channel-put tx-channel (list 'disconnect evt conn))
+        (async-channel-put tx-channel (list 'disconnect conn evt))
         (log-info* "PROFILE" "Connection pool disconnect" (- (current-inexact-milliseconds) now))))))
 
 ; Provides ---------------------------------------
