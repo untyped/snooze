@@ -54,7 +54,7 @@
     (define/public (init! . log-values)
       (define attributes (entity-attributes entity:audit-transaction))
       (define make-transaction (entity-constructor entity:audit-transaction))
-      (define args (list-pad-right (list* #f #f (current-time time-tai) log-values) (length attributes)))
+      (define args (list-pad-right (list* #f #f (current-time time-utc) log-values) (length attributes)))
       (set! transaction (send snooze save! (apply make-transaction args))))
     
     ; -> void

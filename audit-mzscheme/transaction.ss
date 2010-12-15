@@ -9,7 +9,7 @@
     [(_ id ([attr-id attr-type] ...))
      (with-syntax ([audit-transaction (make-id stx 'audit-transaction)])
        #'(begin (define-persistent-struct id
-                  ([timestamp (make-time-tai-type #f #f)]
+                  ([timestamp (make-time-utc-type #f #f)]
                    [attr-id attr-type] ...))))]))
 
 ; Provide statements -----------------------------
