@@ -35,11 +35,12 @@
          #:port                    [port 5432]
          #:database                database
          #:username                username
-         #:password                [password #f]
-         #:ssl                     [ssl 'optional]
-         #:ssl-encrypt             [ssl-encrypt 'sslv2-or-v3]
+         #:password                [password          #f]
+         #:ssl                     [ssl               'optional]
+         #:ssl-encrypt             [ssl-encrypt       'sslv2-or-v3]
          #:pool-connections?       [pool-connections? #f]
-         #:max-connections         [max-connections 10])
+         #:max-connections         [max-connections   20]
+         #:min-connections         [min-connections   10])
   (if pool-connections?
       (new (connection-pool-mixin postgresql8-database%)
            [server                 server]
@@ -49,7 +50,8 @@
            [password               password]
            [ssl                    ssl]
            [ssl-encrypt            ssl-encrypt]
-           [max-connections        max-connections])
+           [max-connections        max-connections]
+           [min-connections        min-connections])
       (new postgresql8-database%
            [server                 server]
            [port                   port]

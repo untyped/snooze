@@ -107,7 +107,17 @@
   
   (test-case "disconnections without connections"
     (for ([i (in-range 1 1000)])
-      (send (current-snooze) disconnect))))
+      (send (current-snooze) disconnect)))
+
+  (test-case "connections created in response to load"
+      (check-counts
+       (list 0 20 0 18)
+       (lambda ()
+         (apply sync
+                (for/list ([i (in-range 40)])
+                          (thread (lambda ()
+                                    (send (current-snooze) call-with-connection
+                                          (lambda () (sleep 1)) #f)))))))))
 
 (define (make-connection-pool-tests snooze)
   (if (is-a? (send snooze get-database) connection-pooled-database<%>)
@@ -120,11 +130,11 @@
 
 ; -> natural
 (define (claimed-count)
-  (get-field claimed-count (send (current-snooze) get-database)))
+  (get-field acquired-count (send (current-snooze) get-database)))
 
 ; -> natural
 (define (unclaimed-count)
-  (get-field unclaimed-count (send (current-snooze) get-database)))
+  (get-field available-count (send (current-snooze) get-database)))
 
 ; -> natural
 (define (current-keepalive) 500)
