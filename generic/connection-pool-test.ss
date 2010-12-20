@@ -9,15 +9,19 @@
 
 ; Tests ------------------------------------------
 
+;; Uncomment these lines if you want to see what is going on in the connection pool
+;(require (planet untyped/unlib/log))
+;(start-log-output 'info)
+
 (define (make-connection-pool-tests snooze)
   
   ; -> natural
-  (define (claimed-count)
-    (get-field claimed-count (send snooze get-database)))
+  (define (acquired-count)
+    (get-field acquired-count (send snooze get-database)))
   
   ; -> natural
-  (define (unclaimed-count)
-    (get-field unclaimed-count (send snooze get-database)))
+  (define (available-count)
+    (get-field available-count (send snooze get-database)))
   
   ; -> natural
   (define (current-keepalive) 500)
@@ -43,8 +47,8 @@
       (thread (lambda ()
                 (let loop ()
                   (unless finish?
-                    (set! accum1 (cons (claimed-count)   accum1))
-                    (set! accum2 (cons (unclaimed-count) accum2))
+                    (set! accum1 (cons (acquired-count)   accum1))
+                    (set! accum2 (cons (available-count) accum2))
                     (quick-sleep (quotient (current-keepalive) 10))
                     (loop)))))
       (thunk)
@@ -139,7 +143,17 @@
     
     (test-case "disconnections without connections"
       (for ([i (in-range 1 1000)])
-        (send snooze disconnect)))))
+        (send snooze disconnect)))
+
+    (test-case "connections created in response to load"
+      (check-counts
+       (list 0 20 0 18)
+       (lambda ()
+         (apply sync
+                (for/list ([i (in-range 40)])
+                          (thread (lambda ()
+                                    (send snooze call-with-connection
+                                          (lambda () (sleep 1)) #f))))))))))
 
 ; Provides ---------------------------------------
 
