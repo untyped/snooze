@@ -117,7 +117,7 @@
                 (for/list ([i (in-range 40)])
                           (thread (lambda ()
                                     (send (current-snooze) call-with-connection
-                                          (lambda () (sleep 1)) #f)))))))))
+                                          (lambda () (sleep 1)))))))))))
 
 (define (make-connection-pool-tests snooze)
   (if (is-a? (send snooze get-database) connection-pooled-database<%>)
