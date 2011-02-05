@@ -60,11 +60,11 @@
   
   (test-case "sanity check"
     ; Mustn't have a connection already claimed when we run these tests:
-    (check-counts (list 0 0 10 10) void))
+    (check-counts (list 0 0 5 5) void))
   
   (test-case "one connection"
     (check-counts
-     (list 0 1 9 10) 
+     (list 0 1 4 5) 
      (lambda ()
        (call-with-connection
         (lambda ()
@@ -73,7 +73,7 @@
   
   (test-case "parallel connections"
     (check-counts
-     (list 0 4 6 10) 
+     (list 0 4 1 5) 
      (lambda ()
        (apply
         sync
@@ -101,7 +101,7 @@
             (kill-thread (current-thread)))))))
     (quick-sleep)
     (check-counts
-     (list 0 0 10 10) 
+     (list 0 0 5 5) 
      (lambda ()
        (quick-sleep (current-keepalive)))))
   
@@ -111,7 +111,7 @@
 
   (test-case "connections created in response to load"
       (check-counts
-       (list 0 20 0 18)
+       (list 0 10 0 8)
        (lambda ()
          (apply sync
                 (for/list ([i (in-range 40)])

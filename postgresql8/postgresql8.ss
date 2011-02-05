@@ -39,8 +39,8 @@
          #:ssl                     [ssl               'optional]
          #:ssl-encrypt             [ssl-encrypt       'sslv2-or-v3]
          #:pool-connections?       [pool-connections? #f]
-         #:max-connections         [max-connections   20]
-         #:min-connections         [min-connections   10])
+         #:max-connections         [max-connections   10]
+         #:min-connections         [min-connections    5])
   (if pool-connections?
       (new (connection-pool-mixin postgresql8-database%)
            [server                 server]
@@ -87,7 +87,8 @@
     
     ; Fields -------------------------------------
     
-    (init-field server ; string
+    (init-field
+      server           ; string
       port             ; natural
       database         ; string
       username         ; string
@@ -293,6 +294,10 @@
          (when outermost?
            (set-connection-in-transaction?! conn #f)
            (send (connection-back-end conn) exec (debug-sql* string-append "COMMIT;"))))))
+    
+    ; connection -> void
+    (define/public (reset-connection conn)
+      (send (connection-back-end conn) exec "ROLLBACK;"))
     
     ; connection -> (listof symbol)
     (define/public (table-names conn)

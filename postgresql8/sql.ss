@@ -4,6 +4,7 @@
 
 (require scheme/serialize
          scheme/string
+         (only-in srfi/13 string-pad)
          srfi/19
          "../spgsql-hacked/spgsql.ss"
          (unlib-in symbol)
@@ -30,6 +31,11 @@
     
     ; type any -> string
     (define/public (escape-sql-value type value)
+      
+      ; string -> string
+      (define (date-to-string str)
+        (string-append "'" (string-pad (date->string str "~Y-~m-~d ~H:~M:~S.~N") 29 #\0) "'"))
+      
       (cond [(boolean-type? type)  (guard type value boolean? "boolean")
                                    (if value "true" "false")]
             [(not value)           "NULL"]
@@ -44,9 +50,9 @@
             [(symbol-type? type)   (guard type value symbol? "(U symbol #f)")
                                    (string-append "'" (regexp-replace* #rx"'" (symbol->string value) "''") "'")]
             [(time-tai-type? type) (guard type value time-tai? "(U time-tai #f)")
-                                   (date->string (time-tai->date value 0) "'~Y-~m-~d ~H:~M:~S.~N'")]
+                                   (date-to-string (time-tai->date value 0))]
             [(time-utc-type? type) (guard type value time-utc? "(U time-utc #f)")
-                                   (date->string (time-utc->date value 0) "'~Y-~m-~d ~H:~M:~S.~N'")]
+                                   (date-to-string (time-utc->date value 0))]
             [(binary-type? type)   (guard type value serializable? "serializable")
                                    (format-sql "~a" [bytea (serialize/bytes value)])]
             [else                  (raise-type-error #f "unrecognised type" type)]))
