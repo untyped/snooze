@@ -63,10 +63,11 @@
 
 (define connection-pool-mixin
   (mixin (database<%>) (connection-pooled-database<%>)
+    
+    (inherit reset-connection)
 
     ; natural
     (init-field min-connections)
-    ; natural
     (init-field max-connections)
     
     ; A channel to send requests from the application thread to the manager thread.
@@ -240,6 +241,7 @@
                                (values conn acq)))])
              (if conn
                  (begin
+                   (reset-connection conn)
                    (async-channel-put available-connections conn)
                    (add1! available-count)
                    (sub1! acquired-count)

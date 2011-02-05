@@ -74,6 +74,12 @@
     ; is rolled back.
     call-with-transaction
     
+    ; connection -> void
+    ;
+    ; Called to clean up after a thread death. Rolls back any open transactions,
+    ; and resets any temporary connection settings as if we'd just connected.
+    reset-connection
+    
     ; select [output-port] [string] -> select
     ;
     ; where the arguments are:

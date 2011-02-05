@@ -105,6 +105,10 @@
        (lambda ()
          (set-connection-in-transaction?! conn #f))))
     
+    ; connection -> void
+    (define/public (reset-connection conn)
+      (send (connection-back-end conn) exec "ROLLBACK;"))
+    
     ; connection -> (listof symbol)
     (define/public (table-names conn)
       (define result (sqlite:select (connection-back-end conn) "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"))

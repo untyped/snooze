@@ -22,7 +22,8 @@
     
     ; Constructor --------------------
     
-    (init-field server       ; string
+    (init-field
+      server       ; string
       port         ; natural
       database     ; string
       username     ; string
@@ -176,6 +177,10 @@
          (when outermost?
            (set-connection-in-transaction?! conn #f)
            (send (connection-back-end conn) exec "COMMIT;")))))
+    
+    ; connection -> void
+    (define/public (reset-connection conn)
+      (send (connection-back-end conn) exec "ROLLBACK;"))
     
     ; connection -> (listof symbol)
     (define/public (table-names conn)

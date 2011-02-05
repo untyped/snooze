@@ -26,8 +26,8 @@
          #:ssl                     [ssl               'optional]
          #:ssl-encrypt             [ssl-encrypt       'sslv2-or-v3]
          #:pool-connections?       [pool-connections? #t]
-         #:max-connections         [max-connections   20]
-         #:min-connections         [min-connections   10])
+         #:max-connections         [max-connections   10]
+         #:min-connections         [min-connections    5])
   (if pool-connections?
       (new (connection-pool-mixin database%)
            [server                 server]
