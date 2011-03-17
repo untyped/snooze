@@ -6,7 +6,7 @@
          (only-in srfi/13 string-contains)
          (prefix-in postgresql: "../spgsql-hacked/spgsql.ss")
          (only-in "../spgsql-hacked/private/exceptions.ss" exn:spgsql:backend?)
-         (unlib-in gen symbol)
+         (unlib-in gen log symbol)
          "../base.ss"
          "../core/struct.ss"
          "../core/snooze-struct.ss"
@@ -88,7 +88,7 @@
     ; Fields -------------------------------------
     
     (init-field
-      server           ; string
+        server           ; string
       port             ; natural
       database         ; string
       username         ; string
@@ -104,25 +104,35 @@
     
     ; -> connection
     (define/public (connect)
+      (make-connection (internal-connect) #f))
+    
+    ; -> connection-back-end
+    (define/private (internal-connect)
       (with-handlers ([exn:spgsql:backend? reraise-connect])
-        (define conn (postgresql:connect '#:server      server
-                                         '#:port        port
-                                         '#:database    database
-                                         '#:user        username
-                                         '#:password    password
-                                         '#:ssl         ssl
-                                         '#:ssl-encrypt ssl-encrypt))
-        (send conn exec
-              "SET client_min_messages = 'ERROR';"
-              "SET datestyle = iso;"
-              "SET regex_flavor = extended;"
-              "SET standard_conforming_strings = on;")
-        (make-connection conn #f)))
+        (let ([back-end (postgresql:connect '#:server      server
+                                            '#:port        port
+                                            '#:database    database
+                                            '#:user        username
+                                            '#:password    password
+                                            '#:ssl         ssl
+                                            '#:ssl-encrypt ssl-encrypt)])
+          (send back-end exec
+                "SET client_min_messages = 'ERROR';"
+                "SET datestyle = iso;"
+                "SET regex_flavor = extended;"
+                "SET standard_conforming_strings = on;")
+          back-end)))
     
     ; connection -> void
     (define/public (disconnect conn)
+      (internal-disconnect (connection-back-end conn) #t)
+      (set-connection-back-end! conn #f)
+      (set-connection-in-transaction?! conn #f))
+    
+    ; connection-back-end boolean -> void
+    (define/public (internal-disconnect back-end politely?)
       (with-handlers ([exn:spgsql:backend? (cut reraise <> "could not disconnect from database")])
-        (send (connection-back-end conn) disconnect)))
+        (send back-end disconnect politely?)))
     
     ; connection entity -> void
     (define/public (create-table conn entity)
@@ -297,7 +307,13 @@
     
     ; connection -> void
     (define/public (reset-connection conn)
-      (send (connection-back-end conn) exec "ROLLBACK;"))
+      (log-info* "CONNECTION RESET STARTED")
+      ;(send (connection-back-end conn) exec "ROLLBACK;")
+      (internal-disconnect (connection-back-end conn) #f)
+      (log-info* "DISCONNECTED")
+      (set-connection-back-end! conn (internal-connect))
+      (set-connection-in-transaction?! conn #f)
+      (log-info* "CONNECTION RESET FINISHED"))
     
     ; connection -> (listof symbol)
     (define/public (table-names conn)
