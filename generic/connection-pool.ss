@@ -65,7 +65,7 @@
   (mixin (database<%>) (connection-pooled-database<%>)
     
     (inherit reset-connection)
-
+    
     ; natural
     (init-field min-connections)
     (init-field max-connections)
@@ -97,13 +97,13 @@
     (field [manager-thread (thread (cut manage-connections))])
     
     ; Manager thread -----------------------------
-
+    
     ; To avoid needlessly hogging connections, we wait until 
     ; the first call to connect before we initialize the connection pool.
     ;
     ; boolean
     (define initialized? #f)
-
+    
     ; Method that performs the following steps in a continuous loop:
     ; 1. Resizes the connection pool if required (using PE goodness);
     ; 2. Responds to a message from the application or a thread death.
@@ -116,13 +116,13 @@
       (define (clip x)
         (let* ([current (+ available-count acquired-count)]
                [goal    (+ x current)])
-         (cond
-          ;; (- min-connections current) gives a -ve number
-          ;; which is consistent with the value of x when we
-          ;; are freeing connections
-          [(< goal min-connections) (- min-connections current)]
-          [(< max-connections goal) (- max-connections current)]
-          [else x])))
+          (cond
+            ;; (- min-connections current) gives a -ve number
+            ;; which is consistent with the value of x when we
+            ;; are freeing connections
+            [(< goal min-connections) (- min-connections current)]
+            [(< max-connections goal) (- max-connections current)]
+            [else x])))
       (define (create-connection)
         (async-channel-put available-connections (super connect))
         (add1! available-count))
@@ -130,8 +130,8 @@
         (let ([conn (async-channel-try-get available-connections)])
           (if conn
               (begin (super disconnect conn) (sub1! available-count))
-              (log-info* "Snooze connection pool attempted to free connection but none were available"
-                         available-count acquired-count))))
+              (log-debug* "Snooze connection pool attempted to free connection but none were available"
+                          available-count acquired-count))))
       (define (initialise)
         (with-handlers
             ([exn? (lambda (exn)
@@ -140,21 +140,21 @@
                      (raise exn))])
           (unless initialized?
             (for ([index (in-range min-connections)])
-                 (create-connection))
+              (create-connection))
             (set! initialized? #t)
-            (log-info* "Snooze connection pool initialised"))))
+            (log-debug* "Snooze connection pool initialised"))))
       (define (free-connections n)
         (for ([i (in-range n)])
-             (free-connection)))
+          (free-connection)))
       (define (create-connections n)
         (for ([i (in-range n)])
-             (create-connection)))
+          (create-connection)))
       
       ; claimed-connections : (alistof connection acquisition)
       ; waiting             : Natural  The number of application threads waiting for a connection
       (let loop ([acquired-connections null]
                  [waiting              0])
-
+        
         ;; Make a decision on allocating or freeing
         ;; connections based on the current demand for
         ;; connections.
@@ -170,21 +170,21 @@
                [total  (+ available-count acquired-count)]
                [error  (- demand total)]
                [change (clip (round (* error gain)))])
-          (log-info* "Snooze connection pool decision variables"
-                     demand total waiting available-count acquired-count)
+          (log-debug* "Snooze connection pool decision variables"
+                      demand total waiting available-count acquired-count)
           (cond
-           [(zero? change)
-            ; Do nothing:
-            #t]
-           [(< change 0)
-            ;; change is -ve, so we negate to get the number we should free
-            (let ([n-to-free (- change)])
-              (log-info* "Snooze connection pool decided to free connections" n-to-free)
-              (free-connections n-to-free))]
-           [(> change 0)
-            (let ([n-to-create change])
-              (log-info* "Snooze connection pool decided to create connections" n-to-create)
-              (create-connections n-to-create))]))
+            [(zero? change)
+             ; Do nothing:
+             #t]
+            [(< change 0)
+             ;; change is -ve, so we negate to get the number we should free
+             (let ([n-to-free (- change)])
+               (log-debug* "Snooze connection pool decided to free connections" n-to-free)
+               (free-connections n-to-free))]
+            [(> change 0)
+             (let ([n-to-create change])
+               (log-debug* "Snooze connection pool decided to create connections" n-to-create)
+               (create-connections n-to-create))]))
         
         (match (sync manager-channel
                      (wrap-evt
@@ -193,23 +193,24 @@
                                                     (acquisition-dead-evt acq))))
                       (lambda (evt)
                         (list 'unclaim evt))))
-
+          
           [(list 'connect time thd)
            (unless initialized?
              (initialise))
            ;; Make an unique id for this request
            (let ([id (gensym)])
-             (thread-send thd id)
-             (log-info* "Snooze connection pool connection attempt started"
-                        id time (add1 waiting) available-count acquired-count)
-             (loop acquired-connections
-                   (add1 waiting)))]
-
+             (with-handlers ([exn? (lambda (exn) (loop acquired-connections waiting))])
+               (thread-send thd id)
+               (log-debug* "Snooze connection pool connection attempt started"
+                           id time (add1 waiting) available-count acquired-count))
+             ; This is outside the with-handlers block (for tail-recursive non-stack-exploding goodness):
+             (loop acquired-connections (add1 waiting)))]
+          
           [(list 'connected time thd id conn)
            (sub1! available-count)
            (add1! acquired-count)
-           (log-info* "Snooze connection pool connection attempt succeeded"
-                      id time (sub1 waiting) available-count acquired-count)
+           (log-debug* "Snooze connection pool connection attempt succeeded"
+                       id time (sub1 waiting) available-count acquired-count)
            (loop (dict-set acquired-connections conn
                            (make-acquisition id (thread-dead-evt thd) time))
                  (sub1 waiting))]
@@ -221,9 +222,9 @@
                    (async-channel-put available-connections conn)
                    (add1! available-count)
                    (sub1! acquired-count)
-                   (log-info* "Snooze connection pool accepted disconnect"
-                              (acquisition-id acq) (current-inexact-milliseconds)
-                              waiting available-count acquired-count)
+                   (log-debug* "Snooze connection pool accepted disconnect"
+                               (acquisition-id acq) (current-inexact-milliseconds)
+                               waiting available-count acquired-count)
                    (loop (dict-remove acquired-connections conn)
                          waiting))
                  (begin
@@ -235,19 +236,19 @@
           [(list 'unclaim evt)
            (let-values ([(conn acq)
                          (for/fold ([conn #f] [acq #f])
-                             ([(the-conn the-acq) (in-dict acquired-connections)])
-                           (if (equal? evt (acquisition-dead-evt the-acq))
-                               (values the-conn the-acq)
-                               (values conn acq)))])
+                                   ([(the-conn the-acq) (in-dict acquired-connections)])
+                                   (if (equal? evt (acquisition-dead-evt the-acq))
+                                       (values the-conn the-acq)
+                                       (values conn acq)))])
              (if conn
                  (begin
                    (reset-connection conn)
                    (async-channel-put available-connections conn)
                    (add1! available-count)
                    (sub1! acquired-count)
-                   (log-info* "Snooze connection pool retrieved connection on thread death"
-                              (acquisition-id acq) (current-inexact-milliseconds)
-                              waiting available-count acquired-count)
+                   (log-debug* "Snooze connection pool retrieved connection on thread death"
+                               (acquisition-id acq) (current-inexact-milliseconds)
+                               waiting available-count acquired-count)
                    (loop (dict-remove acquired-connections conn)
                          waiting))
                  (begin
@@ -255,10 +256,10 @@
                                  waiting available-count acquired-count)
                    (loop acquired-connections
                          waiting))))])))
-
+    
     
     ; Application thread -------------------------
-        
+    
     ; -> connection
     (define/override (connect)
       ; The application thread must be the one that blocks waiting for a free connection:

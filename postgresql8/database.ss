@@ -23,7 +23,7 @@
     ; Constructor --------------------
     
     (init-field
-      server       ; string
+        server       ; string
       port         ; natural
       database     ; string
       username     ; string
@@ -37,27 +37,35 @@
     
     ; -> connection
     (define/public (connect)
+      (make-connection (internal-connect) #f))
+    
+    ; -> connection-back-end
+    (define/private (internal-connect)
       (with-snooze-reraise (exn:fail? "Could not connect to database")
-        (with-handlers ([exn? (lambda (exn)
-                                (raise-exn exn:fail:snooze:connection-count
-                                  (format "could not connect to database: ~a" (exn-message exn))))])
-          (define conn (postgresql:connect '#:server      server
-                                           '#:port        port
-                                           '#:database    database
-                                           '#:user        username
-                                           '#:password    password
-                                           '#:ssl         ssl
-                                           '#:ssl-encrypt ssl-encrypt))
-          (send conn exec "SET client_min_messages TO warning;")
-          (send conn exec "SET datestyle TO iso;")
-          (send conn exec "SET regex_flavor TO extended;")
-          ;(send conn exec "SET standard_conforming_strings TO on;")
-          (make-connection conn #f))))
+        (let ([back-end (postgresql:connect '#:server      server
+                                            '#:port        port
+                                            '#:database    database
+                                            '#:user        username
+                                            '#:password    password
+                                            '#:ssl         ssl
+                                            '#:ssl-encrypt ssl-encrypt)])
+          (send back-end exec
+                "SET client_min_messages = 'ERROR';"
+                "SET datestyle = iso;"
+                "SET regex_flavor = extended;"
+                #;"SET standard_conforming_strings = on;")
+          back-end)))
     
     ; connection -> void
     (define/public (disconnect conn)
+      (internal-disconnect (connection-back-end conn) #t)
+      (set-connection-back-end! conn #f)
+      (set-connection-in-transaction?! conn #f))
+    
+    ; connection-back-end boolean -> void
+    (define/public (internal-disconnect back-end politely?)
       (with-snooze-reraise (exn:fail? "Could not disconnect from database")
-        (send (connection-back-end conn) disconnect)))
+        (send back-end disconnect politely?)))
     
     ; connection entity -> void
     (define/public (create-table conn entity)
@@ -180,7 +188,9 @@
     
     ; connection -> void
     (define/public (reset-connection conn)
-      (send (connection-back-end conn) exec "ROLLBACK;"))
+      (internal-disconnect (connection-back-end conn) #f)
+      (set-connection-back-end! conn (internal-connect))
+      (set-connection-in-transaction?! conn #f))
     
     ; connection -> (listof symbol)
     (define/public (table-names conn)

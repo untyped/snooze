@@ -15,6 +15,11 @@
 
 ; type any -> string
 (define (escape-value type value)
+  
+  ; string -> string
+  (define (date-to-string str)
+    (string-append "'" (string-pad (date->string str "~Y-~m-~d ~H:~M:~S.~N") 29 #\0) "'"))
+  
   (cond [(boolean-type? type)  (guard value boolean? "boolean")          (if value "true" "false")]
         [(not value)           "NULL"]
         [(guid-type? type)     (guard value guid? "(U guid #f)")         (if (eq? (guid-entity value) (guid-type-entity type))
@@ -27,8 +32,8 @@
         [(real-type? type)     (guard value real? "(U real #f)")         (number->string value)]
         [(string-type? type)   (guard value string? "(U string #f)")     (string-append "'" (regexp-replace* #rx"'" value "''") "'")]
         [(symbol-type? type)   (guard value symbol? "(U symbol #f)")     (string-append "'" (regexp-replace* #rx"'" (symbol->string value) "''") "'")]
-        [(time-tai-type? type) (guard value time-tai? "(U time-tai #f)") (date->string (time-tai->date value 0) "'~Y-~m-~d ~H:~M:~S.~N'")]
-        [(time-utc-type? type) (guard value time-utc? "(U time-utc #f)") (date->string (time-utc->date value 0) "'~Y-~m-~d ~H:~M:~S.~N'")]
+        [(time-tai-type? type) (guard value time-tai? "(U time-tai #f)") (date-to-string (time-tai->date value 0))]
+        [(time-utc-type? type) (guard value time-utc? "(U time-utc #f)") (date-to-string (time-utc->date value 0))]
         [else                  (raise-exn exn:fail:contract (format "Unrecognised type: ~s" type))]))
 
 ; type (U string sql-null) -> any
