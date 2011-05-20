@@ -8,17 +8,20 @@
 
 (define release-notes
   '((p "Changes and additions:")
-    (ul (li "added " (tt "sql-list") " syntax."))))
+    (ul (li "added connection pooling support to PostgreSQL back end;")
+        (li "changed audit transaction timestamps to SRFI 19 " (tt "time-utcs") ";")
+        (li "added " (tt "query-logger") " parameter;")
+        (li "added " (tt "sql-list") " syntax."))))
 
 (define primary-file "main.ss")
 
-(define url "http://svn.untyped.com/snooze/")
+(define url "https://github.com/untyped/snooze/")
 
 (define categories '(devtools io))
 
 (define scribblings '(("scribblings/snooze.scrbl" (multi-page))))
 
-(define required-core-version "4.0.2.5")
+(define required-core-version "4.2.2")
 
 (define repositories '("4.x"))
 
