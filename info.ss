@@ -3,7 +3,7 @@
 (define name "snooze")
 
 (define blurb 
-  '((p "Object Relational Mapping (ORM) for Racket. Snooze lets you define special PLT structs called " 
+  '((p "Object Relational Mapping (ORM) for Racket. Snooze lets you define special structs called " 
        (tt "snooze-structs") " and serialize them to an SQLite or PostgreSQL database.")))
 
 (define release-notes
